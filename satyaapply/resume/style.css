@@ -1,0 +1,16 @@
+@page { size: A4; margin: 12mm 13mm; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 10pt/1.38 "Charter", "Georgia", "Times New Roman", serif; color: #1a1a1a; }
+header { text-align: center; margin-bottom: 8pt; }
+h1 { font-size: 20pt; font-weight: 400; margin: 0 0 3pt; }
+.contact { font-size: 9pt; margin: 0 0 3pt; }
+.headline { font-weight: 700; margin: 0; }
+h2 { font-size: 11pt; text-transform: uppercase; color: #4f6f8f; border-bottom: 0.6pt solid #2b2b2b; padding-bottom: 1pt; margin: 10pt 0 5pt; }
+section p { margin: 0 0 2pt; }
+article { margin: 0 0 6pt; break-inside: avoid; }
+.row { display: flex; justify-content: space-between; gap: 12pt; }
+.row strong { font-size: 11pt; }
+.row.sub em { color: #1c1cf5; }
+.row.sub span { font-style: italic; }
+ul { margin: 4pt 0 0; padding-left: 13pt; }
+li { margin: 0 0 2pt; }

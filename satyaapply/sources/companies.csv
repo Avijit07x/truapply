@@ -1,0 +1,145 @@
+ats,slug,company,tags
+ashby,SigNoz,Signoz,india;remote
+ashby,airbyte,Airbyte,remote
+ashby,atlan,Atlan,india;remote
+ashby,bidgely-inc,Bidgely,india;remote
+ashby,bolna,Bolna,india
+ashby,broccoli,Broccoli,india;remote
+ashby,browserbase,Browserbase,
+ashby,cartesia,Cartesia,india
+ashby,clerk,Clerk,remote
+ashby,clickup,Clickup,remote
+ashby,cohere,Cohere,remote
+ashby,e2b,E2B,
+ashby,elevenlabs,Elevenlabs,india;remote
+ashby,flagright.com,Flagright.Com,remote
+ashby,gradera,Gradera,india;remote
+ashby,granica,Granica,india;remote
+ashby,graphite,Graphite,
+ashby,halliday,Halliday,remote
+ashby,hirehangar,Hirehangar,india;remote
+ashby,inngest,Inngest,remote
+ashby,lovable,Lovable,remote
+ashby,menlosecurity,Menlosecurity,india;remote
+ashby,mintlify,Mintlify,
+ashby,modal,Modal,remote
+ashby,neon,Neon,remote
+ashby,notion,Notion,india;remote
+ashby,perplexity,Perplexity,remote
+ashby,posthog,Posthog,remote
+ashby,ramp,Ramp,remote
+ashby,replit,Replit,remote
+ashby,resend,Resend,remote
+ashby,sardine,Sardine,india;remote
+ashby,sarvam,Sarvam,india
+ashby,sensor-tower,Sensor Tower,india;remote
+ashby,spotdraft,Spotdraft,india;remote
+ashby,spoton,Spoton,india;remote
+ashby,supabase,Supabase,remote
+ashby,surveymonkey,Surveymonkey,india;remote
+ashby,valerie-group,Valerie Group,india;remote
+ashby,vanta,Vanta,remote
+ashby,vapi,Vapi,remote
+ashby,warp,Warp,remote
+ashby,zed,Zed,remote
+greenhouse,66degrees,66degrees,india;remote
+greenhouse,affirm,Affirm,remote
+greenhouse,airbnb,Airbnb,india;remote
+greenhouse,airtable,Airtable,remote
+greenhouse,algolia,Algolia,remote
+greenhouse,alphagrepsecurities,AlphaGrep Securities,india
+greenhouse,alphasenseindia,AlphaSense India,india;remote
+greenhouse,anthropic,Anthropic,india;remote
+greenhouse,asana,Asana,remote
+greenhouse,bitgo,BitGo,india;remote
+greenhouse,blenheimchalcotindia,Blenheim Chalcot India,india
+greenhouse,braze,Braze,
+greenhouse,brex,Brex,remote
+greenhouse,calendly,Calendly,remote
+greenhouse,capco,Capco,india
+greenhouse,carta,Carta,
+greenhouse,chime,"Chime Financial, Inc",remote
+greenhouse,cloudflare,Cloudflare,remote
+greenhouse,coherehealth,Cohere Health,india;remote
+greenhouse,coinbase,Coinbase,india;remote
+greenhouse,commvault,Commvault,india
+greenhouse,contentful,Contentful,
+greenhouse,coupang,Coupang,india
+greenhouse,databricks,Databricks,india;remote
+greenhouse,datadog,Datadog,india;remote
+greenhouse,definitivehcindia,"Definitive Healthcare, India",india
+greenhouse,degreed,Degreed,remote
+greenhouse,deliveroo,Deliveroo ,india
+greenhouse,discord,Discord,remote
+greenhouse,donorbox,Donorbox,remote
+greenhouse,dropbox,Dropbox,remote
+greenhouse,druva,Druva,india;remote
+greenhouse,duolingo,Duolingo,india;remote
+greenhouse,e2openllc,e2open,
+greenhouse,earnin,EarnIn,india;remote
+greenhouse,easyship,Easyship,india;remote
+greenhouse,elastic,Elastic,india
+greenhouse,emergentlabsinc,Emergent Labs ,india
+greenhouse,faire,Faire,remote
+greenhouse,figma,Figma,india
+greenhouse,flexport,Flexport,india;remote
+greenhouse,gitlab,GitLab,india;remote
+greenhouse,gleanwork,Glean,india;remote
+greenhouse,globalhealthcareexchangeinc,GHX,india;remote
+greenhouse,grafanalabs,Grafana Labs,india;remote
+greenhouse,groww,Groww,india
+greenhouse,gusto,"Gusto, Inc.",remote
+greenhouse,hackerrank,HackerRank Careers,india;remote
+greenhouse,india1,capSpire - India ,india
+greenhouse,inmobi,InMobi ,india
+greenhouse,instacart,Instacart,remote
+greenhouse,instawork,Instawork,india
+greenhouse,intercom,Fin,remote
+greenhouse,lyft,Lyft,remote
+greenhouse,mercury,Mercury,remote
+greenhouse,mixpanel,Mixpanel,india;remote
+greenhouse,mongodb,MongoDB,india
+greenhouse,mozilla,Mozilla,remote
+greenhouse,narvar,Narvar,india;remote
+greenhouse,netlify,Netlify,remote
+greenhouse,neweratech,New Era Technology,india;remote
+greenhouse,okta,Okta,india
+greenhouse,openfx,OpenFX,india;remote
+greenhouse,particle41llc,Particle41,india;remote
+greenhouse,pay2dc,PayPay India ,india
+greenhouse,pinterest,Pinterest,remote
+greenhouse,poppulo,Poppulo,india;remote
+greenhouse,reddit,Reddit,remote
+greenhouse,robinhood,Robinhood,
+greenhouse,rubrik,Rubrik Job Board,india;remote
+greenhouse,samsara,Samsara,india;remote
+greenhouse,scaleai,Scale AI,india
+greenhouse,scopely,Scopely,india
+greenhouse,sigmoid,Sigmoid,india
+greenhouse,singlestore,SingleStore,india
+greenhouse,slice,Slice,remote
+greenhouse,smartbear,SmartBear,india
+greenhouse,squarespace,Squarespace,remote
+greenhouse,stratainformationgroup,Strata Information Group,india;remote
+greenhouse,stripe,Stripe,india;remote
+greenhouse,supplyhouse,SupplyHouse.com,india;remote
+greenhouse,toast,Toast,india;remote
+greenhouse,tradingco,MiQ Job Board ,india
+greenhouse,twilio,Twilio,india;remote
+greenhouse,twitch,Twitch,
+greenhouse,vercel,Vercel,india;remote
+greenhouse,wikimedia,Wikimedia Foundation,remote
+greenhouse,workatbackbase,Backbase,india
+greenhouse,yipitdata,YipitData,india;remote
+greenhouse,zscaler,Zscaler,india;remote
+lever,acceldata,Acceldata,india;remote
+lever,cred,Cred,india
+lever,doola,Doola,remote
+lever,jumpcloud,Jumpcloud,india;remote
+lever,mable,Mable,remote
+lever,meesho,Meesho,india
+lever,mindtickle,Mindtickle,india;remote
+lever,smarsh,Smarsh,india;remote
+lever,spotify,Spotify,india;remote
+lever,valgenesis,Valgenesis,india
+lever,zimperium,Zimperium,india;remote
