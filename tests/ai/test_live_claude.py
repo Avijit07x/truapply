@@ -53,6 +53,12 @@ def test_a_planted_fake_skill_is_caught() -> None:
             "Skills: React, TypeScript, Storybook",
             "Skills: React, TypeScript, Storybook, Component Architecture",
         ),
+        (
+            "Skills: React, TypeScript, Storybook\n"
+            "- Built an icon library with React, Vue and Angular packages.",
+            "Skills: React, TypeScript, Storybook, Angular\n"
+            "- Built an icon library with React, Vue and Angular packages.",
+        ),
     ],
 )
 def test_stretched_wording_is_caught(before: str, after: str) -> None:
