@@ -375,6 +375,8 @@ flowchart TD
 
 **Fetching:** board APIs are read through Playwright's own network stack (so HTTPS works even where Python's certificate store is missing), at most 8 at a time. A board that returns 404 is marked dead; one that doesn't answer is just retried next run.
 
+**AI calls in a run:** scoring and tailoring run up to 4 jobs at a time (`PARALLEL_AI_CALLS`); every database write stays on the main thread. Two copies of the same job in one batch are not both scored: the second waits for the next run. Forms are still filled one at a time, with pauses between them.
+
 **Before scoring,** cheap filters drop jobs whose title, location, age or company don't fit, so the AI only sees real candidates. Location rules: on-site in your city needs "on-site"; another city in your country needs "relocate" (and one of your cities, if you listed any); remote in your country (or a region that includes it, like "APAC") needs "remote in country"; plain "Remote" or "Worldwide" fits either remote choice. Remote tied to another place ("Remote US", "Remote - Europe", "Remote within Canada") means you must live there, so it doesn't fit. A location with several places ("Bengaluru / Pune", "Remote Canada; Remote US") fits when any one of them does. Ashby marks hybrid jobs as remote too, so its reader uses the job's workplace type and ties "Remote" to each listed place.
 
 **Before applying,** each job is checked against its board API again, so a removed job is marked `closed` instead of failing.

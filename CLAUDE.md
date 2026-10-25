@@ -29,7 +29,7 @@ SATYAAPPLY_HOME=/tmp/satyaapply-dev satyaapply run --dry-run --limit 3
 - Package by feature, small modules and functions. Never put unrelated code in one file. Layers only import downward: `cli` → `run`/`tracker`/`onboarding` → `resume`/`sources`/`apply`/`inbox`/`report` → `store`/`ai`/`browser`/`sites` → `core`.
 - Python 3.11+, full type hints, `mypy --strict`. Frozen dataclasses for values, `StrEnum` for fixed sets, errors from `core/errors.py`.
 - One runtime dependency: Playwright. Use the standard library for everything else. Never add a dependency without a design note.
-- Optimize deliberately: batch database writes, no queries or AI calls inside loops that could be batched, reuse one browser context per run, bounded thread pools for network polling.
+- Optimize deliberately: batch database writes, no queries or AI calls inside loops that could be batched, reuse one browser context per run, bounded thread pools for network polling and AI calls.
 - Full standards: [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 **Working**

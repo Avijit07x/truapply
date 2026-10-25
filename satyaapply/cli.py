@@ -89,8 +89,8 @@ def _print_run(report: RunReport) -> None:
         f"Jobs: {found.found:,} open · {found.kept} fit your titles and places · {found.added} new"
     )
     print(
-        f"Scored: {scored.matched} good matches · {scored.skipped} skipped · "
-        f"{scored.failed} to retry"
+        f"Scored: {scored.matched} good {'match' if scored.matched == 1 else 'matches'} · "
+        f"{scored.skipped} skipped · {scored.failed} to retry"
     )
     if not report.prepared:
         print("Prepared: nothing this run")

@@ -2,7 +2,9 @@ import logging
 import sqlite3
 import time
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from random import SystemRandom
 
@@ -19,7 +21,7 @@ from satyaapply.core.forms import FormContext
 from satyaapply.core.models import Job, Source, Status
 from satyaapply.core.profile import Profile
 from satyaapply.resume.tailor import Tailored, TailorRequest, file_name_for, tailor
-from satyaapply.run.context import RunContext
+from satyaapply.run.context import PARALLEL_AI_CALLS, RunContext
 from satyaapply.sources.ats import still_open
 from satyaapply.store import answers, jobs
 from satyaapply.store.answers import AnswerSource, SavedAnswer
@@ -66,18 +68,30 @@ def _drop_closed(db: sqlite3.Connection, picks: Sequence[Job], clock: Clock) -> 
     return still
 
 
-def _queue(run: RunContext, picks: Sequence[Job]) -> list[Queued]:
-    queued = []
-    for job in picks:
-        if job.id is None:
-            continue
-        request = TailorRequest(
-            job, (), run.paths.job_dir(job.id), file_name_for(run.profile.name), run.master
+def _tailored(run: RunContext, pick: tuple[int, Job]) -> Queued:
+    job_id, job = pick
+    request = TailorRequest(
+        job, (), run.paths.job_dir(job_id), file_name_for(run.profile.name), run.master
+    )
+    return Queued(job_id, job, tailor(run.resume, request))
+
+
+def tailor_all(run: RunContext, picks: Sequence[Job]) -> list[Queued]:
+    ready = [(job.id, job) for job in picks if job.id is not None]
+    if ready:
+        run.progress(
+            f"Tailoring your resume for {len(ready)} {'job' if len(ready) == 1 else 'jobs'} …"
         )
-        run.progress(f"Tailoring your resume for {job.company} · {job.title} …")
-        tailored = tailor(run.resume, request)
-        run.progress("  kept your original resume" if tailored.used_original else "  tailored")
-        queued.append(Queued(job.id, job, tailored))
+    queued: list[Queued] = []
+    with ThreadPoolExecutor(PARALLEL_AI_CALLS) as pool:
+        try:
+            for item in pool.map(partial(_tailored, run), ready):
+                kept = "kept your original resume" if item.resume.used_original else "tailored"
+                run.progress(f"  {item.job.company} · {item.job.title}: {kept}")
+                queued.append(item)
+        except UsageLimitError:
+            pool.shutdown(cancel_futures=True)
+            raise
     return queued
 
 
@@ -123,7 +137,7 @@ def _record(db: sqlite3.Connection, run: RunContext, item: Queued, attempt: Atte
 
 def prepare(db: sqlite3.Connection, run: RunContext, limit: int, show: bool) -> list[Prepared]:
     picks = jobs.next_to_apply(db, allowance(db, run.profile, run.clock, limit))
-    queue = _queue(run, _drop_closed(db, picks, run.clock))
+    queue = tailor_all(run, _drop_closed(db, picks, run.clock))
     if not queue:
         return []
     known = answers.all_answers(db)

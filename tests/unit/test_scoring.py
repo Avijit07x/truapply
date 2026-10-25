@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -62,8 +63,8 @@ def test_good_matches_are_queued_and_weak_ones_skipped(
     jobs.add_many(
         db, [samples.job(external_id="a"), samples.job(external_id="b", company="C")], NOW
     )
-    scores = iter([Score(85, "fit", None, False), Score(30, "weak", None, False)])
-    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, _j: next(scores))
+    scores = {"a": Score(85, "fit", None, False), "b": Score(30, "weak", None, False)}
+    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, job: scores[job.external_id])
     result = score_pending(db, run, 10)
     assert (result.matched, result.skipped, result.failed) == (1, 1, 0)
     assert [job.score for job in jobs.next_to_apply(db, 10)] == [85]
@@ -122,8 +123,8 @@ def test_each_scored_job_is_reported_as_it_happens(
     jobs.add_many(
         db, [samples.job(external_id="a"), samples.job(external_id="b", company="C")], NOW
     )
-    scores = iter([Score(85, "fit", None, False), Score(30, "weak", "needs a US visa", False)])
-    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, _j: next(scores))
+    scores = {"a": Score(85, "fit", None, False), "b": Score(30, "weak", "needs a US visa", False)}
+    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, job: scores[job.external_id])
     said: list[str] = []
     score_pending(db, replace(run, progress=said.append), 10)
     assert said == [
@@ -131,3 +132,28 @@ def test_each_scored_job_is_reported_as_it_happens(
         "  1/2 Northwind · Frontend Engineer: 85, good match",
         "  2/2 C · Frontend Engineer: skipped, deal-breaker: needs a US visa",
     ]
+
+
+def test_jobs_are_scored_at_the_same_time(
+    db: sqlite3.Connection, run: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    jobs.add_many(
+        db, [samples.job(external_id="a"), samples.job(external_id="b", company="C")], NOW
+    )
+    both_running = threading.Barrier(2, timeout=5)
+
+    def score(_p: Profile, _r: str, _j: Job) -> Score:
+        both_running.wait()
+        return Score(85, "fit", None, False)
+
+    monkeypatch.setattr(scoring, "score_job", score)
+    assert score_pending(db, run, 10).matched == 2
+
+
+def test_a_twin_in_the_same_batch_waits_for_the_next_run(
+    db: sqlite3.Connection, run: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    jobs.add_many(db, [samples.job(), samples.job(source=Source.LINKEDIN, external_id="li")], NOW)
+    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, _j: Score(30, "weak", None, False))
+    assert score_pending(db, run, 10).skipped == 1
+    assert len(jobs.next_to_score(db, 10)) == 1

@@ -7,6 +7,8 @@ from satyaapply.core.paths import Paths
 from satyaapply.core.profile import Profile
 from satyaapply.resume.contract import Rendered, Resume
 
+PARALLEL_AI_CALLS = 4
+
 Progress = Callable[[str], None]
 
 
