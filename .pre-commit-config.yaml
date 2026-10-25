@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.2
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+  - repo: local
+    hooks:
+      - id: no-comments
+        name: no comments or docstrings
+        entry: python tools/check_no_comments.py
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy --strict
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: unit-tests
+        name: unit tests
+        entry: pytest -q -W error::ResourceWarning
+        language: system
+        types: [python]
+        pass_filenames: false
