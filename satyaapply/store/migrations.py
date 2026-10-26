@@ -56,4 +56,23 @@ MIGRATIONS: tuple[str, ...] = (
     alter table jobs add column reason text;
     update jobs set reason = note where score is not null and status in ('scored', 'skipped');
     """,
+    """
+    alter table jobs add column feedback integer not null default 0;
+    alter table jobs add column auto_submitted integer not null default 0;
+    create table feedback (
+        id integer primary key,
+        job_id integer references jobs (id),
+        kind text not null,
+        value text not null default '',
+        at text not null
+    );
+    create index feedback_job on feedback (job_id);
+    create table rules (
+        id integer primary key,
+        kind text not null,
+        text text not null,
+        state text not null,
+        at text not null
+    );
+    """,
 )

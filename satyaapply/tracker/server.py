@@ -6,7 +6,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from satyaapply.core.paths import Paths
 from satyaapply.store.db import connect
-from satyaapply.tracker.views import Response, not_found, respond_get
+from satyaapply.tracker.responses import Response
+from satyaapply.tracker.views import respond_get, respond_post
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -19,6 +20,7 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
 }
+MAX_FORM_BYTES = 200_000
 FORBIDDEN = Response(HTTPStatus.FORBIDDEN, b"Forbidden", "text/plain; charset=utf-8")
 
 log = logging.getLogger(__name__)
@@ -53,6 +55,8 @@ class TrackerHandler(BaseHTTPRequestHandler):
         self.send_response(response.status)
         self.send_header("Content-Type", response.content_type)
         self.send_header("Content-Length", str(len(response.body)))
+        if response.location:
+            self.send_header("Location", response.location)
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
         self.end_headers()
@@ -76,7 +80,14 @@ class TrackerHandler(BaseHTTPRequestHandler):
         if not (self._host_allowed() and self._same_origin()):
             self._send(FORBIDDEN)
             return
-        self._send(not_found())
+        length = int(self.headers.get("Content-Length") or 0)
+        if length > MAX_FORM_BYTES:
+            self._send(FORBIDDEN)
+            return
+        raw = self.rfile.read(length).decode("utf-8", errors="replace")
+        form = {key: values[-1] for key, values in parse_qs(raw, keep_blank_values=True).items()}
+        with closing(connect(self.tracker.paths.database)) as db:
+            self._send(respond_post(db, self.tracker.paths, urlsplit(self.path).path, form))
 
     def log_message(self, format: str, *args: object) -> None:
         log.debug(format, *args)

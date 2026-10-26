@@ -71,7 +71,7 @@ def _drop_closed(db: sqlite3.Connection, picks: Sequence[Job], clock: Clock) -> 
 def _tailored(run: RunContext, pick: tuple[int, Job]) -> Queued:
     job_id, job = pick
     request = TailorRequest(
-        job, (), run.paths.job_dir(job_id), file_name_for(run.profile.name), run.master
+        job, run.notes, run.paths.job_dir(job_id), file_name_for(run.profile.name), run.master
     )
     return Queued(job_id, job, tailor(run.resume, request))
 

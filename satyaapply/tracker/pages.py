@@ -1,4 +1,5 @@
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 
 from satyaapply.core.models import Status
 from satyaapply.store.records import JobRecord
@@ -18,6 +19,7 @@ LABELS = {
     Status.EXTERNAL: "Apply on their site",
     Status.FAILED: "Something broke",
     Status.CLOSED: "Job closed",
+    Status.FINISH: "Finish it yourself",
 }
 TONES = {
     Status.SCORED: "good",
@@ -28,9 +30,11 @@ TONES = {
     Status.UNCONFIRMED: "warn",
     Status.EXTERNAL: "warn",
     Status.FAILED: "bad",
+    Status.FINISH: "warn",
 }
 HOME_TILES = (
     (Status.NEEDS_INPUT, "Need your answer"),
+    (Status.FINISH, "Finish these"),
     (Status.READY, "Waiting for your OK"),
     (Status.SCORED, "Good matches to fill"),
     (Status.APPLIED, "Applied"),
@@ -66,7 +70,10 @@ def job_table(items: Sequence[JobRecord], nothing: str) -> str:
 
 
 def home(
-    counts: Counts, lists: Mapping[Status, Sequence[JobRecord]], recent: Sequence[JobRecord]
+    counts: Counts,
+    lists: Mapping[Status, Sequence[JobRecord]],
+    recent: Sequence[JobRecord],
+    panels: Sequence[str] = (),
 ) -> str:
     tiles = joined(
         f'<a class="tile" href="/jobs?status={status}"><strong>{counts.get(status, 0)}</strong>'
@@ -77,6 +84,7 @@ def home(
         "<h1>Your applications</h1>"
         f'<p class="muted">{sum(counts.values())} jobs saved.</p>'
         f'<div class="tiles">{tiles}</div>'
+        + joined(panels)
         + section(
             "Needs your answer",
             job_table(lists.get(Status.NEEDS_INPUT, ()), "Nothing needs you right now."),
@@ -139,9 +147,22 @@ def _sent(record: JobRecord) -> str:
     return section("What was filled in", f'<dl class="sent">{pairs}</dl>')
 
 
-def job_detail(
-    record: JobRecord, changes: Sequence[str] | None, has_shot: bool, has_resume: bool
-) -> str:
+@dataclass(frozen=True)
+class JobView:
+    record: JobRecord
+    changes: Sequence[str] | None
+    has_shot: bool
+    has_resume: bool
+    controls: str = ""
+
+
+def job_detail(view: JobView) -> str:
+    record, changes, has_shot, has_resume = (
+        view.record,
+        view.changes,
+        view.has_shot,
+        view.has_resume,
+    )
     job = record.job
     score = f" Score <strong>{job.score}</strong>" if job.score is not None else ""
     reason = f"<p><strong>Why this score:</strong> {e(record.reason)}</p>" if record.reason else ""
@@ -160,6 +181,7 @@ def job_detail(
         f'<div class="card"><p>{status_pill(job.status)}{score}'
         f' <span class="muted">· updated {e(when(record.updated_at))}</span></p>{reason}{note}'
         f'<div class="links">{links}</div></div>'
+        + view.controls
         + _sent(record)
         + _resume(record, changes, has_resume)
         + shot

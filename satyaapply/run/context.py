@@ -25,6 +25,8 @@ class RunContext:
     clock: Clock
     dry_run: bool = True
     progress: Progress = quiet
+    notes: tuple[str, ...] = ()
+    preferences: tuple[str, ...] = ()
 
     @cached_property
     def resume_text(self) -> str:

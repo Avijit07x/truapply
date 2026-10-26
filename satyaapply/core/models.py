@@ -40,6 +40,7 @@ class Status(StrEnum):
     EXTERNAL = "external"
     FAILED = "failed"
     CLOSED = "closed"
+    FINISH = "finish"
 
 
 ACTIVE_STATUSES = (
