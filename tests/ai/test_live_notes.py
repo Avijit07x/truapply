@@ -1,10 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import pytest
 
-from satyaapply.core.documents import ResumeData, ResumeSection
+from satyaapply.core.documents import ResumeData, ResumeEntry, ResumeSection
 from satyaapply.core.models import Job
 from satyaapply.resume.structured import StructuredResume, from_json
 from satyaapply.resume.tailor import Tailored, TailorRequest, tailor
@@ -12,19 +13,44 @@ from tests.unit import samples
 
 pytestmark = pytest.mark.ai
 
-NOTES = ("Don't change my summary.",)
+NOTES = ("Keep my bullet points in their original order.",)
+EXPERIENCE = (
+    ResumeEntry(
+        "Acme Analytics",
+        "Frontend Engineer",
+        "2024 - Present",
+        "Bengaluru",
+        (
+            "Ran weekly office hours for new hires.",
+            "Wrote internal docs for the release process.",
+            "Built 40 shared React components with Storybook docs and theming.",
+            "Cut page load time by 30% with code splitting and lazy loading.",
+        ),
+    ),
+    ResumeEntry(
+        "Globex",
+        "Software Engineer Intern",
+        "2023 - 2024",
+        "Pune",
+        (
+            "Fixed bugs reported by the support team.",
+            "Wrote Jest tests for the checkout flow.",
+            "Built a Node.js REST API backed by PostgreSQL.",
+            "Built analytics dashboards with React and a charting library.",
+        ),
+    ),
+)
 JOBS = (
     (
         "Northwind",
-        "Frontend Engineer",
-        "Build customer-facing React and TypeScript screens. Care about clean UI code, "
-        "testing with Jest and shipping weekly.",
+        "Frontend Engineer, Testing",
+        "Build customer-facing React screens. We care most about automated testing with Jest "
+        "and a reliable checkout.",
     ),
     (
         "Contoso",
         "Full-stack Engineer",
-        "Own features across a React frontend and a Node.js API. TypeScript everywhere, "
-        "PostgreSQL, REST and GraphQL.",
+        "Own features across a React frontend and a Node.js REST API on PostgreSQL.",
     ),
     (
         "Fabrikam",
@@ -35,22 +61,26 @@ JOBS = (
     (
         "Tailspin",
         "Frontend Engineer, Dashboards",
-        "Build analytics dashboards with React, TypeScript and charting libraries. Large "
-        "tables, filters and real-time data.",
+        "Build analytics dashboards with React and charting libraries. Large tables, filters "
+        "and real-time data.",
     ),
     (
         "Litware",
         "Web Performance Engineer",
-        "Make our web app fast: Core Web Vitals, Lighthouse audits, code splitting, bundle "
-        "size and load time budgets.",
+        "Make our web app fast: Core Web Vitals, code splitting, lazy loading, bundle size and "
+        "load time budgets.",
     ),
 )
 
 
 def master() -> StructuredResume:
     data = samples.resume_data()
-    skills = ResumeSection("Skills", ("React, TypeScript, Storybook, Jest, Lighthouse",), ())
-    return StructuredResume(replace(data, sections=(*data.sections, skills)))
+    sections = (
+        ResumeSection("Summary", ("Frontend engineer with 2+ years of React.",), ()),
+        ResumeSection("Experience", (), EXPERIENCE),
+        ResumeSection("Skills", ("React, TypeScript, Node.js, PostgreSQL, Jest, Storybook",), ()),
+    )
+    return StructuredResume(replace(data, sections=sections))
 
 
 def jobs() -> list[Job]:
@@ -60,29 +90,44 @@ def jobs() -> list[Job]:
     ]
 
 
-def summary(data: ResumeData) -> ResumeSection | None:
-    return next((section for section in data.sections if section.title == "Summary"), None)
+def closest(bullet: str, originals: tuple[str, ...]) -> int:
+    scores = [SequenceMatcher(None, bullet, original).ratio() for original in originals]
+    return scores.index(max(scores))
 
 
-def broken_note(job: Job, result: Tailored, original: ResumeSection | None) -> str | None:
+def reordered(data: ResumeData) -> list[str]:
+    originals = {entry.heading: entry.bullets for entry in EXPERIENCE}
+    entries = [entry for section in data.sections for entry in section.entries]
+    return [
+        f"{entry.heading}: {list(entry.bullets)}"
+        for entry in entries
+        if entry.heading in originals
+        and (order := [closest(bullet, originals[entry.heading]) for bullet in entry.bullets])
+        != sorted(set(order))
+    ]
+
+
+def broken_note(job: Job, result: Tailored) -> str | None:
     if result.used_original:
         return f"{job.title}: not tailored ({'; '.join(result.problems)})"
-    tailored = summary(from_json(result.source))
-    return None if tailored == original else f"{job.title}: summary became {tailored!r}"
+    moved = reordered(from_json(result.source))
+    return f"{job.title}: bullets reordered in {moved}" if moved else None
 
 
-def test_a_summary_note_holds_for_five_tailored_resumes(tmp_path: Path) -> None:
+def tailored_for_five_jobs(notes: tuple[str, ...], tmp_path: Path) -> list[str | None]:
     resume = master()
     original = resume.render(resume.source, tmp_path / "master.pdf")
 
     def tailor_for(job: Job) -> Tailored:
-        request = TailorRequest(job, NOTES, tmp_path / job.external_id, "Resume.pdf", original)
+        request = TailorRequest(job, notes, tmp_path / job.external_id, "Resume.pdf", original)
         return tailor(resume, request)
 
     targets = jobs()
     with ThreadPoolExecutor(max_workers=5) as pool:
         results = list(pool.map(tailor_for, targets))
-    kept = summary(resume.data)
-    pairs = zip(targets, results, strict=True)
-    broken = [broken_note(job, result, kept) for job, result in pairs]
+    return [broken_note(job, result) for job, result in zip(targets, results, strict=True)]
+
+
+def test_a_bullet_order_note_holds_for_five_tailored_resumes(tmp_path: Path) -> None:
+    broken = tailored_for_five_jobs(NOTES, tmp_path)
     assert broken == [None] * len(JOBS), "\n".join(filter(None, broken))
