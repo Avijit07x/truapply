@@ -19,6 +19,7 @@ pytest -m ai               # live Claude tests
 pytest -m network          # live job-board API tests
 mypy satyaapply
 ruff check . && ruff format .
+cd web && npm ci && npm run build   # the tracker app (React); npm run check = types, lint, format
 SATYAAPPLY_HOME=/tmp/satyaapply-dev satyaapply run --limit 3   # always a dry run for now
 satyaapply tracker         # the tracker page on http://127.0.0.1:8765
 ```
@@ -30,6 +31,7 @@ satyaapply tracker         # the tracker page on http://127.0.0.1:8765
 - Package by feature, small modules and functions. Never put unrelated code in one file. Layers only import downward: `cli` → `run`/`tracker`/`onboarding` → `resume`/`sources`/`apply`/`inbox`/`report` → `store`/`ai`/`browser`/`sites` → `core`.
 - Python 3.11+, full type hints, `mypy --strict`. Frozen dataclasses for values, `StrEnum` for fixed sets, errors from `core/errors.py`.
 - One runtime dependency: Playwright. Use the standard library for everything else. Never add a dependency without a design note.
+- The tracker page is a React + TypeScript app in `web/`, built into `satyaapply/tracker/static/` and talking only to the JSON API in [docs/tracker-api.md](docs/tracker-api.md). TanStack Query for every API call, zustand for shared client state, Base UI for interactive parts, CSS Modules, its own icons. Its npm packages are build-time only; users never need Node.
 - Optimize deliberately: batch database writes, no queries or AI calls inside loops that could be batched, reuse one browser context per run, bounded thread pools for network polling and AI calls.
 - Full standards: [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 

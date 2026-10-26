@@ -21,9 +21,19 @@ python3.11 -m venv .venv && source .venv/bin/activate   # 3.11 or newer
 pip install -e ".[dev]"
 pre-commit install
 playwright install chromium            # only if Google Chrome isn't installed
+(cd web && npm ci && npm run build)    # the tracker app; needs Node 22.12 or newer
 export SATYAAPPLY_HOME=/tmp/satyaapply-dev # never develop against your real profile
 satyaapply setup
 ```
+
+To work on the tracker app with instant reloads, run the tracker and the Vite dev server side by side. The dev server sends API calls on to the tracker:
+
+```bash
+satyaapply tracker --port 8765
+cd web && npm run dev                  # SATYAAPPLY_TRACKER=http://127.0.0.1:<port> for another port
+```
+
+Users never need Node: the built app ships inside the package. Rebuild it (`npm run build`) before running the end-to-end tests.
 
 ---
 
@@ -95,6 +105,17 @@ How a senior engineer works on this codebase.
 - **One error hierarchy** in `core/errors.py`: `SatyaApplyError` → `AIError`, `UsageLimitError`, `SiteBlockedError`, `LoggedOutError`, `SiteUnreachableError`, `FormStuckError`, `ProfileInvalidError`. Raise the specific one. Only the run loop catches broadly, and it records the error and moves on to the next job.
 - Context managers for every resource (browser, database transaction, IMAP connection).
 - No mutable default arguments. `print` only in `cli` and `onboarding`.
+
+### TypeScript (the tracker app in `web/`)
+
+- `strict` TypeScript, and the strictest typescript-eslint rules with type information. No `any`, no `!` assertions, no comments.
+- Every API call goes through TanStack Query (`src/api/queries.ts`, `src/api/mutations.ts`). Components never call `fetch` themselves.
+- Shared client state lives in small zustand stores (drag state, theme). Everything else is component state.
+- Interactive parts (dialogs, selects, switches, toasts) are built on Base UI, wrapped once in `src/ui/`. Styles are CSS Modules using the color tokens in `src/styles/base.css`, which have light and dark values.
+- Icons are drawn in `src/ui/icons.tsx` on a 16 px grid with round ends and soft corners. No icon library.
+- Motion stays small: things rise in once when a page opens, numbers count up, cards lift on hover. Everything stops when the system asks for less motion.
+- One folder per page in `src/features/`. A part used by two pages moves to `src/components/` or `src/ui/`.
+- The page's text is plain words for job seekers, the same voice as the rest of SatyaApply.
 
 ### Do and don't
 
@@ -213,9 +234,10 @@ These run in `pre-commit` on your machine and in GitHub Actions on every pull re
 | `tools/check_no_comments.py` | No comments or docstrings outside the allowed tool directives |
 | `tests/test_architecture.py` | Layers only import downward; no cycles |
 | `pytest` + `pytest-cov` | All tests pass; **≥ 80 % line coverage** on `store`, `resume`, `ai`, `apply` and `inbox` |
+| `tsc`, `eslint`, `prettier` (`npm run check` in `web/`) | The tracker app's types, lint rules (typescript-eslint strict, React hooks, TanStack Query) and formatting |
 | `gitleaks` | No passwords, keys or tokens |
-| `pip-audit` | No dependency with a known security hole |
-| CodeQL | Deeper security analysis, on every PR and weekly |
+| `pip-audit`, `npm audit` | No dependency with a known security hole |
+| CodeQL | Deeper security analysis of Python and TypeScript, on every PR and weekly |
 | CI matrix | All of the above on **macOS + Ubuntu**, **Python 3.11 + latest** |
 
 ```toml
@@ -280,6 +302,8 @@ files = ["satyaapply", "tools", "tests"]
 | Unit | `tests/unit/` | Every pure function with a branch, loop, parser or safety rule. A bug fix adds a test that failed before. Runs in under 10 s. |
 | Site fixtures | `tests/fixtures/<site>/` | Saved search, job, blocked and logged-out pages, **with personal data removed**. Tests link matching, parsing, and block/logout detection. |
 | Form end to end | `tests/e2e/form.html` | The real form filler on a local 3-step form with every field type, through to "submitted" |
+| Tracker API | `tests/unit/test_tracker*.py` | Every endpoint, the request checks (Host, Origin, JSON only, size) and the headers |
+| Tracker app | `tests/e2e/test_tracker_app.py` | Every page in a real headless browser, light and dark, desktop and phone width: no errors, no sideways scrolling. The workflow map's counts and links, and the board's drag and drop. Needs the built app. |
 | AI | — | Recorded replies in unit tests. Live AI only in tests marked `@pytest.mark.ai`. |
 | Live sites | `tests/live/` | Real public job-board APIs, only in tests marked `@pytest.mark.network`. |
 | Real employers | — | **Never submitted to in tests.** Dry run only, and only by maintainers. |

@@ -13,7 +13,7 @@
 | Resume PDF | `pdflatex` for `.tex` resumes; Chrome's print-to-PDF for the rest | No extra install unless the resume is LaTeX |
 | Email | `imaplib` + `email` | Built into Python; read-only access |
 | Secrets | macOS Keychain (`security`), Linux `secret-tool`, otherwise a file only the user can read | Email passwords are never kept in plain files |
-| Tracker page | `http.server` | No web framework needed |
+| Tracker page | `http.server` with a JSON API, serving a React app (`web/`) that's built once and shipped inside the package | No Python web framework, and users don't need Node |
 | Diff view | `difflib.HtmlDiff` | Built into Python |
 | Notifications | `osascript` (macOS), `notify-send` (Linux) | Built into the OS |
 | Scheduling | launchd (macOS), cron (Linux) | Built into the OS |
@@ -89,12 +89,14 @@ satyaapply/
     cover.py             cover letter PDF, offline
   sites/                 (phase 5)
   tracker/
-    server.py            127.0.0.1 only: Host, Origin and size checks, security headers
-    views.py · routes.py · responses.py   address → page or action, and the reply
-    pages.py · html.py   HTML from data; escaping and the page shell
-    actions.py           job page controls: approve, edit, dismiss, 👍/👎, answers, Finish these
+    server.py            127.0.0.1 only: Host, Origin, JSON and size checks, security headers
+    views.py · routes.py · responses.py · body.py   address → handler, JSON in and out
+    listing.py           summary, job lists, the board and the workflow counts
+    detail.py            one job as JSON, and which actions its status allows
+    actions.py           job actions: approve, edit, dismiss, 👍/👎, answers, Finish these, revert
     learning.py          Tell SatyaApply, tailoring notes, suggestions, What it learned
-    trust.py             the trust panel and the auto-submit offer
+    trust.py · runs.py · settings.py   auto-submit, runs from the page, settings
+    static.py            serves the built app (static/, made by `npm run build`, not in git)
     plain.py             readable resume changes, with LaTeX commands stripped
   inbox/ · report/       (phases 4, 6)
   onboarding/
@@ -102,6 +104,13 @@ satyaapply/
     steps.py             each group of setup questions
     ask.py               terminal prompts, amount and date parsing
     latex.py             TinyTeX install
+web/                     the tracker app: React + TypeScript, built with Vite into tracker/static/
+  src/api/               the JSON API: shapes, fetch client, TanStack Query queries and mutations
+  src/app/               layout, routes (each page loads as its own chunk), theme
+  src/features/<page>/   one folder per page: home, board, workflow, jobs, job, runs, learned, settings
+  src/components/        parts shared by pages: job list, status pill, rule and dismiss forms
+  src/ui/                design-system parts on Base UI: buttons, fields, dialog, toasts, icons
+  src/domain/            status and workflow labels
 tools/
   check_no_comments.py
 tests/
@@ -516,23 +525,28 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 ## Tracker page (`tracker/`)
 
-- `satyaapply tracker` serves `http://127.0.0.1:8765`. It's only reachable from your own machine.
-- Built on `http.server` with **no JavaScript**: plain pages, links and forms. Every button is a small form that sends a POST.
-- `server.py` does the checks, `views.py` and `routes.py` turn an address into a page or an action, and `pages.py` builds pure HTML from data. Each feature has its own module that adds routes, a home panel and job page controls: `actions.py` (the job page buttons), `learning.py` (Tell SatyaApply and What it learned) and `trust.py` (the trust panel).
+- `satyaapply tracker` serves `http://127.0.0.1:8765` (or a free port if 8765 is taken). It's only reachable from your own machine.
+- The Python side is a JSON API on `http.server`, described in [tracker-api.md](tracker-api.md). `server.py` does the checks, `views.py` and `routes.py` send each address to its handler, and each feature has its own module of routes.
+- The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
+- The app follows your system's light or dark mode, or the one you pick at the bottom of the sidebar.
 
 ### Pages
 
 | Page | Address | What's on it |
 |---|---|---|
-| **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Lists: Needs your answer, Finish these, Waiting for your OK, Recently updated. The trust panel, and the **Tell SatyaApply** box. |
-| **All jobs** | `/jobs` | Every job, with every status as a filter and its count (e.g. `/jobs?status=finish`) |
+| **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Run now, the trust panel, the jobs waiting on you, and the **Tell SatyaApply** box. |
+| **Board** | `/board` | Columns by status. Drag a job that's waiting for your OK to *Approved*, or to *Dismiss*. |
+| **Workflow** | `/workflow` | A full-screen map of how every job is handled, with live counts in each box. Click a box to see its jobs. |
+| **All jobs** | `/jobs` | Every job, with every status as a filter and its count (e.g. `/jobs?status=finish`, or `/jobs?group=not_a_fit` from the workflow map) |
 | **Job** | `/jobs/<id>` | Status, score and "why this score", links to the job post and the form, the controls below, what was filled in, the resume PDF, a readable **What changed** view (LaTeX commands stripped, so you read words, not markup), the screenshot and the job text |
-| **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI) and suggestions. Each can be edited or deleted. |
+| **Run** | `/runs` | Start a run (how many jobs, search first, really send), a live log with Stop, the last run and recent run logs |
+| **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI, with a search box) and suggestions. Each can be edited or deleted. |
+| **Settings** | `/settings` | Titles, companies and places to look for, the minimum score, pay, notice period and the daily limit |
 | **Insights** | (phase 6) | Reply rate by site, by score band and by resume type |
 
 ### What you can do on a job page
 
-Each action is a POST form, and each is recorded in the `feedback` table, so it feeds learning (see [outcomes.md](outcomes.md#1-learning-from-you)).
+Each action is a JSON POST, and each is recorded in the `feedback` table, so it feeds learning (see [outcomes.md](outcomes.md#1-learning-from-you)).
 
 | Action | What happens |
 |---|---|
@@ -551,14 +565,14 @@ A job lands in `finish` when the site wants a human check (a CAPTCHA or "verify 
 
 ### Learning and trust
 
-- **Tell SatyaApply** rules (typed on the home page) and tailoring notes (written on a job page) are stored in the `rules` table and used as described in [AI calls](#ai-calls). Suggestions are stored there too, as `suggested`, and change nothing until you accept them. See [outcomes.md](outcomes.md#1-learning-from-you).
+- **Tell SatyaApply** rules (typed on the home page or What it learned) and tailoring notes (written on a job page or What it learned) are stored in the `rules` table and used as described in [AI calls](#ai-calls). Suggestions are stored there too, as `suggested`, and change nothing until you accept them. See [outcomes.md](outcomes.md#1-learning-from-you).
 - **The trust count** is your clean approvals in a row (approvals with no edits). An edit or a 👎 resets it. At 20, the home page offers auto-submit; it's never switched on by itself.
 - **With auto-submit on,** a run sends `scored` jobs with a score of 80 or more without waiting, and marks them in `jobs.auto_submitted`. If 2 of the last 10 auto-submitted jobs get a 👎, auto-submit turns off and a desktop notification is sent (`osascript` on macOS, `notify-send` on Linux). See [safety.md](safety.md#3-trust-before-auto-submit).
 
 ### Security
 
-- A POST whose `Origin` isn't the tracker itself is rejected, and so is any request whose `Host` isn't `127.0.0.1` or `localhost` (this blocks DNS-rebinding tricks).
-- A form body over 200 KB is refused.
-- Every text from a job post or form is HTML-escaped, and links are shown only for `http(s)` addresses. A strict Content-Security-Policy allows nothing but the tracker's own stylesheet and images.
+- A POST must come from the tracker itself (`Origin`) and send JSON (`Content-Type: application/json`), so another website can't send one, not even a plain form. Any request whose `Host` isn't `127.0.0.1` or `localhost` is rejected (this blocks DNS-rebinding tricks).
+- A body over 200 KB is refused.
+- Text from a job post or form comes back as plain strings, and React shows it as text, never as HTML. Links are returned only for `http(s)` addresses. A strict Content-Security-Policy allows nothing but the tracker's own scripts, styles and images.
 - Files are served by job id, never by a path in the URL, and only from inside the data folder.
 - The AI's score reason is kept in its own `reason` column, so later steps don't overwrite it.
