@@ -10,7 +10,6 @@ from satyaapply.ai.replies import Score
 from satyaapply.ai.tasks import score_job
 from satyaapply.core.errors import AIError, UsageLimitError
 from satyaapply.core.models import Job, Status
-from satyaapply.core.profile import Profile
 from satyaapply.run.context import PARALLEL_AI_CALLS, RunContext
 from satyaapply.store import jobs
 from satyaapply.store.jobs import ScoreUpdate, StatusChange
@@ -48,9 +47,9 @@ def _outcome(status: Status, score: int, note: str) -> str:
     return f"skipped, {short}"
 
 
-def _verdict(profile: Profile, resume_text: str, job: Job) -> Score | AIError:
+def _verdict(run: RunContext, job: Job) -> Score | AIError:
     try:
-        return score_job(profile, resume_text, job)
+        return score_job(run.profile, run.resume_text, job, run.preferences)
     except UsageLimitError:
         raise
     except AIError as error:
@@ -91,7 +90,7 @@ def score_pending(db: sqlite3.Connection, run: RunContext, limit: int) -> Scorin
     counts: Counter[str] = Counter(skipped=duplicates)
     if batch:
         run.progress(f"Scoring {len(batch)} {'job' if len(batch) == 1 else 'jobs'} with AI …")
-    score = partial(_verdict, run.profile, run.resume_text)
+    score = partial(_verdict, run)
     with ThreadPoolExecutor(PARALLEL_AI_CALLS) as pool:
         try:
             verdicts = zip(batch, pool.map(score, batch), strict=True)

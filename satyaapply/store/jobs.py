@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from satyaapply.core.codec import encode
+from satyaapply.core.codec import decode, encode
+from satyaapply.core.errors import DecodeError
 from satyaapply.core.forms import Sent
 from satyaapply.core.models import ACTIVE_STATUSES, Job, Source, Status
 
@@ -24,7 +25,14 @@ SELECT_TO_APPLY = """
 select * from jobs where status = 'scored'
 order by score desc, posted_at is null, posted_at desc limit ?
 """
+SELECT_APPROVED = "select * from jobs where status = 'approved' order by status_at, id limit ?"
 UPDATE_STATUS = "update jobs set status = ?, status_at = ?, note = ? where id = ?"
+UPDATE_ALL_IN = "update jobs set status = ?, status_at = ?, note = ? where status = ?"
+UPDATE_SUBMITTING = (
+    "update jobs set status = 'submitting', status_at = ?, note = ?, "
+    "auto_submitted = max(auto_submitted, ?) where id = ?"
+)
+SUBMITTING_NOTE = "clicking Submit"
 UPDATE_SCORE = (
     "update jobs set score = ?, status = ?, status_at = ?, note = ?, reason = ? where id = ?"
 )
@@ -62,6 +70,13 @@ class AttemptRecord:
     note: str
     sent: tuple[Sent, ...]
     resume_pdf: Path | None
+
+
+@dataclass(frozen=True)
+class Approved:
+    job: Job
+    resume_pdf: Path | None
+    sent: tuple[Sent, ...]
 
 
 def _row(job: Job, now: datetime) -> tuple[object, ...]:
@@ -118,6 +133,36 @@ def next_to_score(db: sqlite3.Connection, limit: int) -> list[Job]:
 
 def next_to_apply(db: sqlite3.Connection, limit: int) -> list[Job]:
     return [from_row(row) for row in db.execute(SELECT_TO_APPLY, (limit,))]
+
+
+def _sent(raw: str | None) -> tuple[Sent, ...]:
+    try:
+        items = json.loads(raw) if raw else []
+        return tuple(decode(Sent, item) for item in items)
+    except (json.JSONDecodeError, TypeError, DecodeError):
+        return ()
+
+
+def next_approved(db: sqlite3.Connection, limit: int) -> list[Approved]:
+    return [
+        Approved(
+            from_row(row),
+            Path(row["resume_pdf"]) if row["resume_pdf"] else None,
+            _sent(row["sent"]),
+        )
+        for row in db.execute(SELECT_APPROVED, (limit,))
+    ]
+
+
+def mark_submitting(db: sqlite3.Connection, job_id: int, at: datetime, auto: bool) -> None:
+    with db:
+        db.execute(UPDATE_SUBMITTING, (at.isoformat(), SUBMITTING_NOTE, int(auto), job_id))
+
+
+def change_all(db: sqlite3.Connection, current: Status, change: StatusChange) -> int:
+    with db:
+        values = (change.status, change.at.isoformat(), change.note, current)
+        return db.execute(UPDATE_ALL_IN, values).rowcount
 
 
 def set_status(db: sqlite3.Connection, job_id: int, change: StatusChange) -> None:

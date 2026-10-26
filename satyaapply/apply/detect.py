@@ -5,6 +5,8 @@ from importlib import resources
 
 from playwright.sync_api import Page
 
+from satyaapply.browser.page import visible_text
+
 CONFIRMED = re.compile(
     r"application (was |has been )?(successfully )?(submitted|sent|received)"
     r"|thank(s| you) for (applying|your application|submitting)"
@@ -60,7 +62,8 @@ def text_state(text: str) -> PageState | None:
 
 
 def has_human_check(page: Page) -> bool:
-    return any(HUMAN_CHECK_FRAME.search(frame.url) for frame in page.frames)
+    framed = any(HUMAN_CHECK_FRAME.search(frame.url) for frame in page.frames)
+    return framed or bool(HUMAN_CHECK_TEXT.search(visible_text(page)))
 
 
 @cache

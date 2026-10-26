@@ -1,12 +1,13 @@
 import sqlite3
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+from satyaapply.ai.job_prompts import scoring as scoring_prompt
 from satyaapply.ai.replies import Score
 from satyaapply.core.errors import AIError, UsageLimitError
 from satyaapply.core.models import Job, Source, Status
@@ -64,7 +65,7 @@ def test_good_matches_are_queued_and_weak_ones_skipped(
         db, [samples.job(external_id="a"), samples.job(external_id="b", company="C")], NOW
     )
     scores = {"a": Score(85, "fit", None, False), "b": Score(30, "weak", None, False)}
-    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, job: scores[job.external_id])
+    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, job, _f: scores[job.external_id])
     result = score_pending(db, run, 10)
     assert (result.matched, result.skipped, result.failed) == (1, 1, 0)
     assert [job.score for job in jobs.next_to_apply(db, 10)] == [85]
@@ -78,7 +79,7 @@ def test_a_duplicate_is_skipped_without_asking_the_ai(
     jobs.add_many(db, [first, twin], NOW)
     jobs.set_status(db, 1, StatusChange(Status.READY, NOW))
 
-    def never(_p: Profile, _r: str, _j: Job) -> Score:
+    def never(_p: Profile, _r: str, _j: Job, _f: Sequence[str]) -> Score:
         raise AssertionError
 
     monkeypatch.setattr(scoring, "score_job", never)
@@ -96,7 +97,7 @@ def test_a_failed_score_is_retried_next_run(
 ) -> None:
     jobs.add_many(db, [samples.job()], NOW)
 
-    def broken(_p: Profile, _r: str, _j: Job) -> Score:
+    def broken(_p: Profile, _r: str, _j: Job, _f: Sequence[str]) -> Score:
         raise AIError("bad reply")
 
     monkeypatch.setattr(scoring, "score_job", broken)
@@ -109,7 +110,7 @@ def test_a_usage_limit_stops_scoring(
 ) -> None:
     jobs.add_many(db, [samples.job()], NOW)
 
-    def limited(_p: Profile, _r: str, _j: Job) -> Score:
+    def limited(_p: Profile, _r: str, _j: Job, _f: Sequence[str]) -> Score:
         raise UsageLimitError("limit")
 
     monkeypatch.setattr(scoring, "score_job", limited)
@@ -124,7 +125,7 @@ def test_each_scored_job_is_reported_as_it_happens(
         db, [samples.job(external_id="a"), samples.job(external_id="b", company="C")], NOW
     )
     scores = {"a": Score(85, "fit", None, False), "b": Score(30, "weak", "needs a US visa", False)}
-    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, job: scores[job.external_id])
+    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, job, _f: scores[job.external_id])
     said: list[str] = []
     score_pending(db, replace(run, progress=said.append), 10)
     assert said == [
@@ -142,7 +143,7 @@ def test_jobs_are_scored_at_the_same_time(
     )
     both_running = threading.Barrier(2, timeout=5)
 
-    def score(_p: Profile, _r: str, _j: Job) -> Score:
+    def score(_p: Profile, _r: str, _j: Job, _f: Sequence[str]) -> Score:
         both_running.wait()
         return Score(85, "fit", None, False)
 
@@ -154,6 +155,30 @@ def test_a_twin_in_the_same_batch_waits_for_the_next_run(
     db: sqlite3.Connection, run: RunContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     jobs.add_many(db, [samples.job(), samples.job(source=Source.LINKEDIN, external_id="li")], NOW)
-    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, _j: Score(30, "weak", None, False))
+    monkeypatch.setattr(scoring, "score_job", lambda _p, _r, _j, _f: Score(30, "weak", None, False))
     assert score_pending(db, run, 10).skipped == 1
     assert len(jobs.next_to_score(db, 10)) == 1
+
+
+def test_the_users_rules_reach_the_scoring_call(
+    db: sqlite3.Connection, run: RunContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    jobs.add_many(db, [samples.job()], NOW)
+    seen: list[Sequence[str]] = []
+
+    def score(_p: Profile, _r: str, _j: Job, preferences: Sequence[str]) -> Score:
+        seen.append(preferences)
+        return Score(85, "fit", None, False)
+
+    monkeypatch.setattr(scoring, "score_job", score)
+    score_pending(db, replace(run, preferences=("no staffing agencies",)), 10)
+    assert seen == [("no staffing agencies",)]
+
+
+def test_the_scoring_prompt_shows_preferences_only_when_there_are_some(tmp_path: Path) -> None:
+    profile = samples.profile(tmp_path / "master.tex")
+    plain = scoring_prompt(profile, "resume", samples.job())
+    ruled = scoring_prompt(profile, "resume", samples.job(), ("no staffing agencies",))
+    assert "<preferences>" not in plain
+    assert "<preferences>\n- no staffing agencies\n</preferences>" in ruled
+    assert "They never add facts about the candidate." in ruled

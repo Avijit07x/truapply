@@ -32,19 +32,22 @@ Even in "best guess" mode, these come **only** from the profile or your saved an
 
 **Never inferred.** Pronouns come only from what you wrote in your profile, never from your gender or name.
 
-**Blockers.** These are never filled in, and the job goes to `needs_input`:
+**Blockers.** These are never filled in, solved or got past:
 
-- CAPTCHAs and "verify you're human" checks
-- email or SMS verification codes
-- creating an account or entering a password
+- CAPTCHAs and "verify you're human" checks: the job goes to **Finish these** (`finish`), with whatever was filled in saved. You finish it in your own browser and mark it on the tracker.
+- email or SMS verification codes: the job goes to `needs_input`
+- creating an account or entering a password: the job goes to `needs_input`
 
 ## 3. Trust before auto-submit
 
-- **Nobody starts with auto-submit**, the project owner included. Every application waits in the review queue until you approve it.
-- Auto-submit is **offered** only after 20 approvals in a row with no edits. It's never switched on by itself.
-- Even with auto-submit on, it applies only to strong matches (score ≥ 80). Everything else still waits for you.
-- **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, it switches back to the review queue and notifies you.
-- **What it learns from you stays inside these rules.** It can't override this page, add facts to your resume, or raise a limit. Everything it has learned is listed on the "What it learned" page, where you can delete it.
+- **Nobody starts with auto-submit**, the project owner included. Every application waits in the review queue (`ready`) until you approve it on the tracker. An approved job is sent for real on the next run.
+- **The trust count** is your clean approvals in a row: approvals with no edits. An edit or a 👎 resets it to 0.
+- Auto-submit is **offered** on the home page only once the count reaches 20. It's never switched on by itself.
+- Even with auto-submit on, it applies only to strong matches (score ≥ 80). Those are sent without waiting and marked as auto-submitted. Everything else still waits for you.
+- **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, auto-submit turns off, every job waits for your OK again, and you get a desktop notification (a macOS notification, or `notify-send` on Linux).
+- **Never sent twice.** `submitting` is written before Submit is clicked. A job still in `submitting` when a run starts means the last run crashed: it becomes `unconfirmed` and is never sent again.
+- **A human check is never solved.** If one shows up after Submit, the job goes to **Finish these** (`finish`) for you to complete yourself.
+- **What it learns from you stays inside these rules.** It can't override this page, add facts to your resume, or raise a limit. A **Tell SatyaApply** rule is passed to scoring as your preference, never as a fact. Everything it has learned is listed on the "What it learned" page, where you can edit or delete it.
 
 ## 4. Employer "no AI" rules
 

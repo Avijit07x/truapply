@@ -68,8 +68,11 @@ def review_claims(original: str, tailored: str) -> tuple[str, ...]:
     return ask(ClaimReview, request).new_claims
 
 
-def score_job(profile: Profile, resume_text: str, job: Job) -> Score:
-    request = Request(job_prompts.scoring(profile, resume_text, job), prompts.SYSTEM, Model.HAIKU)
+def score_job(
+    profile: Profile, resume_text: str, job: Job, preferences: Sequence[str] = ()
+) -> Score:
+    prompt = job_prompts.scoring(profile, resume_text, job, preferences)
+    request = Request(prompt, prompts.SYSTEM, Model.HAIKU)
     verdict = ask(Score, request)
     return Score(
         min(max(verdict.score, 0), MAX_SCORE),

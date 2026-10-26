@@ -6,7 +6,7 @@ SatyaApply is an open-source job-application assistant that runs on your own com
 
 ```mermaid
 flowchart LR
-  user([You]) -- "setup · login · approve" --> cli[satyaapply]
+  user([You]) -- "setup · login" --> cli[satyaapply]
   sched[["Scheduler<br/>launchd / cron"]] -- "every 3 h" --> cli
   cli <--> store[("SQLite<br/>~/.satyaapply")]
   cli -- "prompts, no tools" --> ai["Claude Code<br/>claude -p"]
@@ -18,6 +18,7 @@ flowchart LR
   cli --> tracker["Tracker page<br/>127.0.0.1:8765"]
   cli --> notify["Daily summary<br/>notification"]
   tracker --> user
+  user -- "approve · answer · teach" --> tracker
   notify --> user
 ```
 
@@ -29,7 +30,7 @@ flowchart LR
 | [architecture.md](architecture.md) | How it's built: modules, data, diagrams, the AI calls, the form filler, the resume checks |
 | [outcomes.md](outcomes.md) | Learning from your input, reply tracking, learning from results, the daily summary |
 | [setup-questions.md](setup-questions.md) | Every question a new user is asked, and the defaults |
-| [safety.md](safety.md) | No made-up experience, questions never guessed, untrusted job pages, account risk, privacy |
+| [safety.md](safety.md) | No made-up experience, questions never guessed, trust before auto-submit, untrusted job pages, account risk, privacy |
 | [risks.md](risks.md) | The what-if list: everything that can go wrong and what the tool does about it |
 | [examples.md](examples.md) | Real samples: profile, AI prompt and reply, form answers, resume changes, tracker, summary, logs |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Coding rules, dev setup, tests, how to add a job site or a company, how to report a broken site |
@@ -43,6 +44,11 @@ flowchart LR
 | **Board** | One company's job list on an ATS, e.g. `greenhouse/vercel` |
 | **Dry run** | Does everything except clicking the final Submit and uploading files |
 | **Review queue** | Mode where every filled application waits for you to approve it |
+| **Tracker page** | The local page at `127.0.0.1:8765` (`satyaapply tracker`) where you approve, answer, dismiss and teach SatyaApply |
+| **Finish these** | Jobs whose site wants a human check (a CAPTCHA). The answers are saved, and you submit them yourself in your own browser. |
+| **Trust count** | Your approvals in a row with no edits. An edit or a 👎 resets it. |
+| **Auto-submit** | Sending strong matches (score 80 or more) without waiting for your OK. Offered at a trust count of 20, and only on when you turn it on. |
+| **Tell SatyaApply** | A box on the tracker for rules in plain words, like "no staffing agencies". They change scoring, never your facts. |
 | **Master resume** | Your original resume. It's the only source of facts. |
 | **Outcome** | What happened after applying: confirmed, rejected, assessment, interview, offer, or ghosted (no reply) |
 | **Must-pass test** | A check a build phase has to pass before the next phase starts |

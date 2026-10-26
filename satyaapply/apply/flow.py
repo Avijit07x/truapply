@@ -8,7 +8,7 @@ from playwright.sync_api import Locator, Page
 from satyaapply.ai.tasks import answer_fields
 from satyaapply.apply.claims import made_up_numbers, problems, without
 from satyaapply.apply.cover import write_cover_letter
-from satyaapply.apply.detect import PageState, form_errors, is_confirmed
+from satyaapply.apply.detect import PageState, form_errors, has_human_check, is_confirmed
 from satyaapply.apply.fields import form_scope, read_fields
 from satyaapply.apply.fill import Files, fill_field
 from satyaapply.apply.opener import open_form
@@ -39,12 +39,13 @@ NEXT = re.compile(
     re.IGNORECASE,
 )
 CHOICE_KINDS = frozenset({FieldKind.SELECT, FieldKind.RADIO, FieldKind.COMBOBOX})
+HUMAN_CHECK_NOTE = "the site wants you to prove you're human; finish it in your own browser"
 REFILLABLE = frozenset(FieldKind) - {FieldKind.FILE, FieldKind.CHECKBOX}
 NO_REPLY = FormAnswers((), (), None, None, None)
 STATE_OUTCOMES = {
     PageState.CLOSED: (Status.CLOSED, "the job is closed"),
     PageState.ALREADY_APPLIED: (Status.APPLIED, "already applied before"),
-    PageState.HUMAN_CHECK: (Status.NEEDS_INPUT, "the site asks to prove you're human"),
+    PageState.HUMAN_CHECK: (Status.FINISH, "the site asks to prove you're human"),
     PageState.NO_FORM: (Status.EXTERNAL, "no application form found; apply yourself"),
 }
 
@@ -223,6 +224,8 @@ def _finish(session: FormSession, submit: Locator) -> Attempt | None:
     wait_until_quiet(session.page)
     if is_confirmed(visible_text(session.page)):
         return session.attempt(Status.APPLIED, "submitted and confirmed")
+    if has_human_check(session.page):
+        return session.attempt(Status.FINISH, HUMAN_CHECK_NOTE)
     if form_errors(session.page):
         return None
     return session.attempt(Status.UNCONFIRMED, "submitted, but no confirmation was shown")

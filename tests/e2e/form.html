@@ -122,6 +122,7 @@
     </section>
   </form>
   <div id="thanks" class="hidden"><h2>Thank you for applying!</h2></div>
+  <div id="challenge" class="hidden"><p>Verify you are human by completing the security check.</p></div>
   <script>
     const params = new URLSearchParams(location.search);
     const form = document.getElementById("application");
@@ -257,6 +258,10 @@
       event.preventDefault();
       const section = form.querySelector(".step.active");
       if (!validate(section)) return;
+      if (params.has("captcha")) {
+        document.getElementById("challenge").classList.remove("hidden");
+        return;
+      }
       const data = new FormData(form);
       const resume = data.get("resume");
       window.__submission = {

@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import sys
+import webbrowser
 from collections.abc import Callable, Sequence
 from contextlib import closing
 from importlib import metadata
@@ -96,7 +97,7 @@ def _print_run(report: RunReport) -> None:
     if not report.prepared:
         print("Prepared: nothing this run")
         return
-    print("Prepared (dry run, nothing submitted):")
+    print("Prepared:")
     for item in report.prepared:
         mark = STATUS_MARKS.get(item.attempt.status, "✘")
         print(f"  {mark} {item.attempt.status:<12} {item.job.company} · {item.job.title}")
@@ -112,7 +113,9 @@ def _say(message: str) -> None:
 
 
 def _run(args: argparse.Namespace, paths: Paths) -> int:
-    options = RunOptions(limit=args.limit, search=not args.no_search, show=args.show, progress=_say)
+    options = RunOptions(
+        limit=args.limit, search=not args.no_search, show=args.show, send=args.send, progress=_say
+    )
     _print_run(run(paths, options))
     return 0
 
@@ -120,6 +123,8 @@ def _run(args: argparse.Namespace, paths: Paths) -> int:
 def _tracker(args: argparse.Namespace, paths: Paths) -> int:
     with TrackerServer(paths, args.port) as server:
         print(f"Tracker running at {server.url}  (Ctrl+C to stop)", flush=True)
+        if args.open:
+            webbrowser.open(server.url)
         try:
             server.serve_forever()
         except KeyboardInterrupt:
@@ -161,10 +166,15 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument("--title", required=True)
     preview.set_defaults(handler=_tailor)
 
-    runner = commands.add_parser("run", help="find, score and fill applications (dry run)")
+    runner = commands.add_parser(
+        "run", help="find and score jobs, fill forms, and send the ones you approved"
+    )
     runner.add_argument("--limit", type=int, default=5, help="applications to prepare (default 5)")
     runner.add_argument("--no-search", action="store_true", help="skip the daily web search")
     runner.add_argument("--show", action="store_true", help="show the browser window")
+    runner.add_argument(
+        "--send", action="store_true", help="really send the jobs you approved on the tracker"
+    )
     runner.set_defaults(handler=_run)
 
     listing = commands.add_parser("boards", help="print boards you found that aren't shared yet")
@@ -173,6 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     page = commands.add_parser("tracker", help="open your tracker page in the browser")
     page.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"default {DEFAULT_PORT}")
+    page.add_argument("--open", action="store_true", help="open it in your browser")
     page.set_defaults(handler=_tracker)
     return parser
 

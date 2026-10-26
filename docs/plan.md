@@ -144,19 +144,19 @@ These docs.
 
 **Must pass**
 - [x] Every status is visible and filterable
-- [ ] A picture check that appears after Submit puts the job in "Finish these" with every answer saved, never in `unconfirmed` or `failed`
+- [x] A picture check that appears after Submit puts the job in "Finish these" with every answer saved, never in `unconfirmed` or `failed`
 - [ ] From "Finish these", opening the job in your own Chrome and pasting the saved answers takes under a minute; marking it done sets `applied`
-- [ ] Answer a question on the page, and the next form with that question fills without an AI call (shown in the log)
-- [ ] Edit an answer before approving → the next form with that question uses your version
-- [ ] Approve → submitted on the next run; dismiss → never applied
-- [ ] Dismiss 3 jobs as "too senior" → a suggestion to add that title word to "skip titles" appears, and nothing changes until you accept it
-- [ ] A rule typed in "Tell SatyaApply" ("no staffing agencies") changes the next scores, appears on "What it learned", and can be deleted there
+- [x] Answer a question on the page, and the next form with that question fills without an AI call (shown in the log)
+- [x] Edit an answer before approving → the next form with that question uses your version
+- [x] Approve → submitted on the next run (with `--send`, or the Run page's send box); dismiss → never applied
+- [x] Dismiss 3 jobs as "too senior" → a suggestion to add that title word to "skip titles" appears, and nothing changes until you accept it
+- [x] A rule typed in "Tell SatyaApply" ("no staffing agencies") changes the next scores, appears on "What it learned", and can be deleted there
 - [ ] A tailoring note ("don't change my headline") is followed in the next 5 tailored resumes
-- [ ] The auto-submit offer appears exactly after 20 clean approvals in a row; an edit or a 👎 resets the count
-- [ ] Two 👎 in the last 10 auto-submitted → auto-submit turns off and a notification is sent
+- [x] The auto-submit offer appears exactly after 20 clean approvals in a row; an edit or a 👎 resets the count
+- [x] Two 👎 in the last 10 auto-submitted → auto-submit turns off and a notification is sent
 - [ ] The change view shows exactly the changed lines for 5 tailored resumes
-- [ ] A POST from another website is rejected (curl test with a fake `Origin`)
-- [ ] Checked in a real browser, with a screenshot
+- [x] A POST from another website is rejected (curl test with a fake `Origin`)
+- [x] Checked in a real browser, with a screenshot
 
 ### Phase 4 · Background runs and daily summary
 

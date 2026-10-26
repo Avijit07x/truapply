@@ -23,6 +23,7 @@ class RunOptions:
     score_limit: int = 40
     search: bool = True
     show: bool = False
+    send: bool = False
     progress: Progress = quiet
 
 
@@ -44,6 +45,7 @@ def run(paths: Paths, options: RunOptions, clock: Clock = utc_now) -> RunReport:
             resume,
             master_pdf(paths, resume),
             clock,
+            dry_run=not options.send,
             progress=say,
             notes=rules.active_texts(db, TAILORING_NOTE),
             preferences=rules.active_texts(db, RULE),

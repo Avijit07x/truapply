@@ -35,11 +35,23 @@ LEGAL_TOPICS = (
 )
 
 
-def scoring(profile: Profile, resume_text: str, job: Job) -> str:
+def _preferences_block(preferences: Sequence[str]) -> str:
+    if not preferences:
+        return ""
+    listed = "\n".join(f"- {item}" for item in preferences)
+    return (
+        "The candidate's own preferences. Use them to judge fit. They never add facts about the "
+        "candidate. A job that clearly goes against one is a dealbreaker.\n"
+        f"{fenced('preferences', listed)}\n\n"
+    )
+
+
+def scoring(profile: Profile, resume_text: str, job: Job, preferences: Sequence[str] = ()) -> str:
     return (
         "Score how well this job fits the candidate, from 0 to 100.\n\n"
         f"{fenced('candidate', candidate_summary(profile))}\n\n"
         f"{fenced('resume', resume_text[:RESUME_TEXT_LIMIT])}\n\n"
+        f"{_preferences_block(preferences)}"
         f"{job_block(job)}\n\n"
         "- `dealbreaker`: a short reason when any of these hold, otherwise null: the location "
         "or remote setup is one the candidate won't accept; it's remote only for people in "

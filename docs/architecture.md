@@ -27,7 +27,7 @@ satyaapply/
   __main__.py
   cli.py                 command-line entry
   doctor.py              health checks behind `satyaapply doctor`
-  run/                   one run: discovery.py · scoring.py · applying.py · context.py
+  run/                   one run: discovery.py · scoring.py · applying.py · submitting.py · context.py
   core/
     models.py            Job, Status, Source, duplicate keys
     documents.py         ResumeData (built-in design), ResumeDocument, ResumeFormat
@@ -42,7 +42,10 @@ satyaapply/
     db.py                connection, migrations runner
     migrations.py        numbered schema steps
     jobs.py              jobs, statuses, duplicates
-    answers.py · learning.py          (phase 2-3)
+    answers.py           saved answers, yours or the AI's
+    records.py           jobs as the tracker shows them
+    feedback.py          every action you take on the tracker
+    rules.py · trust.py  rules, tailoring notes and suggestions; the trust count
   ai/
     client.py            the only place that runs `claude -p`: flags, sandbox, timeout, retry
     replies.py           typed replies; their JSON schemas are generated from these
@@ -85,7 +88,15 @@ satyaapply/
     flow.py              steps, fill rounds, saved answers, AI answers, Next/Submit, retries
     cover.py             cover letter PDF, offline
   sites/                 (phase 5)
-  inbox/ · report/ · tracker/         (phases 3, 4, 6)
+  tracker/
+    server.py            127.0.0.1 only: Host, Origin and size checks, security headers
+    views.py · routes.py · responses.py   address → page or action, and the reply
+    pages.py · html.py   HTML from data; escaping and the page shell
+    actions.py           job page controls: approve, edit, dismiss, 👍/👎, answers, Finish these
+    learning.py          Tell SatyaApply, tailoring notes, suggestions, What it learned
+    trust.py             the trust panel and the auto-submit offer
+    plain.py             readable resume changes, with LaTeX commands stripped
+  inbox/ · report/       (phases 4, 6)
   onboarding/
     wizard.py            the setup flow
     steps.py             each group of setup questions
@@ -124,7 +135,7 @@ Everything personal lives in `~/.satyaapply/`, or wherever `SATYAAPPLY_HOME` poi
   resume/master.tex     or master.json (built-in design): the original, the only source of facts
   resume/master.pdf     built once per version of the master; used whenever tailoring fails
   previews/<job>/       resumes made with `satyaapply tailor`
-  satyaapply.db           jobs, answers, emails, health, settings
+  satyaapply.db           jobs, answers, feedback, rules, emails, health, settings
   browser/              Chrome profile holding the site logins
   resumes/<job id>/     tailored source + <Your_Name>_Resume.pdf sent to that job
   shots/<job id>.png    screenshot on failure, block, or dry-run finish
@@ -198,6 +209,7 @@ erDiagram
     text outcome
     text outcome_at
     int feedback "-1, 0 or 1"
+    int auto_submitted "1 if sent without waiting for you"
   }
   boards {
     text ats PK
@@ -224,7 +236,7 @@ erDiagram
   feedback {
     int id PK
     int job_id FK
-    text kind "approve, edit, dismiss, thumbs, resume_note, revert, outcome_fix"
+    text kind "approve, edit, dismiss, thumbs, answer, finished"
     text value "e.g. too senior, or your new answer"
     text at
   }
@@ -232,7 +244,7 @@ erDiagram
     int id PK
     text kind "rule, tailoring_note, suggestion"
     text text "e.g. No staffing-agency jobs"
-    text state "active, suggested, dismissed"
+    text state "active, suggested, accepted, dismissed"
     text at
   }
   site_health {
@@ -254,6 +266,8 @@ Two keys stop duplicates:
 
 Schema changes go through numbered migrations in `store/migrations.py`; SQLite's built-in `pragma user_version` records which ones have run. A database newer than the app is refused, never guessed at. Timestamps are ISO 8601 text in UTC.
 
+Migration 4 (the tracker, phase 3) adds `jobs.feedback`, `jobs.auto_submitted`, the `feedback` table (one row per action you take on the tracker) and the `rules` table (your **Tell SatyaApply** rules, tailoring notes and suggestions).
+
 ### Job status
 
 ```mermaid
@@ -264,18 +278,26 @@ stateDiagram-v2
   scored --> ready: review mode, dry run finished
   ready --> approved: you approve
   ready --> dismissed: you dismiss
-  approved --> submitting
-  scored --> submitting: auto-submit on, trust earned
+  approved --> submitting: next run
+  scored --> submitting: auto-submit on, score ≥ 80
   submitting --> applied: site confirmed
   submitting --> unconfirmed: no confirmation, or crash
-  scored --> needs_input: unknown legal question, CAPTCHA, code
+  scored --> needs_input: unknown legal question, code, login
   needs_input --> scored: you answer on the tracker
+  scored --> finish: needs a human check
+  submitting --> finish: human check after Submit
+  finish --> applied: you mark it submitted
+  finish --> dismissed: you skip it
   scored --> external: other site, apply yourself
   scored --> failed: form broke, screenshot saved
   scored --> closed: job removed
 ```
 
-`submitting` is written **before** Submit is clicked. If the process dies, the next run finds the job still in `submitting` and marks it `unconfirmed`. It never submits it again (see [risks.md](risks.md)).
+`submitting` is written **before** Submit is clicked. If the process dies, the next run finds the job still in `submitting` at its start and marks it `unconfirmed`. It never submits it again (see [risks.md](risks.md)).
+
+`finish` means the site wants a human check (a CAPTCHA or "verify you're human"). SatyaApply never solves it: whatever it filled in is saved, and you finish the job yourself (see [Finish these](#finish-these)). A human check after Submit always leads to `finish`, never to `unconfirmed` or `failed`.
+
+Besides `ready` and `finish`, you can also dismiss a job that is `scored`, `needs_input`, `failed`, `unconfirmed` or `external`. A dismissed job is never applied to.
 
 The outcome (`confirmed`, `rejected`, `assessment`, `interview`, `offer`, `ghosted`) is a separate field, filled in by reply tracking. See [outcomes.md](outcomes.md).
 
@@ -311,7 +333,7 @@ core.codec.decode(cls: type[T], data: object) -> T
 core.codec.json_schema(tp) -> dict[str, object]
 ```
 
-Phase 2 and later add `store.answers`, `store.learning`, `ai.tasks.score_job` / `answer_fields` / `classify_email` / `find_boards`, `sources`, `apply.flow.apply`, `inbox` and `report`, following the same style.
+Phase 2 and later add `store.answers`, `store.records`, `store.feedback`, `store.rules`, `store.trust`, `ai.tasks.score_job` / `answer_fields` / `classify_email` / `find_boards`, `sources`, `apply.flow.apply`, `inbox` and `report`, following the same style.
 
 `ai.client.ask` raises `AIError` (a bad reply after one retry), `UsageLimitError` (the run stops cleanly) or `ClaudeUnavailableError`.
 
@@ -344,6 +366,8 @@ claude -p --safe-mode --tools "" --strict-mcp-config --no-session-persistence \
 | Check the tailored resume for new or stronger claims | sonnet | none | after tailoring (the last guard against made-up facts, so accuracy beats cost) |
 | Answer form fields (and write the cover letter when needed) | sonnet | none | each form step with fields that have no saved answer |
 | Classify a reply email | haiku | none | each job email |
+
+**What you taught it goes in as data.** Every scoring call gets your active **Tell SatyaApply** rules as the candidate's preferences, and every tailoring call gets your tailoring notes. Neither can add a fact: facts still come only from the master resume and your notes from setup.
 
 **Budget:** that's about 4–6 calls per application, and fewer over time as saved answers build up. A daily call budget (default 300) stops runaway use. When Claude reports a usage limit, the run stops cleanly; queued jobs stay queued.
 
@@ -430,7 +454,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-job-site) for the full checklist.
 ```mermaid
 flowchart TD
   open["Open the apply page or click Apply"] --> check{"Blocked, CAPTCHA,<br/>or already applied?"}
-  check -- yes --> stop["needs_input, or applied (already)"]
+  check -- yes --> stop["CAPTCHA: finish<br/>blocked: needs_input<br/>already applied: applied"]
   check -- no --> scope["Find the form: open pop-up, else the biggest form"]
   scope --> read["Read the visible fields:<br/>label, type, options, required, current value"]
   read --> saved["Fill from saved answers"]
@@ -443,11 +467,12 @@ flowchart TD
   fill --> again{"New fields appeared,<br/>or a value was cleared?"}
   again -- "yes (up to 3 rounds)" --> read
   again -- no --> btn{"Submit button?"}
-  btn -- "yes, dry run" --> ready["Screenshot, stop"]
-  btn -- yes --> submit["status = submitting, click Submit"]
+  btn -- "yes, dry run or<br/>waiting for your OK" --> ready["Screenshot, stop: ready"]
+  btn -- "yes, approved or<br/>auto-submit" --> submit["status = submitting, click Submit"]
   submit --> ok{"Confirmation text?"}
   ok -- yes --> applied["applied"]
   ok -- "errors shown" --> read
+  ok -- "human check" --> fin["finish, answers saved"]
   ok -- nothing --> unconf["unconfirmed"]
   btn -- no --> next["Click Next / Continue / Review"] --> read
 ```
@@ -461,6 +486,7 @@ flowchart TD
 - Success is recognised from the page text: "application submitted", "thank you for applying", "your application was sent" …
 - Every answer submitted is stored in `jobs.sent`, so you can always see exactly what went out in your name.
 - **Dry run:** everything except clicking the final Submit and uploading files.
+- **Review queue:** until auto-submit is on, a filled form stops before Submit as `ready`. Once you approve it, the next run opens the form again with the same resume, fills it with the answers you approved (your edits included), and clicks Submit.
 
 ## Resume pipeline (`resume/`)
 
@@ -491,15 +517,48 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 ## Tracker page (`tracker/`)
 
 - `satyaapply tracker` serves `http://127.0.0.1:8765`. It's only reachable from your own machine.
-- Built on `http.server` with **no JavaScript**: plain pages and forms. `html.py` (escaping and the page shell), `pages.py` (pure HTML from data), `views.py` (address → page), `server.py` (checks and responses).
-- Pages:
-  - **All jobs:** every status as a filter, with counts
-  - **Home:** today's numbers, the trust count, needs-your-answer, waiting-for-approval, recent applications, the "Tell SatyaApply" box
-  - **Job:** the resume change view (with a revert button and a tailoring-note box), the answers (editable before approving), a screenshot, the outcome, 👍/👎, dismiss with a reason
-  - **Insights:** reply rate by site, by score band and by resume type
-  - **What it learned:** your rules, tailoring notes, saved answers and pending suggestions, each editable or deletable
-- **Every action is recorded as feedback** and feeds learning. See [outcomes.md](outcomes.md#1-learning-from-you).
-- Buttons send POST requests. A request whose `Origin` isn't the tracker itself is rejected, and so is any request whose `Host` isn't `127.0.0.1` or `localhost` (this blocks DNS-rebinding tricks).
+- Built on `http.server` with **no JavaScript**: plain pages, links and forms. Every button is a small form that sends a POST.
+- `server.py` does the checks, `views.py` and `routes.py` turn an address into a page or an action, and `pages.py` builds pure HTML from data. Each feature has its own module that adds routes, a home panel and job page controls: `actions.py` (the job page buttons), `learning.py` (Tell SatyaApply and What it learned) and `trust.py` (the trust panel).
+
+### Pages
+
+| Page | Address | What's on it |
+|---|---|---|
+| **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Lists: Needs your answer, Finish these, Waiting for your OK, Recently updated. The trust panel, and the **Tell SatyaApply** box. |
+| **All jobs** | `/jobs` | Every job, with every status as a filter and its count (e.g. `/jobs?status=finish`) |
+| **Job** | `/jobs/<id>` | Status, score and "why this score", links to the job post and the form, the controls below, what was filled in, the resume PDF, a readable **What changed** view (LaTeX commands stripped, so you read words, not markup), the screenshot and the job text |
+| **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI) and suggestions. Each can be edited or deleted. |
+| **Insights** | (phase 6) | Reply rate by site, by score band and by resume type |
+
+### What you can do on a job page
+
+Each action is a POST form, and each is recorded in the `feedback` table, so it feeds learning (see [outcomes.md](outcomes.md#1-learning-from-you)).
+
+| Action | What happens |
+|---|---|
+| **Approve** | `ready` → `approved`. The next run sends it for real. |
+| **Edit the filled-in answers**, then approve | Your version is saved as your answer, and later forms with the same question use it. An edit resets the trust count. |
+| **Dismiss**, with a reason: wrong role, too senior, too junior, location, salary, company, other | → `dismissed`. It's never applied to. |
+| **👍 / 👎** | Stored in `jobs.feedback`. A 👎 resets the trust count. |
+| **Answer the questions it couldn't** | `needs_input` → your answers are saved → `scored`. The next run fills the form with no AI call for those questions. |
+| **I submitted it** / **Skip it** | `finish` → `applied`, or `finish` → `dismissed` |
+
+A button pressed on a stale page (the job's status changed after the page loaded) is refused, so it never changes a job by mistake.
+
+### Finish these
+
+A job lands in `finish` when the site wants a human check (a CAPTCHA or "verify you're human"), whether it shows up while filling or after Submit. SatyaApply never solves it. The job page has what you need: the link to the form, the tailored resume PDF, and every answer, ready to paste. Open the form in your own browser, paste the answers, submit, then press **I submitted it** (→ `applied`). Or press **Skip it** (→ `dismissed`).
+
+### Learning and trust
+
+- **Tell SatyaApply** rules (typed on the home page) and tailoring notes (written on a job page) are stored in the `rules` table and used as described in [AI calls](#ai-calls). Suggestions are stored there too, as `suggested`, and change nothing until you accept them. See [outcomes.md](outcomes.md#1-learning-from-you).
+- **The trust count** is your clean approvals in a row (approvals with no edits). An edit or a 👎 resets it. At 20, the home page offers auto-submit; it's never switched on by itself.
+- **With auto-submit on,** a run sends `scored` jobs with a score of 80 or more without waiting, and marks them in `jobs.auto_submitted`. If 2 of the last 10 auto-submitted jobs get a 👎, auto-submit turns off and a desktop notification is sent (`osascript` on macOS, `notify-send` on Linux). See [safety.md](safety.md#3-trust-before-auto-submit).
+
+### Security
+
+- A POST whose `Origin` isn't the tracker itself is rejected, and so is any request whose `Host` isn't `127.0.0.1` or `localhost` (this blocks DNS-rebinding tricks).
+- A form body over 200 KB is refused.
 - Every text from a job post or form is HTML-escaped, and links are shown only for `http(s)` addresses. A strict Content-Security-Policy allows nothing but the tracker's own stylesheet and images.
 - Files are served by job id, never by a path in the URL, and only from inside the data folder.
 - The AI's score reason is kept in its own `reason` column, so later steps don't overwrite it.

@@ -13,7 +13,9 @@ from satyaapply.core.profile import load
 from satyaapply.resume.diff import changed_lines
 from satyaapply.resume.master import load_resume
 from satyaapply.store import records
-from satyaapply.tracker import actions, learning, pages, trust
+from satyaapply.tracker import actions, board, learning, pages, runs, settings, trust
+from satyaapply.tracker.html import page
+from satyaapply.tracker.layout import page_title
 from satyaapply.tracker.plain import readable_changes
 from satyaapply.tracker.responses import Response, html, not_found
 from satyaapply.tracker.routes import Form, Incoming, Route, dispatch
@@ -24,14 +26,17 @@ RECENT_LIMIT = 15
 LIST_LIMIT = 500
 
 Query = Mapping[str, Sequence[str]]
-FEATURES = (trust, actions, learning)
+FEATURES = (runs, trust, actions, learning, settings)
 GET_ROUTES: tuple[Route, ...] = tuple(item for module in FEATURES for item in module.GET)
 POST_ROUTES: tuple[Route, ...] = tuple(item for module in FEATURES for item in module.POST)
 
 
+STYLESHEETS = frozenset({"style.css", "theme.css"})
+
+
 @cache
-def _stylesheet() -> bytes:
-    return resources.files("satyaapply.tracker").joinpath("style.css").read_bytes()
+def _stylesheet(name: str) -> bytes:
+    return resources.files("satyaapply.tracker").joinpath(name).read_bytes()
 
 
 def _status(query: Query) -> Status | None:
@@ -44,9 +49,20 @@ def _home(db: sqlite3.Connection, paths: Paths) -> Response:
         status: records.latest(db, status, HOME_LIST_LIMIT)
         for status in (Status.NEEDS_INPUT, Status.FINISH, Status.READY)
     }
-    panels = [module.home_panel(db, paths) for module in FEATURES]
+    counts = records.counts(db)
+    panels = [board.pipeline(counts), *(module.home_panel(db, paths) for module in FEATURES)]
     recent = records.latest(db, None, RECENT_LIMIT)
-    return html(pages.home(records.counts(db), lists, recent, panels))
+    return html(pages.home(counts, lists, recent, panels))
+
+
+def _board(db: sqlite3.Connection) -> Response:
+    counts = records.counts(db)
+    columns = {
+        status: records.latest(db, status, board.CARDS_PER_COLUMN + 1)
+        for status, _name in board.COLUMNS
+    }
+    body = page_title("🗂", "Board") + board.pipeline(counts) + board.board(columns, counts)
+    return html(page("Board", body, "/board"))
 
 
 def _jobs(db: sqlite3.Connection, query: Query) -> Response:
@@ -91,19 +107,29 @@ def _job(db: sqlite3.Connection, paths: Paths, job_id: int, part: str | None) ->
     return Response(HTTPStatus.OK, file.read_bytes(), kind) if file else not_found()
 
 
-def respond_get(db: sqlite3.Connection, paths: Paths, path: str, query: Query) -> Response:
+def _fixed(db: sqlite3.Connection, paths: Paths, path: str, query: Query) -> Response | None:
     if path == "/":
         return _home(db, paths)
     if path == "/jobs":
         return _jobs(db, query)
+    if path == "/board":
+        return _board(db)
     if path == "/favicon.ico":
         return Response(HTTPStatus.NO_CONTENT, b"", "image/x-icon")
-    if path == "/style.css":
-        return Response(HTTPStatus.OK, _stylesheet(), "text/css; charset=utf-8")
+    if path.removeprefix("/") in STYLESHEETS:
+        return Response(HTTPStatus.OK, _stylesheet(path[1:]), "text/css; charset=utf-8")
+    return None
+
+
+def respond_get(db: sqlite3.Connection, paths: Paths, path: str, query: Query) -> Response:
+    fixed = _fixed(db, paths, path, query)
+    if fixed is not None:
+        return fixed
     match = JOB_PATH.match(path)
     if match:
         return _job(db, paths, int(match.group(1)), match.group(2))
-    return dispatch(GET_ROUTES, Incoming(db, paths, path, {})) or not_found()
+    form = {key: values[-1] for key, values in query.items()}
+    return dispatch(GET_ROUTES, Incoming(db, paths, path, form)) or not_found()
 
 
 def respond_post(db: sqlite3.Connection, paths: Paths, path: str, form: Form) -> Response:

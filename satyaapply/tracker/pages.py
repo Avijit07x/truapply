@@ -39,6 +39,10 @@ HOME_TILES = (
     (Status.SCORED, "Good matches to fill"),
     (Status.APPLIED, "Applied"),
 )
+FINISH_HINT = (
+    "Filled in, but the site wants you to prove you're human. "
+    "Open it in your own browser, paste the answers and submit."
+)
 TABLE_HEAD = (
     "<tr><th>Job</th><th>Company</th><th>Location</th><th>Score</th>"
     "<th>Status</th><th>Updated</th></tr>"
@@ -90,6 +94,11 @@ def home(
             job_table(lists.get(Status.NEEDS_INPUT, ()), "Nothing needs you right now."),
         )
         + section(
+            "Finish these",
+            f'<p class="muted">{e(FINISH_HINT)}</p>'
+            + job_table(lists.get(Status.FINISH, ()), "Nothing to finish."),
+        )
+        + section(
             "Waiting for your OK", job_table(lists.get(Status.READY, ()), "Nothing is waiting.")
         )
         + section(
@@ -97,7 +106,7 @@ def home(
             job_table(recent, "No jobs yet. Run `satyaapply run` to find some."),
         )
     )
-    return page("Home", body)
+    return page("Home", body, "/")
 
 
 def _chip(href: str, text: str, count: int, on: bool) -> str:
@@ -114,7 +123,7 @@ def jobs_list(counts: Counts, status: Status | None, items: Sequence[JobRecord])
     body = f'<h1>{e(title)}</h1><nav class="chips">{chips}</nav>' + job_table(
         items, "No jobs here."
     )
-    return page(title, body)
+    return page(title, body, "/jobs")
 
 
 def _changes(changes: Sequence[str] | None, has_resume: bool) -> str:
@@ -190,4 +199,4 @@ def job_detail(view: JobView) -> str:
             f"<details><summary>Show</summary><pre>{e(job.description)}</pre></details>",
         )
     )
-    return page(f"{job.title} · {job.company}", body)
+    return page(f"{job.title} · {job.company}", body, "/jobs")
