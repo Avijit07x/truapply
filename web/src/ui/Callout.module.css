@@ -1,0 +1,30 @@
+.callout {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--subtle);
+  font-size: 14px;
+}
+
+.bad {
+  border-color: color-mix(in srgb, var(--bad) 35%, var(--line));
+  background: var(--bad-bg);
+}
+
+.icon {
+  display: flex;
+  padding-top: 2px;
+  color: var(--muted);
+}
+
+.bad .icon {
+  color: var(--bad);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}

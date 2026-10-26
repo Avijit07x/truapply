@@ -1,0 +1,25 @@
+.pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.good {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.bad {
+  background: var(--bad-bg);
+  color: var(--bad);
+}

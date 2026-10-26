@@ -1,0 +1,101 @@
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#ffffff, #09090b);
+  --surface: light-dark(#ffffff, #18181b);
+  --subtle: light-dark(#f4f4f5, #141417);
+  --sidebar: light-dark(#fafafa, #0c0c0f);
+  --canvas: light-dark(#fafafa, #09090b);
+  --text: light-dark(#18181b, #fafafa);
+  --muted: light-dark(#71717a, #a1a1aa);
+  --line: light-dark(#e4e4e7, #27272a);
+  --line-strong: light-dark(#d4d4d8, #3f3f46);
+  --accent: light-dark(#2563eb, #3b82f6);
+  --accent-bg: light-dark(#eff6ff, #172554);
+  --on-accent: #ffffff;
+  --good: light-dark(#16a34a, #4ade80);
+  --good-bg: light-dark(#f0fdf4, #052e16);
+  --warn: light-dark(#b45309, #fbbf24);
+  --warn-bg: light-dark(#fffbeb, #422006);
+  --bad: light-dark(#dc2626, #f87171);
+  --bad-bg: light-dark(#fef2f2, #450a0a);
+  --auto: light-dark(#7c3aed, #a78bfa);
+  --auto-bg: light-dark(#f5f3ff, #2e1065);
+  --shadow-color: light-dark(rgb(24 24 27 / 0.08), rgb(0 0 0 / 0.5));
+  --shadow: 0 8px 24px var(--shadow-color);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius: 12px;
+  --radius-small: 8px;
+  --radius-large: 16px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Menlo, monospace;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.base-ui-disable-scrollbar {
+  scrollbar-width: none;
+}
+
+.base-ui-disable-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

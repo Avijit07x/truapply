@@ -1,0 +1,79 @@
+import { type QueryKey, hashKey, useMutation, useQueryClient } from "@tanstack/react-query";
+import { post } from "./client";
+import { queries } from "./queries";
+import type {
+  Action,
+  JobDetail,
+  Learned,
+  RunChoice,
+  RunState,
+  SettingsValues,
+  SettingsView,
+  Trust,
+} from "./types";
+
+type Request = readonly [path: string, body: object];
+
+function useChange<Result, Input>(toRequest: (input: Input) => Request, storeAt?: QueryKey) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Input) => post<Result>(...toRequest(input)),
+    onSuccess: async (result) => {
+      if (storeAt) {
+        client.setQueryData(storeAt, result);
+      }
+      const kept = storeAt ? hashKey(storeAt) : null;
+      await client.invalidateQueries({ predicate: (query) => query.queryHash !== kept });
+    },
+  });
+}
+
+export type JobChange = { action: Action; body?: object };
+
+export function useJobChange(id: number) {
+  return useChange<JobDetail, JobChange>(
+    ({ action, body = {} }) => [`/api/jobs/${String(id)}/${action}`, body],
+    queries.job(id).queryKey,
+  );
+}
+
+export type LearnedChange = readonly [path: string, body?: object];
+
+export function useLearnedChange() {
+  return useChange<Learned, LearnedChange>(
+    ([path, body = {}]) => [path, body],
+    queries.learned().queryKey,
+  );
+}
+
+export const learnedPaths = {
+  add: "/api/rules",
+  editRule: (id: number) => `/api/rules/${String(id)}/edit`,
+  deleteRule: (id: number) => `/api/rules/${String(id)}/delete`,
+  editAnswer: "/api/answers/edit",
+  deleteAnswer: "/api/answers/delete",
+  accept: (id: number) => `/api/suggestions/${String(id)}/accept`,
+  dismiss: (id: number) => `/api/suggestions/${String(id)}/dismiss`,
+} as const;
+
+export function useAutoSubmit() {
+  return useChange<Trust, boolean>((on) => ["/api/auto-submit", { on }]);
+}
+
+export function useRunStart() {
+  return useChange<RunState, RunChoice>(
+    (choice) => ["/api/runs/start", choice],
+    queries.runs().queryKey,
+  );
+}
+
+export function useRunStop() {
+  return useChange<RunState, undefined>(() => ["/api/runs/stop", {}], queries.runs().queryKey);
+}
+
+export function useSaveSettings() {
+  return useChange<SettingsView, SettingsValues>(
+    (values) => ["/api/settings", values],
+    queries.settings().queryKey,
+  );
+}

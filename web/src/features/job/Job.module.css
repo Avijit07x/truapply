@@ -1,0 +1,185 @@
+.page {
+  max-width: 840px;
+}
+
+.factsBlock {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.facts {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 32px;
+  font-size: 14px;
+}
+
+.fact dt {
+  color: var(--muted);
+}
+
+.fact dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.actions > * + .feedback {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.feedbackLabel {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.toggles {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--subtle);
+}
+
+.toggle {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.toggle[data-pressed] {
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.answers {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.answer {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.answer dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.answer dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font: 12px/1.6 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.added {
+  color: var(--good);
+}
+
+.removed {
+  color: var(--bad);
+}
+
+.shot {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.description {
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+.descriptionToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) 0;
+  border: 0;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chevron {
+  color: var(--muted);
+  rotate: -90deg;
+  transition: rotate 120ms ease;
+}
+
+.descriptionToggle[data-panel-open] .chevron {
+  rotate: 0deg;
+}
+
+.descriptionPanel {
+  overflow: hidden;
+}
+
+.descriptionText {
+  color: var(--muted);
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .fact {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,259 @@
+.app {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.skip {
+  position: absolute;
+  top: -40px;
+  left: var(--space-2);
+  z-index: 50;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+}
+
+.skip:focus {
+  top: var(--space-2);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 100vh;
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--line);
+  background: var(--sidebar);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nav {
+  display: grid;
+  gap: 2px;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-small);
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+
+.navLink[aria-current="page"] {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.running {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--auto-bg);
+  color: var(--auto);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+.bottom {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
+.themes {
+  display: flex;
+  justify-self: start;
+  gap: 2px;
+  margin-left: var(--space-2);
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--bg);
+}
+
+.theme {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.theme:hover {
+  color: var(--text);
+}
+
+.theme[data-pressed] {
+  background: var(--subtle);
+  color: var(--text);
+}
+
+.foot {
+  padding: 0 var(--space-2);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.content {
+  position: relative;
+  width: 100%;
+  max-width: 1440px;
+  padding: var(--space-6) var(--space-6) 80px;
+}
+
+.bleed {
+  max-width: none;
+  height: 100dvh;
+  padding: 0;
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  animation: load 1s ease-out infinite;
+}
+
+@keyframes load {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (min-width: 761px) {
+  .rail {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .rail .sidebar {
+    align-items: center;
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .rail .brand,
+  .rail .navLink,
+  .rail .running {
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .rail .brandName,
+  .rail .navLabel,
+  .rail .foot {
+    display: none;
+  }
+
+  .rail .bottom {
+    justify-items: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: sticky;
+    z-index: 10;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    height: auto;
+    padding: var(--space-2) var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav {
+    display: flex;
+    flex: 1 0 100%;
+    gap: var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navLink {
+    flex: none;
+  }
+
+  .foot {
+    display: none;
+  }
+
+  .bottom {
+    margin-top: 0;
+  }
+
+  .content {
+    padding: var(--space-5) var(--space-4) 64px;
+  }
+
+  .bleed {
+    height: 78dvh;
+    padding: 0;
+  }
+}

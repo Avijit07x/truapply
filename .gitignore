@@ -11,3 +11,5 @@ htmlcov/
 .DS_Store
 /resume/
 .playwright-mcp/
+web/node_modules/
+satyaapply/tracker/static/

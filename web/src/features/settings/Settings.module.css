@@ -1,0 +1,37 @@
+.page {
+  max-width: 840px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.problems {
+  margin-top: var(--space-5);
+}
+
+.problems ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.state {
+  color: var(--muted);
+  font-size: 13px;
+}
