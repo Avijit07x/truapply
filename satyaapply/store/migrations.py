@@ -52,4 +52,8 @@ MIGRATIONS: tuple[str, ...] = (
         value text not null
     );
     """,
+    """
+    alter table jobs add column reason text;
+    update jobs set reason = note where score is not null and status in ('scored', 'skipped');
+    """,
 )

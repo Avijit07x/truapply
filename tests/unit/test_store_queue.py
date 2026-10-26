@@ -9,7 +9,7 @@ import pytest
 
 from satyaapply.core.forms import Sent
 from satyaapply.core.models import Ats, Board, Source, Status
-from satyaapply.store import answers, boards, jobs, meta
+from satyaapply.store import answers, boards, jobs, meta, records
 from satyaapply.store.answers import AnswerSource, SavedAnswer, question_key
 from satyaapply.store.boards import BoardOrigin
 from satyaapply.store.db import connect
@@ -101,3 +101,31 @@ def test_meta_values_round_trip(db: sqlite3.Connection) -> None:
     meta.put(db, "last_board_search", "a")
     meta.put(db, "last_board_search", "b")
     assert meta.get(db, "last_board_search") == "b"
+
+
+def test_records_show_counts_and_what_was_sent_newest_first(
+    db: sqlite3.Connection, tmp_path: Path
+) -> None:
+    jobs.add_many(db, [samples.job(external_id=str(n), company=f"C{n}") for n in range(3)], NOW)
+    sent = (Sent("Notice period", "30 days"),)
+    later = NOW + timedelta(hours=1)
+    jobs.record_attempt(
+        db, 2, AttemptRecord(Status.READY, later, "filled", sent, tmp_path / "r.pdf")
+    )
+    assert records.counts(db) == {Status.NEW: 2, Status.READY: 1}
+    ready = records.find(db, 2)
+    assert ready is not None
+    assert (ready.note, ready.sent, ready.resume_pdf) == ("filled", sent, tmp_path / "r.pdf")
+    assert ready.updated_at == later
+    assert [item.job.id for item in records.latest(db, None, 10)] == [2, 3, 1]
+    assert [item.job.id for item in records.latest(db, Status.NEW, 1)] == [3]
+    assert records.find(db, 99) is None
+
+
+def test_the_score_reason_survives_later_steps(db: sqlite3.Connection, tmp_path: Path) -> None:
+    jobs.add_many(db, [samples.job()], NOW)
+    jobs.save_score(db, 1, ScoreUpdate(70, Status.SCORED, NOW, "React fits; Angular is a gap"))
+    jobs.record_attempt(db, 1, AttemptRecord(Status.READY, NOW, "filled", (), tmp_path / "r.pdf"))
+    found = records.find(db, 1)
+    assert found is not None
+    assert (found.reason, found.note) == ("React fits; Angular is a gap", "filled")

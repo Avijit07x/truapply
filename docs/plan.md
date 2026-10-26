@@ -143,7 +143,7 @@ These docs.
 - A count of how often each site shows a check, so jobs on sites without checks are tried first
 
 **Must pass**
-- [ ] Every status is visible and filterable
+- [x] Every status is visible and filterable
 - [ ] A picture check that appears after Submit puts the job in "Finish these" with every answer saved, never in `unconfirmed` or `failed`
 - [ ] From "Finish these", opening the job in your own Chrome and pasting the saved answers takes under a minute; marking it done sets `applied`
 - [ ] Answer a question on the page, and the next form with that question fills without an AI call (shown in the log)

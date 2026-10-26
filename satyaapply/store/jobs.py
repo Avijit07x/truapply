@@ -25,7 +25,9 @@ select * from jobs where status = 'scored'
 order by score desc, posted_at is null, posted_at desc limit ?
 """
 UPDATE_STATUS = "update jobs set status = ?, status_at = ?, note = ? where id = ?"
-UPDATE_SCORE = "update jobs set score = ?, status = ?, status_at = ?, note = ? where id = ?"
+UPDATE_SCORE = (
+    "update jobs set score = ?, status = ?, status_at = ?, note = ?, reason = ? where id = ?"
+)
 UPDATE_ATTEMPT = """
 update jobs set status = ?, status_at = ?, note = ?, sent = ?, resume_pdf = ?,
     applied_at = case when ? = 'applied' then ? else applied_at end
@@ -81,7 +83,7 @@ def _row(job: Job, now: datetime) -> tuple[object, ...]:
     )
 
 
-def _job(row: sqlite3.Row) -> Job:
+def from_row(row: sqlite3.Row) -> Job:
     return Job(
         source=Source(row["source"]),
         external_id=row["key"].split(":", 1)[1],
@@ -107,15 +109,15 @@ def add_many(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
 
 def find(db: sqlite3.Connection, job_id: int) -> Job | None:
     row = db.execute(SELECT_JOB, (job_id,)).fetchone()
-    return _job(row) if row else None
+    return from_row(row) if row else None
 
 
 def next_to_score(db: sqlite3.Connection, limit: int) -> list[Job]:
-    return [_job(row) for row in db.execute(SELECT_TO_SCORE, (limit,))]
+    return [from_row(row) for row in db.execute(SELECT_TO_SCORE, (limit,))]
 
 
 def next_to_apply(db: sqlite3.Connection, limit: int) -> list[Job]:
-    return [_job(row) for row in db.execute(SELECT_TO_APPLY, (limit,))]
+    return [from_row(row) for row in db.execute(SELECT_TO_APPLY, (limit,))]
 
 
 def set_status(db: sqlite3.Connection, job_id: int, change: StatusChange) -> None:
@@ -124,7 +126,8 @@ def set_status(db: sqlite3.Connection, job_id: int, change: StatusChange) -> Non
 
 
 def save_score(db: sqlite3.Connection, job_id: int, update: ScoreUpdate) -> None:
-    values = (update.score, update.status, update.at.isoformat(), update.note, job_id)
+    stamp = update.at.isoformat()
+    values = (update.score, update.status, stamp, update.note, update.note, job_id)
     with db:
         db.execute(UPDATE_SCORE, values)
 

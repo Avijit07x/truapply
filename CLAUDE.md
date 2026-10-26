@@ -19,7 +19,8 @@ pytest -m ai               # live Claude tests
 pytest -m network          # live job-board API tests
 mypy satyaapply
 ruff check . && ruff format .
-SATYAAPPLY_HOME=/tmp/satyaapply-dev satyaapply run --dry-run --limit 3
+SATYAAPPLY_HOME=/tmp/satyaapply-dev satyaapply run --limit 3   # always a dry run for now
+satyaapply tracker         # the tracker page on http://127.0.0.1:8765
 ```
 
 ## Rules

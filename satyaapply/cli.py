@@ -21,6 +21,7 @@ from satyaapply.sources.discover import as_csv_rows, shared_boards
 from satyaapply.store import boards
 from satyaapply.store.boards import BoardOrigin
 from satyaapply.store.db import connect
+from satyaapply.tracker.server import DEFAULT_PORT, TrackerServer
 
 Handler = Callable[[argparse.Namespace, Paths], int]
 JOB_ID_CHARS = 12
@@ -116,6 +117,16 @@ def _run(args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def _tracker(args: argparse.Namespace, paths: Paths) -> int:
+    with TrackerServer(paths, args.port) as server:
+        print(f"Tracker running at {server.url}  (Ctrl+C to stop)", flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nStopped.")
+    return 0
+
+
 def _boards(_args: argparse.Namespace, paths: Paths) -> int:
     shared = {board.key for board in shared_boards()}
     with closing(connect(paths.database)) as db:
@@ -159,6 +170,10 @@ def build_parser() -> argparse.ArgumentParser:
     listing = commands.add_parser("boards", help="print boards you found that aren't shared yet")
     listing.add_argument("--new", action="store_true", help="only boards not in the shared list")
     listing.set_defaults(handler=_boards)
+
+    page = commands.add_parser("tracker", help="open your tracker page in the browser")
+    page.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"default {DEFAULT_PORT}")
+    page.set_defaults(handler=_tracker)
     return parser
 
 

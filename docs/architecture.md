@@ -491,11 +491,15 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 ## Tracker page (`tracker/`)
 
 - `satyaapply tracker` serves `http://127.0.0.1:8765`. It's only reachable from your own machine.
+- Built on `http.server` with **no JavaScript**: plain pages and forms. `html.py` (escaping and the page shell), `pages.py` (pure HTML from data), `views.py` (address → page), `server.py` (checks and responses).
 - Pages:
+  - **All jobs:** every status as a filter, with counts
   - **Home:** today's numbers, the trust count, needs-your-answer, waiting-for-approval, recent applications, the "Tell SatyaApply" box
   - **Job:** the resume change view (with a revert button and a tailoring-note box), the answers (editable before approving), a screenshot, the outcome, 👍/👎, dismiss with a reason
   - **Insights:** reply rate by site, by score band and by resume type
   - **What it learned:** your rules, tailoring notes, saved answers and pending suggestions, each editable or deletable
 - **Every action is recorded as feedback** and feeds learning. See [outcomes.md](outcomes.md#1-learning-from-you).
-- Buttons send POST requests. A request whose `Origin` isn't the tracker itself is rejected.
-- Files are served by job id, never by a path in the URL.
+- Buttons send POST requests. A request whose `Origin` isn't the tracker itself is rejected, and so is any request whose `Host` isn't `127.0.0.1` or `localhost` (this blocks DNS-rebinding tricks).
+- Every text from a job post or form is HTML-escaped, and links are shown only for `http(s)` addresses. A strict Content-Security-Policy allows nothing but the tracker's own stylesheet and images.
+- Files are served by job id, never by a path in the URL, and only from inside the data folder.
+- The AI's score reason is kept in its own `reason` column, so later steps don't overwrite it.

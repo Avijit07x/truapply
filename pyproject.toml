@@ -20,7 +20,7 @@ satyaapply = "satyaapply.cli:main"
 include = ["satyaapply*"]
 
 [tool.setuptools.package-data]
-satyaapply = ["resume/*.css", "apply/*.js", "sources/*.csv"]
+satyaapply = ["resume/*.css", "apply/*.js", "sources/*.csv", "tracker/*.css"]
 
 [tool.ruff]
 line-length = 100
