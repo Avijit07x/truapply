@@ -10,15 +10,14 @@ from satyaapply.ai.replies import Score
 from satyaapply.ai.tasks import score_job
 from satyaapply.core.errors import AIError, UsageLimitError
 from satyaapply.core.models import Job, Status
+from satyaapply.core.notes import AI_RULE_NOTE, DEALBREAKER_PREFIX, DUPLICATE_NOTE, LOW_SCORE_PREFIX
 from satyaapply.run.context import PARALLEL_AI_CALLS, RunContext
 from satyaapply.store import jobs
 from satyaapply.store.jobs import ScoreUpdate, StatusChange
 
-DUPLICATE_NOTE = "duplicate of a job already in your queue"
 NOTE_LIMIT = 90
 
 Outcome = tuple[str, str]
-AI_RULE_NOTE = "the employer doesn't accept AI-assisted applications"
 
 log = logging.getLogger(__name__)
 
@@ -34,9 +33,9 @@ def decide(verdict: Score, min_score: int) -> tuple[Status, str]:
     if verdict.forbids_ai:
         return Status.SKIPPED, AI_RULE_NOTE
     if verdict.dealbreaker:
-        return Status.SKIPPED, f"deal-breaker: {verdict.dealbreaker}"
+        return Status.SKIPPED, f"{DEALBREAKER_PREFIX}{verdict.dealbreaker}"
     if verdict.score < min_score:
-        return Status.SKIPPED, f"score {verdict.score}: {verdict.reason}"
+        return Status.SKIPPED, f"{LOW_SCORE_PREFIX}{verdict.score}: {verdict.reason}"
     return Status.SCORED, verdict.reason
 
 

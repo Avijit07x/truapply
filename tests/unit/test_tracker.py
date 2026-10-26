@@ -1,11 +1,8 @@
-import threading
-import urllib.request
 from collections.abc import Iterator
+from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
-from email.message import Message
 from pathlib import Path
-from urllib.error import HTTPError
 
 import pytest
 
@@ -15,92 +12,127 @@ from satyaapply.core.paths import Paths
 from satyaapply.store import jobs
 from satyaapply.store.db import connect
 from satyaapply.store.jobs import AttemptRecord
-from satyaapply.tracker.pages import LABELS
-from satyaapply.tracker.server import TrackerServer
+from satyaapply.tracker import static
+from satyaapply.tracker.server import FOREVER, MAX_BODY_BYTES, NO_STORE, TrackerServer
 from tests.unit import samples
+from tests.unit.tracker_api import JSON_TYPE, fetch, get, running
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 INJECTED = "<script>alert(1)</script>"
+INDEX = b"<!doctype html><div id=root></div>"
+SCRIPT = b"console.log(1)"
+
+
+@pytest.fixture(autouse=True)
+def built(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    root = tmp_path / "static"
+    (root / "assets").mkdir(parents=True)
+    (root / "index.html").write_bytes(INDEX)
+    (root / "assets" / "index-a1B2.js").write_bytes(SCRIPT)
+    monkeypatch.setattr(static, "_root", lambda: root)
+    return root
 
 
 @pytest.fixture
 def tracker(tmp_path: Path) -> Iterator[TrackerServer]:
-    paths = Paths(tmp_path)
+    paths = Paths(tmp_path / "home")
     paths.ensure()
     trusted_pdf = paths.resumes / "1.pdf"
     trusted_pdf.parent.mkdir(parents=True, exist_ok=True)
     trusted_pdf.write_bytes(b"%PDF-1.4 tailored")
-    outside_pdf = tmp_path.parent / "outside.pdf"
+    outside_pdf = tmp_path / "outside.pdf"
     outside_pdf.write_bytes(b"%PDF-1.4 elsewhere")
     filled = replace(samples.job(), title=f"Engineer {INJECTED}", url="javascript:alert(1)")
-    with connect(paths.database) as db:
+    with closing(connect(paths.database)) as db:
         jobs.add_many(db, [filled, samples.job(external_id="b", company="C")], NOW)
         sent = (Sent("Why us?", INJECTED),)
         jobs.record_attempt(db, 1, AttemptRecord(Status.READY, NOW, "filled", sent, trusted_pdf))
         jobs.record_attempt(db, 2, AttemptRecord(Status.READY, NOW, "filled", (), outside_pdf))
-    db.close()
     paths.shots.mkdir(parents=True, exist_ok=True)
     (paths.shots / "1.png").write_bytes(b"\x89PNG fake")
-    server = TrackerServer(paths, 0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield server
-    server.shutdown()
-    server.server_close()
+    with running(paths) as server:
+        yield server
 
 
-def get(server: TrackerServer, path: str, host: str | None = None) -> tuple[int, Message, bytes]:
-    headers = {"Host": host} if host else {}
-    request = urllib.request.Request(server.url + path, headers=headers)  # noqa: S310
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
-            return response.status, response.headers, response.read()
-    except HTTPError as error:
-        return error.code, error.headers, error.read()
+def send(server: TrackerServer, headers: dict[str, str], data: bytes = b"{}") -> int:
+    return fetch(server, "/api/jobs/1/thumbs", data, headers)[0]
 
 
-def post_status(server: TrackerServer, origin: str | None) -> int:
-    headers = {"Origin": origin} if origin else {}
-    url = server.url + "/"
-    request = urllib.request.Request(url, data=b"", headers=headers, method="POST")  # noqa: S310
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
-            return int(response.status)
-    except HTTPError as error:
-        return error.code
-
-
-def test_every_page_loads_and_every_status_can_be_filtered(tracker: TrackerServer) -> None:
-    status, headers, body = get(tracker, "/")
+def test_the_api_answers_json_with_strict_headers(tracker: TrackerServer) -> None:
+    status, headers, _ = fetch(tracker, "/api/summary")
     assert status == 200
-    assert "default-src 'none'" in headers["Content-Security-Policy"]
-    assert b"Waiting for your OK" in body
-    for option in Status:
-        code, _, listing = get(tracker, f"/jobs?status={option}")
-        assert code == 200
-        assert LABELS[option].encode() in listing
-    assert get(tracker, "/style.css")[0] == 200
+    assert headers["Content-Type"].startswith(JSON_TYPE)
+    assert headers["Cache-Control"] == NO_STORE
+    policy = headers["Content-Security-Policy"]
+    assert "default-src 'none'" in policy
+    assert "script-src 'self';" in policy
+    assert "frame-ancestors 'none'" in policy
+    assert headers["X-Content-Type-Options"] == "nosniff"
 
 
-def test_job_text_is_escaped_and_unsafe_links_are_dropped(tracker: TrackerServer) -> None:
-    status, _, body = get(tracker, "/jobs/1")
+def test_job_text_comes_back_as_plain_strings_and_unsafe_links_are_dropped(
+    tracker: TrackerServer,
+) -> None:
+    status, job = get(tracker, "/api/jobs/1")
     assert status == 200
-    assert INJECTED.encode() not in body
-    assert b"&lt;script&gt;alert(1)&lt;/script&gt;" in body
-    assert b"javascript:" not in body
-    assert b"/jobs/1/screenshot.png" in body
+    assert job["title"] == f"Engineer {INJECTED}"
+    assert job["url"] is None
+    assert job["applyUrl"] is None
+    assert job["sent"] == [{"question": "Why us?", "answer": INJECTED, "editable": True}]
+    assert job["hasScreenshot"]
+    assert job["hasResume"]
+    assert get(tracker, "/api/jobs/99")[0] == 404
 
 
 def test_files_are_served_by_job_id_only_from_the_data_folder(tracker: TrackerServer) -> None:
-    status, headers, body = get(tracker, "/jobs/1/screenshot.png")
+    status, headers, body = fetch(tracker, "/jobs/1/screenshot.png")
     assert (status, headers["Content-Type"], body) == (200, "image/png", b"\x89PNG fake")
-    assert get(tracker, "/jobs/1/resume.pdf")[2] == b"%PDF-1.4 tailored"
-    assert get(tracker, "/jobs/2/resume.pdf")[0] == 404
-    assert get(tracker, "/jobs/1/../../outside.pdf")[0] == 404
-    assert get(tracker, "/jobs/99")[0] == 404
+    assert fetch(tracker, "/jobs/1/resume.pdf")[2] == b"%PDF-1.4 tailored"
+    assert fetch(tracker, "/jobs/2/resume.pdf")[0] == 404
+    assert get(tracker, "/api/jobs/2")[1]["hasResume"] is False
+    assert b"elsewhere" not in fetch(tracker, "/jobs/1/../../outside.pdf")[2]
+    assert fetch(tracker, "/jobs/99/screenshot.png")[0] == 404
 
 
-def test_requests_from_other_websites_are_rejected(tracker: TrackerServer) -> None:
-    assert post_status(tracker, "https://evil.example") == 403
-    assert post_status(tracker, None) == 403
-    assert post_status(tracker, tracker.url) == 404
-    assert get(tracker, "/", host="evil.example")[0] == 403
+def test_requests_from_other_websites_are_refused(tracker: TrackerServer) -> None:
+    own = {"Origin": tracker.url, "Content-Type": JSON_TYPE}
+    assert send(tracker, own | {"Origin": "https://evil.example"}) == 403
+    assert send(tracker, {"Content-Type": JSON_TYPE}) == 403
+    assert send(tracker, own | {"Content-Type": "application/x-www-form-urlencoded"}) == 403
+    assert send(tracker, own | {"Content-Type": "text/plain"}) == 403
+    assert send(tracker, own | {"Host": "evil.example"}) == 403
+    assert send(tracker, own | {"Content-Length": str(MAX_BODY_BYTES + 1)}) == 403
+    assert fetch(tracker, "/api/summary", headers={"Host": "evil.example"})[0] == 403
+    assert fetch(tracker, "/", headers={"Host": "evil.example"})[0] == 403
+
+
+def test_a_post_must_be_a_json_object(tracker: TrackerServer) -> None:
+    own = {"Origin": tracker.url, "Content-Type": JSON_TYPE}
+    assert send(tracker, own, b"not json") == 400
+    assert send(tracker, own, b"[1, 2]") == 400
+    assert send(tracker, own, b'{"value": 1}') == 200
+    assert fetch(tracker, "/api/nothing", b"{}", own)[0] == 404
+    assert fetch(tracker, "/jobs/1", b"{}", own)[0] == 404
+
+
+def test_every_other_page_gets_the_app_and_assets_are_cached(tracker: TrackerServer) -> None:
+    for path in ("/", "/board", "/jobs/1", "/settings?x=1"):
+        status, headers, body = fetch(tracker, path)
+        assert (status, body) == (200, INDEX)
+        assert headers["Content-Type"].startswith("text/html")
+        assert headers["Cache-Control"] == NO_STORE
+    status, headers, body = fetch(tracker, "/assets/index-a1B2.js")
+    assert (status, body) == (200, SCRIPT)
+    assert headers["Content-Type"].startswith("text/javascript")
+    assert headers["Cache-Control"] == FOREVER
+    assert fetch(tracker, "/assets/missing.js")[0] == 404
+    assert fetch(tracker, "/assets/index.html")[0] == 404
+    assert fetch(tracker, "/assets/.hidden.js")[2] == INDEX
+
+
+def test_an_unbuilt_app_says_how_to_build_it(tracker: TrackerServer, built: Path) -> None:
+    (built / "index.html").unlink()
+    status, _, body = fetch(tracker, "/")
+    assert status == 503
+    assert b"npm run build" in body
+    assert get(tracker, "/api/summary")[0] == 200

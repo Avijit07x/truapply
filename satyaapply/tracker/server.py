@@ -1,27 +1,30 @@
+import errno
+import json
 import logging
-from contextlib import closing
-from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from satyaapply.core.paths import Paths
-from satyaapply.store.db import connect
-from satyaapply.tracker.responses import Response
+from satyaapply.tracker.responses import Response, bad_request, forbidden
 from satyaapply.tracker.views import respond_get, respond_post
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
+ANY_FREE_PORT = 0
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
-        "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; "
-        "frame-ancestors 'none'; base-uri 'none'"
+        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
+        "connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; "
+        "base-uri 'none'"
     ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
-    "Cache-Control": "no-store",
 }
-MAX_FORM_BYTES = 200_000
-FORBIDDEN = Response(HTTPStatus.FORBIDDEN, b"Forbidden", "text/plain; charset=utf-8")
+NO_STORE = "no-store"
+FOREVER = "public, max-age=31536000, immutable"
+MAX_BODY_BYTES = 200_000
+JSON_TYPE = "application/json"
+NOT_JSON = "Send a JSON object."
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +44,17 @@ class TrackerServer(ThreadingHTTPServer):
         return f"http://{HOST}:{self.server_address[1]}"
 
 
+def open_server(paths: Paths, port: int | None) -> TrackerServer:
+    if port is not None:
+        return TrackerServer(paths, port)
+    try:
+        return TrackerServer(paths, DEFAULT_PORT)
+    except OSError as error:
+        if error.errno != errno.EADDRINUSE:
+            raise
+        return TrackerServer(paths, ANY_FREE_PORT)
+
+
 class TrackerHandler(BaseHTTPRequestHandler):
     server_version = "SatyaApply"
     sys_version = ""
@@ -55,8 +69,7 @@ class TrackerHandler(BaseHTTPRequestHandler):
         self.send_response(response.status)
         self.send_header("Content-Type", response.content_type)
         self.send_header("Content-Length", str(len(response.body)))
-        if response.location:
-            self.send_header("Location", response.location)
+        self.send_header("Cache-Control", FOREVER if response.cacheable else NO_STORE)
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
         self.end_headers()
@@ -65,29 +78,41 @@ class TrackerHandler(BaseHTTPRequestHandler):
     def _host_allowed(self) -> bool:
         return self.headers.get("Host", "") in self.tracker.hosts
 
-    def _same_origin(self) -> bool:
-        return self.headers.get("Origin", "") in self.tracker.origins
+    def _post_allowed(self) -> bool:
+        kind = self.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        same_origin = self.headers.get("Origin", "") in self.tracker.origins
+        return self._host_allowed() and same_origin and kind == JSON_TYPE
+
+    def _body(self) -> dict[str, object] | None:
+        try:
+            parsed: object = json.loads(self.rfile.read(self._length()) or b"{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    def _length(self) -> int:
+        try:
+            return int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return MAX_BODY_BYTES + 1
 
     def do_GET(self) -> None:
         if not self._host_allowed():
-            self._send(FORBIDDEN)
+            self._send(forbidden())
             return
         url = urlsplit(self.path)
-        with closing(connect(self.tracker.paths.database)) as db:
-            self._send(respond_get(db, self.tracker.paths, url.path, parse_qs(url.query)))
+        query = {key: values[-1] for key, values in parse_qs(url.query).items()}
+        self._send(respond_get(self.tracker.paths, url.path, query))
 
     def do_POST(self) -> None:
-        if not (self._host_allowed() and self._same_origin()):
-            self._send(FORBIDDEN)
+        if not self._post_allowed() or not 0 <= self._length() <= MAX_BODY_BYTES:
+            self._send(forbidden())
             return
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_FORM_BYTES:
-            self._send(FORBIDDEN)
+        body = self._body()
+        if body is None:
+            self._send(bad_request(NOT_JSON))
             return
-        raw = self.rfile.read(length).decode("utf-8", errors="replace")
-        form = {key: values[-1] for key, values in parse_qs(raw, keep_blank_values=True).items()}
-        with closing(connect(self.tracker.paths.database)) as db:
-            self._send(respond_post(db, self.tracker.paths, urlsplit(self.path).path, form))
+        self._send(respond_post(self.tracker.paths, urlsplit(self.path).path, body))
 
     def log_message(self, format: str, *args: object) -> None:
         log.debug(format, *args)

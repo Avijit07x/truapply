@@ -22,7 +22,7 @@ from satyaapply.sources.discover import as_csv_rows, shared_boards
 from satyaapply.store import boards
 from satyaapply.store.boards import BoardOrigin
 from satyaapply.store.db import connect
-from satyaapply.tracker.server import DEFAULT_PORT, TrackerServer
+from satyaapply.tracker.server import DEFAULT_PORT, open_server
 
 Handler = Callable[[argparse.Namespace, Paths], int]
 JOB_ID_CHARS = 12
@@ -121,7 +121,7 @@ def _run(args: argparse.Namespace, paths: Paths) -> int:
 
 
 def _tracker(args: argparse.Namespace, paths: Paths) -> int:
-    with TrackerServer(paths, args.port) as server:
+    with open_server(paths, args.port) as server:
         print(f"Tracker running at {server.url}  (Ctrl+C to stop)", flush=True)
         if args.open:
             webbrowser.open(server.url)
@@ -182,7 +182,9 @@ def build_parser() -> argparse.ArgumentParser:
     listing.set_defaults(handler=_boards)
 
     page = commands.add_parser("tracker", help="open your tracker page in the browser")
-    page.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"default {DEFAULT_PORT}")
+    page.add_argument(
+        "--port", type=int, help=f"default {DEFAULT_PORT}, or a free one if that's taken"
+    )
     page.add_argument("--open", action="store_true", help="open it in your browser")
     page.set_defaults(handler=_tracker)
     return parser

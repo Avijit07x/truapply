@@ -1,10 +1,8 @@
 import sqlite3
-import threading
-import urllib.request
 from collections.abc import Iterator
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.error import HTTPError
 
 import pytest
 
@@ -20,6 +18,7 @@ from satyaapply.store.jobs import StatusChange
 from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.test_master import CountingResume
+from tests.unit.tracker_api import get, post, running
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 INSERT_FEEDBACK = "insert into feedback (job_id, kind, value, at) values (?, ?, ?, ?)"
@@ -140,53 +139,27 @@ def tracker(tmp_path: Path) -> Iterator[TrackerServer]:
     paths = Paths(tmp_path)
     paths.ensure()
     connect(paths.database).close()
-    server = TrackerServer(paths, 0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield server
-    server.shutdown()
-    server.server_close()
-
-
-def home(server: TrackerServer) -> str:
-    with urllib.request.urlopen(server.url + "/", timeout=5) as response:  # noqa: S310
-        return str(response.read().decode("utf-8"))
-
-
-def switch(server: TrackerServer, on: str) -> int:
-    request = urllib.request.Request(  # noqa: S310
-        server.url + "/auto-submit",
-        data=f"on={on}".encode(),
-        headers={"Origin": server.url, "Content-Type": "application/x-www-form-urlencoded"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
-            return int(response.status)
-    except HTTPError as error:
-        return error.code
+    with running(paths) as server:
+        yield server
 
 
 def test_auto_submit_is_offered_only_after_twenty_clean_approvals(tracker: TrackerServer) -> None:
-    page = home(tracker)
-    assert "0 clean approvals in a row. Auto-submit is offered at 20." in page
-    assert "Turn on auto-submit" not in page
-    assert switch(tracker, "1") == 400
-    with connect(tracker.paths.database) as db:
+    offered = get(tracker, "/api/summary")[1]["trust"]
+    assert offered == {"count": 0, "offerAt": 20, "autoSubmit": False, "autoSubmitScore": 80}
+    assert post(tracker, "/api/auto-submit", {"on": True})[0] == 400
+    with closing(connect(tracker.paths.database)) as db:
         give(db, "approve", "clean", 20)
-    db.close()
-    assert "Turn on auto-submit" in home(tracker)
-    assert switch(tracker, "1") == 200
-    page = home(tracker)
-    assert "Auto-submit is on." in page
-    assert "Turn off" in page
-    assert switch(tracker, "0") == 200
-    with connect(tracker.paths.database) as db:
+    code, state = post(tracker, "/api/auto-submit", {"on": True})
+    assert (code, state["count"], state["autoSubmit"]) == (200, 20, True)
+    assert get(tracker, "/api/summary")[1]["trust"]["autoSubmit"]
+    assert post(tracker, "/api/auto-submit", {"on": False})[1]["autoSubmit"] is False
+    with closing(connect(tracker.paths.database)) as db:
         assert not trust.auto_submit_on(db)
-    db.close()
 
 
-def test_the_switch_takes_only_on_or_off(tracker: TrackerServer) -> None:
-    assert switch(tracker, "maybe") == 400
+@pytest.mark.parametrize("on", ["maybe", "1", 1, None])
+def test_the_switch_takes_only_true_or_false(tracker: TrackerServer, on: object) -> None:
+    assert post(tracker, "/api/auto-submit", {"on": on})[0] == 400
 
 
 def test_approved_jobs_wait_in_the_send_queue(db: sqlite3.Connection) -> None:

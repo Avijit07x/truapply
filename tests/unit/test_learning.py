@@ -1,13 +1,9 @@
 import sqlite3
-import threading
-import urllib.request
 from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.error import HTTPError
-from urllib.parse import urlencode
 
 import pytest
 
@@ -20,14 +16,9 @@ from satyaapply.store.rules import NewRule, RuleKind, RuleState
 from satyaapply.tracker.learning import refresh_suggestions, suggested_word
 from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
+from tests.unit.tracker_api import get, post, running
 
 NOW = datetime(2026, 10, 26, 9, 0, tzinfo=UTC)
-FORM = "application/x-www-form-urlencoded"
-
-
-class KeepRedirects(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *_args: object, **_kwargs: object) -> None:
-        return None
 
 
 @pytest.fixture
@@ -51,11 +42,8 @@ def db(paths: Paths) -> Iterator[sqlite3.Connection]:
 
 @pytest.fixture
 def tracker(paths: Paths) -> Iterator[TrackerServer]:
-    server = TrackerServer(paths, 0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield server
-    server.shutdown()
-    server.server_close()
+    with running(paths) as server:
+        yield server
 
 
 def dismiss_too_senior(db: sqlite3.Connection, titles: list[str]) -> None:
@@ -70,22 +58,6 @@ def dismiss_too_senior(db: sqlite3.Connection, titles: list[str]) -> None:
             "select id, 'dismiss', 'too senior', ? from jobs where key glob '*:s[0-9]*'",
             (NOW.isoformat(),),
         )
-
-
-def get(server: TrackerServer, path: str) -> str:
-    with urllib.request.urlopen(server.url + path, timeout=5) as response:  # noqa: S310
-        return str(response.read().decode("utf-8"))
-
-
-def post(server: TrackerServer, path: str, fields: dict[str, str]) -> tuple[int, str]:
-    headers = {"Origin": server.url, "Content-Type": FORM}
-    data = urlencode(fields).encode()
-    request = urllib.request.Request(server.url + path, data, headers, method="POST")  # noqa: S310
-    try:
-        with urllib.request.build_opener(KeepRedirects).open(request, timeout=5) as response:
-            return int(response.status), ""
-    except HTTPError as error:
-        return error.code, error.headers.get("Location", "")
 
 
 def test_rules_can_be_added_edited_and_removed(db: sqlite3.Connection) -> None:
@@ -127,72 +99,87 @@ def test_accepting_a_suggestion_is_the_only_thing_that_changes_the_profile(
     tracker: TrackerServer, db: sqlite3.Connection, paths: Paths
 ) -> None:
     dismiss_too_senior(db, ["Staff Frontend Engineer"] * 3)
-    home = get(tracker, "/")
-    assert "1 suggestion to review" in home
-    assert "Add &#x27;staff&#x27; to skip titles?" in get(tracker, "/learned")
+    assert get(tracker, "/api/summary")[1]["suggestions"] == 1
+    suggestions = get(tracker, "/api/learned")[1]["suggestions"]
+    assert [item["word"] for item in suggestions] == ["staff"]
     assert "staff" not in load(paths).title_exclude
-    suggestion = rules.of_kind(db, RuleKind.SUGGESTION)[0]
-    assert post(tracker, f"/suggestions/{suggestion.id}/accept", {}) == (303, "/learned")
+    accept = f"/api/suggestions/{suggestions[0]['id']}/accept"
+    code, learned = post(tracker, accept)
+    assert (code, learned["suggestions"]) == (200, [])
     assert load(paths).title_exclude[-1] == "staff"
-    assert post(tracker, f"/suggestions/{suggestion.id}/accept", {})[0] == 404
-    assert "skip titles" not in get(tracker, "/learned")
+    assert post(tracker, accept)[0] == 404
+    assert get(tracker, "/api/summary")[1]["suggestions"] == 0
 
 
 def test_dismissing_a_suggestion_leaves_the_profile_alone(
     tracker: TrackerServer, db: sqlite3.Connection, paths: Paths
 ) -> None:
     dismiss_too_senior(db, ["Staff Frontend Engineer"] * 3)
-    get(tracker, "/learned")
-    suggestion = rules.of_kind(db, RuleKind.SUGGESTION)[0]
-    assert post(tracker, f"/suggestions/{suggestion.id}/dismiss", {}) == (303, "/learned")
+    suggestion = get(tracker, "/api/learned")[1]["suggestions"][0]
+    code, learned = post(tracker, f"/api/suggestions/{suggestion['id']}/dismiss")
+    assert (code, learned["suggestions"]) == (200, [])
     assert "staff" not in load(paths).title_exclude
-    assert "skip titles" not in get(tracker, "/learned")
+    assert get(tracker, "/api/learned")[1]["suggestions"] == []
 
 
-def test_a_rule_typed_on_the_home_page_is_saved_and_shown(
+def test_a_rule_in_plain_words_is_saved_and_shown(
     tracker: TrackerServer, db: sqlite3.Connection
 ) -> None:
-    assert "Tell SatyaApply" in get(tracker, "/")
-    assert post(tracker, "/rules", {"text": "  no staffing\n agencies "}) == (303, "/")
+    code, learned = post(
+        tracker, "/api/rules", {"kind": "rule", "text": "  no staffing\n agencies "}
+    )
+    assert code == 200
+    assert [rule["text"] for rule in learned["rules"]] == ["no staffing agencies"]
     assert rules.active_texts(db, RuleKind.RULE) == ("no staffing agencies",)
-    assert post(tracker, "/rules", {"text": "   "})[0] == 400
-    assert post(tracker, "/rules", {"text": "x" * 301})[0] == 400
-    assert "no staffing agencies" in get(tracker, "/learned")
+    assert post(tracker, "/api/rules", {"kind": "rule", "text": "   "})[0] == 400
+    assert post(tracker, "/api/rules", {"kind": "rule", "text": "x" * 301})[0] == 400
+    assert post(tracker, "/api/rules", {"kind": "suggestion", "text": "x"})[0] == 400
+    assert post(tracker, "/api/rules", {"text": "no kind"})[0] == 400
 
 
-def test_rules_and_notes_can_be_edited_and_deleted_from_the_learned_page(
+def test_rules_and_notes_can_be_edited_and_deleted(
     tracker: TrackerServer, db: sqlite3.Connection
 ) -> None:
     rule = rules.add(db, NewRule(RuleKind.RULE, "<b>no Mumbai</b>", RuleState.ACTIVE, NOW))
-    page = get(tracker, "/learned")
-    assert "<b>no Mumbai</b>" not in page
-    assert "&lt;b&gt;no Mumbai&lt;/b&gt;" in page
-    assert post(tracker, f"/rules/{rule}/edit", {"text": "Pune is fine"}) == (303, "/learned")
-    assert rules.active_texts(db, RuleKind.RULE) == ("Pune is fine",)
-    assert post(tracker, f"/rules/{rule}/delete", {}) == (303, "/learned")
+    assert get(tracker, "/api/learned")[1]["rules"] == [{"id": rule, "text": "<b>no Mumbai</b>"}]
+    code, learned = post(tracker, f"/api/rules/{rule}/edit", {"text": "Pune is fine"})
+    assert (code, learned["rules"]) == (200, [{"id": rule, "text": "Pune is fine"}])
+    assert post(tracker, f"/api/rules/{rule}/edit", {"text": ""})[0] == 400
+    assert post(tracker, f"/api/rules/{rule}/delete")[1]["rules"] == []
     assert rules.active_texts(db, RuleKind.RULE) == ()
-    assert post(tracker, "/rules/999/delete", {})[0] == 404
+    assert post(tracker, "/api/rules/999/delete")[0] == 404
 
 
-def test_a_tailoring_note_is_added_from_a_job_page(
+def test_a_suggestion_cannot_be_edited_like_a_rule(
     tracker: TrackerServer, db: sqlite3.Connection
 ) -> None:
-    assert "How should your resume be tailored next time?" in get(tracker, "/jobs/1")
-    note = {"text": "don't change my headline"}
-    assert post(tracker, "/jobs/1/note", note) == (303, "/jobs/1")
+    idea = rules.add(db, NewRule(RuleKind.SUGGESTION, "skip_title:staff", RuleState.SUGGESTED, NOW))
+    assert post(tracker, f"/api/rules/{idea}/edit", {"text": "skip_title:x"})[0] == 404
+    assert post(tracker, f"/api/rules/{idea}/delete")[0] == 404
+
+
+def test_a_tailoring_note_is_kept_apart_from_rules(
+    tracker: TrackerServer, db: sqlite3.Connection
+) -> None:
+    note = {"kind": "tailoring_note", "text": "don't change my headline"}
+    code, learned = post(tracker, "/api/rules", note)
+    assert code == 200
+    assert [item["text"] for item in learned["notes"]] == ["don't change my headline"]
+    assert learned["rules"] == []
     assert rules.active_texts(db, RuleKind.TAILORING_NOTE) == ("don't change my headline",)
-    assert post(tracker, "/jobs/99/note", note)[0] == 404
-    assert "don&#x27;t change my headline" in get(tracker, "/learned")
 
 
 def test_an_edited_answer_becomes_the_users_own(
     tracker: TrackerServer, db: sqlite3.Connection
 ) -> None:
-    assert "from the AI" in get(tracker, "/learned")
+    saved = get(tracker, "/api/learned")[1]["answers"]
+    assert saved == [{"question": "notice period", "answer": "30 days", "source": "ai"}]
     edited = {"question": "notice period", "answer": "15 days"}
-    assert post(tracker, "/answers/edit", edited) == (303, "/learned")
+    code, learned = post(tracker, "/api/answers/edit", edited)
+    assert (code, learned["answers"][0]["source"]) == (200, "user")
     assert rules.saved_answers(db) == (SavedAnswer("notice period", "15 days", AnswerSource.USER),)
-    assert "from you" in get(tracker, "/learned")
-    assert post(tracker, "/answers/edit", {"question": "made up", "answer": "x"})[0] == 404
-    assert post(tracker, "/answers/delete", {"question": "notice period"}) == (303, "/learned")
+    assert post(tracker, "/api/answers/edit", {"question": "made up", "answer": "x"})[0] == 404
+    assert post(tracker, "/api/answers/edit", edited | {"answer": ""})[0] == 400
+    code, learned = post(tracker, "/api/answers/delete", {"question": "notice period"})
+    assert (code, learned["answers"]) == (200, [])
     assert rules.saved_answers(db) == ()

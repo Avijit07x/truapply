@@ -1,11 +1,8 @@
-import threading
-import urllib.request
 from collections.abc import Iterator, Sequence
 from contextlib import closing
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urlencode
 
 import pytest
 from playwright.sync_api import Page, sync_playwright
@@ -17,9 +14,9 @@ from satyaapply.core.paths import Paths
 from satyaapply.store import answers, jobs
 from satyaapply.store.db import connect
 from satyaapply.store.jobs import StatusChange
-from satyaapply.tracker.server import TrackerServer
 from tests.e2e.test_form_filler import FakeAnswerer, request_for, submission
 from tests.unit import samples
+from tests.unit.tracker_api import post, running
 
 pytestmark = pytest.mark.e2e
 
@@ -44,21 +41,10 @@ def browser_page() -> Iterator[Page]:
         browser.close()
 
 
-def answer_on_the_tracker(paths: Paths, form: dict[str, str]) -> None:
-    server = TrackerServer(paths, 0)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    request = urllib.request.Request(  # noqa: S310
-        f"{server.url}/jobs/1/questions",
-        data=urlencode(form).encode(),
-        headers={"Origin": server.url, "Content-Type": "application/x-www-form-urlencoded"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
-            assert response.status == 200
-    finally:
-        server.shutdown()
-        server.server_close()
+def answer_on_the_tracker(paths: Paths, question: str, answer: str) -> None:
+    given = {"answers": [{"question": question, "answer": answer}]}
+    with running(paths) as server:
+        assert post(server, "/api/jobs/1/questions", given)[0] == 200
 
 
 def test_an_answer_given_on_the_tracker_fills_the_next_form(
@@ -70,7 +56,7 @@ def test_an_answer_given_on_the_tracker_fills_the_next_form(
         jobs.add_many(db, [samples.job()], NOW)
         jobs.set_status(db, 1, StatusChange(Status.NEEDS_INPUT, NOW, "needs you"))
         answers.open_questions(db, ["Notice period *"], 1, NOW)
-    answer_on_the_tracker(paths, {"q0": NOTICE, "a0": "60 days"})
+    answer_on_the_tracker(paths, NOTICE, "60 days")
     with closing(connect(paths.database)) as db:
         known = answers.all_answers(db)
         assert [job.id for job in jobs.next_to_apply(db, 10)] == [1]

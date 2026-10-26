@@ -1,9 +1,10 @@
+import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from http import HTTPStatus
 
-from satyaapply.tracker.html import page
-
-HTML = "text/html; charset=utf-8"
+JSON = "application/json; charset=utf-8"
+TEXT = "text/plain; charset=utf-8"
 
 
 @dataclass(frozen=True)
@@ -11,20 +12,27 @@ class Response:
     status: HTTPStatus
     body: bytes
     content_type: str
-    location: str | None = None
+    cacheable: bool = False
 
 
-def html(text: str, status: HTTPStatus = HTTPStatus.OK) -> Response:
-    return Response(status, text.encode("utf-8"), HTML)
+def ok(data: object) -> Response:
+    return Response(HTTPStatus.OK, json.dumps(data, ensure_ascii=False).encode(), JSON)
 
 
-def not_found() -> Response:
-    return html(page("Not found", "<h1>Not found</h1>"), HTTPStatus.NOT_FOUND)
+def problem(status: HTTPStatus, text: str, problems: Sequence[str] = ()) -> Response:
+    body: dict[str, object] = {"error": text}
+    if problems:
+        body["problems"] = list(problems)
+    return Response(status, json.dumps(body, ensure_ascii=False).encode(), JSON)
 
 
-def bad_request(text: str) -> Response:
-    return html(page("Not accepted", f"<h1>Not accepted</h1><p>{text}</p>"), HTTPStatus.BAD_REQUEST)
+def bad_request(text: str, problems: Sequence[str] = ()) -> Response:
+    return problem(HTTPStatus.BAD_REQUEST, text, problems)
 
 
-def back_to(location: str) -> Response:
-    return Response(HTTPStatus.SEE_OTHER, b"", "text/plain; charset=utf-8", location)
+def not_found(text: str = "Not found.") -> Response:
+    return problem(HTTPStatus.NOT_FOUND, text)
+
+
+def forbidden() -> Response:
+    return problem(HTTPStatus.FORBIDDEN, "Refused.")

@@ -11,12 +11,13 @@ from satyaapply.ai.job_prompts import scoring as scoring_prompt
 from satyaapply.ai.replies import Score
 from satyaapply.core.errors import AIError, UsageLimitError
 from satyaapply.core.models import Job, Source, Status
+from satyaapply.core.notes import AI_RULE_NOTE, DUPLICATE_NOTE
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import Profile
 from satyaapply.resume.contract import Rendered
 from satyaapply.run import scoring
 from satyaapply.run.context import RunContext
-from satyaapply.run.scoring import AI_RULE_NOTE, DUPLICATE_NOTE, decide, score_pending
+from satyaapply.run.scoring import decide, score_pending
 from satyaapply.store import jobs
 from satyaapply.store.db import connect
 from satyaapply.store.jobs import StatusChange

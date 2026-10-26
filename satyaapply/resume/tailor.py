@@ -55,13 +55,17 @@ def draft_problems(resume: Resume, draft: Draft, review: ClaimReviewer) -> list[
     return [f"new claim: {claim}" for claim in claims]
 
 
+def keep_original(resume: Resume, target: Path, original: Rendered) -> Path:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(original.pdf, target)
+    (target.parent / f"tailored{resume.suffix}").unlink(missing_ok=True)
+    return target
+
+
 def _fallback(
     resume: Resume, request: TailorRequest, problems: list[str], changes: tuple[str, ...]
 ) -> Tailored:
-    target = request.out_dir / request.file_name
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(request.original.pdf, target)
-    (request.out_dir / f"tailored{resume.suffix}").unlink(missing_ok=True)
+    target = keep_original(resume, request.out_dir / request.file_name, request.original)
     return Tailored(target, resume.source, True, tuple(problems), changes)
 
 

@@ -11,10 +11,10 @@ from pathlib import Path
 
 from satyaapply.core.clock import utc_now
 from satyaapply.core.paths import Paths
-from satyaapply.store.records import JobRecord
-from satyaapply.tracker.html import e, empty, joined, page, section, when
-from satyaapply.tracker.responses import Response, back_to, bad_request, html, not_found
-from satyaapply.tracker.routes import Form, Route, route
+from satyaapply.tracker.body import Body, flag, number
+from satyaapply.tracker.detail import iso
+from satyaapply.tracker.responses import Response, bad_request, not_found, ok
+from satyaapply.tracker.routes import Route, route
 
 COMMAND_PREFIX: tuple[str, ...] = (sys.executable, "-m", "satyaapply", "run")
 DEFAULT_LIMIT = 5
@@ -25,8 +25,6 @@ RECENT_LOGS = 5
 STOP_WAIT_SECONDS = 10
 STAMP = "%Y%m%d-%H%M%S-%f"
 LOG_NAME = re.compile(r"^\d{8}-\d{6}-\d{6}\.log$")
-EXPLAIN = "Finds new jobs, scores them, fills forms, and sends the jobs you approved."
-REFRESH = '<meta http-equiv="refresh" content="3">'
 ALREADY_RUNNING = "A run is already going."
 
 
@@ -104,11 +102,11 @@ def stop() -> None:
         run.process.wait()
 
 
-def tail(log: Path) -> str:
+def tail(log: Path) -> list[str]:
     if not log.is_file():
-        return ""
+        return []
     with log.open(encoding="utf-8", errors="replace") as lines:
-        return "".join(deque(lines, maxlen=TAIL_LINES))
+        return [line.rstrip("\n") for line in deque(lines, maxlen=TAIL_LINES)]
 
 
 def recent_logs(paths: Paths) -> list[Path]:
@@ -123,127 +121,60 @@ def _finished_at(log: Path) -> datetime:
     return datetime.fromtimestamp(log.stat().st_mtime, UTC)
 
 
-def _log_block(log: Path) -> str:
-    text = tail(log)
-    return f'<pre class="diff">{e(text)}</pre>' if text else empty("Nothing written yet.")
+def _current(run: Run | None) -> dict[str, object]:
+    if run is None:
+        return {"running": False, "startedAt": None, "exitCode": None, "log": []}
+    return {
+        "running": run.running,
+        "startedAt": iso(run.started),
+        "exitCode": run.process.returncode,
+        "log": tail(run.log),
+    }
 
 
-def _start_form(limit: int, search: bool) -> str:
-    checked = " checked" if search else ""
-    return (
-        '<form method="post" action="/runs/start">'
-        f'<label>How many jobs (1-20) <input type="number" name="limit" min="{MIN_LIMIT}" '
-        f'max="{MAX_LIMIT}" value="{limit}" required></label>'
-        f'<label><input type="checkbox" name="search" value="on"{checked}> '
-        "Search for new jobs first</label>"
-        '<label><input type="checkbox" name="send" value="on"> '
-        "Really send the jobs I approved (otherwise everything stays a dry run)</label>"
-        '<div class="button-row"><button>Run now</button></div></form>'
-    )
+def state(paths: Paths) -> dict[str, object]:
+    logs = [{"name": log.name, "finishedAt": iso(_finished_at(log))} for log in recent_logs(paths)]
+    limits = {"min": MIN_LIMIT, "max": MAX_LIMIT, "default": DEFAULT_LIMIT}
+    return _current(REGISTRY.current) | {"logs": logs, "limits": limits}
 
 
-def _stop_form() -> str:
-    return (
-        '<form method="post" action="/runs/stop" class="button-row">'
-        '<button class="secondary">Stop</button></form>'
-    )
+def _show(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
+    return ok(state(paths))
 
 
-def _running_view(run: Run) -> str:
-    status = f"<p><strong>Running since {e(when(run.started))}.</strong></p>"
-    return REFRESH + section("Run in progress", status + _stop_form() + _log_block(run.log))
-
-
-def _finished_view(run: Run) -> str:
-    status = f"<p><strong>Finished</strong> with exit code {e(run.process.returncode)}.</p>"
-    return section("Last run", status + _log_block(run.log))
-
-
-def _log_links(paths: Paths) -> str:
-    items = [
-        f'<li><a href="/runs/log/{e(log.name)}">{e(when(_finished_at(log)))}</a></li>'
-        for log in recent_logs(paths)
-    ]
-    return section("Earlier runs", f"<ul>{joined(items)}</ul>") if items else ""
-
-
-def _runs_page(
-    _db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _form: Form
-) -> Response:
-    run = REGISTRY.current
-    if run is not None and run.running:
-        return html(page("Run jobs", f"<h1>Run jobs</h1>{_running_view(run)}", "/runs"))
-    intro = f'<p class="muted">{e(EXPLAIN)}</p>'
-    last = _finished_view(run) if run is not None else ""
-    body = section("Run now", intro + _start_form(DEFAULT_LIMIT, search=True))
-    return html(page("Run jobs", f"<h1>Run jobs</h1>{body}{last}{_log_links(paths)}", "/runs"))
-
-
-def _log_page(_db: sqlite3.Connection, paths: Paths, match: re.Match[str], _form: Form) -> Response:
+def _log(_db: sqlite3.Connection, paths: Paths, match: re.Match[str], _body: Body) -> Response:
     name = match.group(1)
-    if not LOG_NAME.match(name):
-        return not_found()
     log = runs_dir(paths) / name
-    if not log.is_file():
-        return not_found()
-    body = f'<h1>Run log</h1><p><a href="/runs">Back to runs</a></p>{_log_block(log)}'
-    return html(page("Run log", body, "/runs"))
+    if not LOG_NAME.match(name) or not log.is_file():
+        return not_found("No such run log.")
+    return ok({"name": name, "finishedAt": iso(_finished_at(log)), "lines": tail(log)})
 
 
-def parse_choice(form: Form) -> Choice | None:
-    try:
-        limit = int(form.get("limit", ""))
-    except ValueError:
+def parse_choice(body: Body) -> Choice | None:
+    limit = number(body, "limit")
+    search, send = flag(body, "search"), flag(body, "send")
+    if limit is None or search is None or send is None:
         return None
-    bounded = min(max(limit, MIN_LIMIT), MAX_LIMIT)
-    return Choice(bounded, form.get("search") == "on", form.get("send") == "on")
+    return Choice(min(max(limit, MIN_LIMIT), MAX_LIMIT), search, send)
 
 
-def _start(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], form: Form) -> Response:
-    choice = parse_choice(form)
+def _start(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
+    choice = parse_choice(body)
     if choice is None:
-        return bad_request("Enter how many jobs to run, from 1 to 20.")
+        return bad_request(f"Enter how many jobs to run, from {MIN_LIMIT} to {MAX_LIMIT}.")
     if start(paths, choice) is None:
         return bad_request(ALREADY_RUNNING)
-    return back_to("/runs")
+    return ok(state(paths))
 
 
-def _stop(_db: sqlite3.Connection, _paths: Paths, _match: re.Match[str], _form: Form) -> Response:
+def _stop(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
     stop()
-    return back_to("/runs")
-
-
-def _run_button() -> str:
-    return (
-        '<form method="post" action="/runs/start" class="button-row">'
-        f'<input type="hidden" name="limit" value="{DEFAULT_LIMIT}">'
-        '<input type="hidden" name="search" value="on">'
-        "<button>▶ Run now</button></form>"
-    )
-
-
-def _home_status(paths: Paths) -> str:
-    if REGISTRY.active() is not None:
-        return '<p>Running… <a href="/runs">See progress</a></p>'
-    logs = recent_logs(paths)
-    if not logs:
-        return empty("No runs yet.")
-    finished = when(_finished_at(logs[0]))
-    return f'<p class="muted">Last run finished {e(finished)}. <a href="/runs">See runs</a></p>'
-
-
-def home_panel(_db: sqlite3.Connection, paths: Paths) -> str:
-    body = f'<div class="card">{_run_button()}{_home_status(paths)}</div>'
-    return section("Run jobs", body)
-
-
-def job_controls(_db: sqlite3.Connection, _record: JobRecord) -> str:
-    return ""
+    return ok(state(paths))
 
 
 GET: tuple[Route, ...] = (
-    route("/runs", _runs_page),
-    route("/runs/log/(.+)", _log_page),
+    route("/runs", _show),
+    route("/runs/log/([^/]+)", _log),
 )
 POST: tuple[Route, ...] = (
     route("/runs/start", _start),
