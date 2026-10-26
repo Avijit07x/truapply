@@ -21,6 +21,12 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: web-checks
+        name: tracker app types, lint and format
+        entry: npm --prefix web run check
+        language: system
+        files: ^web/
+        pass_filenames: false
       - id: unit-tests
         name: unit tests
         entry: pytest -q -W error::ResourceWarning

@@ -22,6 +22,13 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: web
       - run: pip install -e ".[dev]" pip-audit
       - run: playwright install chromium
       - run: ruff check .
@@ -30,6 +37,22 @@ jobs:
       - run: python tools/check_no_comments.py
       - run: pytest -W error::ResourceWarning --cov
       - run: pip-audit --skip-editable
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm audit --audit-level=high
 
   secrets:
     runs-on: ubuntu-latest
