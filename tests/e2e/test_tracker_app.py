@@ -1,8 +1,10 @@
 import json
+import os
 import re
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from importlib import resources
 from pathlib import Path
 from typing import Literal
@@ -13,19 +15,22 @@ from playwright.sync_api import (
     ConsoleMessage,
     Error,
     Page,
+    Route,
     ViewportSize,
     expect,
     sync_playwright,
 )
 
+from satyaapply.core import schedule
 from satyaapply.core.models import Status
 from satyaapply.core.paths import Paths
-from satyaapply.core.profile import save
-from satyaapply.store import feedback, jobs, records
+from satyaapply.core.profile import load, save
+from satyaapply.store import feedback, jobs, records, rules
 from satyaapply.store.db import connect
 from satyaapply.store.feedback import FeedbackKind
 from satyaapply.store.groups import Group
-from satyaapply.store.jobs import AttemptRecord
+from satyaapply.store.jobs import AttemptRecord, StatusChange
+from satyaapply.tracker import automatic, runs
 from tests.unit import samples
 from tests.unit.tracker_api import get, ids_in, running, seed_every_group
 
@@ -41,12 +46,15 @@ PHONE = ViewportSize(width=390, height=844)
 THEME_KEY = "satyaapply-theme"
 Theme = Literal["light", "dark"]
 PAGES = (
-    ("/", re.compile(r"^Good (morning|afternoon|evening)$")),
+    (
+        "/",
+        re.compile(r"^(You're all caught up|1 job is ready for you|\d+ jobs are ready for you)$"),
+    ),
     ("/board", "Board"),
     ("/workflow", "Workflow"),
     ("/jobs", "All jobs"),
-    ("/jobs?group=ready", "Waiting for your OK"),
-    ("/jobs/13", "Frontend Engineer"),
+    ("/jobs?group=ready", "Ready for you to apply"),
+    ("/jobs/9", "Frontend Engineer"),
     ("/runs", "Run"),
     ("/learned", "What it learned"),
     ("/settings", "Settings"),
@@ -57,10 +65,16 @@ STEP_BOXES = {
     "score": Group.WAITING_SCORE,
     "scored": Group.SCORED,
     "ready": Group.READY,
-    "approved": Group.APPROVED,
     "applied": Group.APPLIED,
 }
 OUTCOME_BOXES = {f"o-{group}": group for group in Group if group not in STEP_BOXES.values()}
+OVERLAPPING_BOXES = """() => {
+  const boxes = [...document.querySelectorAll('.react-flow__node:not(.react-flow__node-lane)')]
+    .map((node) => [node.dataset.id, node.getBoundingClientRect()]);
+  return boxes.flatMap(([id, a], index) => boxes.slice(index + 1)
+    .filter(([, b]) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom)
+    .map(([other]) => `${id} overlaps ${other}`));
+}"""
 
 
 @pytest.fixture(scope="module")
@@ -113,6 +127,14 @@ def answered(page: Page, path: str) -> Iterator[None]:
     assert reply.value.ok, path
 
 
+def drag(page: Page, card: str, target: str) -> None:
+    page.locator(card).hover()
+    page.mouse.down()
+    page.mouse.move(0, 0, steps=4)
+    page.get_by_role("region", name=target, exact=True).hover()
+    page.mouse.up()
+
+
 def status_of(paths: Paths, job_id: int) -> Status:
     with closing(connect(paths.database)) as db:
         record = records.find(db, job_id)
@@ -148,6 +170,8 @@ def test_each_workflow_box_opens_exactly_the_jobs_it_counts(browser: Browser, ho
     with running(home) as server, opened(browser) as (page, errors):
         counts = get(server, "/api/workflow")[1]["groups"]
         page.goto(server.url + "/workflow")
+        page.locator('.react-flow__node[data-id="applied"]').wait_for()
+        assert page.evaluate(OVERLAPPING_BOXES) == []
         for node, group in (STEP_BOXES | OUTCOME_BOXES).items():
             page.locator(f'.react-flow__node[data-id="{node}"]').click()
             link = page.get_by_role("link", name=f"See all {counts[group]}", exact=True)
@@ -169,18 +193,13 @@ def test_dragging_on_the_board_does_what_the_job_page_buttons_do(
             jobs.record_attempt(db, job_id, AttemptRecord(Status.READY, NOW, "filled", (), None))
     with running(home) as server, opened(browser) as (page, errors):
         page.goto(server.url + "/board")
-        approved = page.get_by_role("region", name="Approved", exact=True)
-        with answered(page, "/api/jobs/1/approve"):
-            page.locator('a[href="/jobs/1"]').drag_to(approved)
+        with answered(page, "/api/jobs/1/finished"):
+            drag(page, 'a[href="/jobs/1"]', "I submitted it")
         page.goto(server.url + "/jobs/2")
-        with answered(page, "/api/jobs/2/approve"):
-            page.get_by_role("button", name="Approve", exact=True).click()
+        with answered(page, "/api/jobs/2/finished"):
+            page.get_by_role("button", name="I submitted it", exact=True).click()
         page.goto(server.url + "/board")
-        page.locator('a[href="/jobs/3"]').hover()
-        page.mouse.down()
-        page.mouse.move(0, 0, steps=4)
-        page.get_by_role("region", name="Dismiss", exact=True).hover()
-        page.mouse.up()
+        drag(page, 'a[href="/jobs/3"]', "Dismiss")
         with answered(page, "/api/jobs/3/dismiss"):
             page.get_by_role("dialog").get_by_role("button", name="Dismiss", exact=True).click()
         page.goto(server.url + "/jobs/4")
@@ -189,10 +208,280 @@ def test_dragging_on_the_board_does_what_the_job_page_buttons_do(
             page.get_by_role("dialog").get_by_role("button", name="Dismiss", exact=True).click()
         assert errors == []
     assert [status_of(home, job_id) for job_id in range(1, 5)] == [
-        Status.APPROVED,
-        Status.APPROVED,
+        Status.APPLIED,
+        Status.APPLIED,
         Status.DISMISSED,
         Status.DISMISSED,
     ]
-    assert kinds(home, 1) == kinds(home, 2) == [(FeedbackKind.APPROVE, "clean")]
+    assert kinds(home, 1) == kinds(home, 2) == [(FeedbackKind.FINISHED, "")]
     assert kinds(home, 3) == kinds(home, 4) == [(FeedbackKind.DISMISS, "wrong role")]
+
+
+def test_the_jobs_grid_moves_by_keys_filters_and_dismisses_many(
+    browser: Browser, home: Paths
+) -> None:
+    picks = [samples.job(external_id=str(n), company=f"Co {n + 1}") for n in range(4)]
+    with closing(connect(home.database)) as db:
+        jobs.add_many(db, picks, NOW)
+        for job_id in range(1, 4):
+            at = NOW + timedelta(minutes=job_id)
+            jobs.record_attempt(db, job_id, AttemptRecord(Status.READY, at, "filled", (), None))
+        jobs.set_status(db, 4, StatusChange(Status.APPLIED, NOW, "sent"))
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs")
+        expect(page.locator("main tbody tr")).to_have_count(4)
+        page.locator('main a[href="/jobs/3"]').focus()
+        page.keyboard.press("x")
+        page.keyboard.press("ArrowDown")
+        expect(page.locator('main a[href="/jobs/2"]')).to_be_focused()
+        page.keyboard.press("x")
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("x")
+        applied = page.get_by_role("checkbox", name="Select Frontend Engineer at Co 4")
+        expect(applied).to_be_disabled()
+        bar = page.get_by_role("toolbar", name="Selected jobs")
+        expect(bar).to_contain_text("2 jobs selected")
+        bar.get_by_role("button", name="Dismiss", exact=True).click()
+        with answered(page, "/api/jobs/dismiss"):
+            page.get_by_role("dialog").get_by_role("button", name="Dismiss", exact=True).click()
+        expect(bar).to_have_count(0)
+        page.get_by_role("button", name="Filter by company").click()
+        page.get_by_role("searchbox", name="Company contains").fill("co 1")
+        expect(page.locator("main tbody tr")).to_have_count(1)
+        expect(page.get_by_role("link", name="Remove filter Company: co 1")).to_be_visible()
+        assert errors == []
+    assert [status_of(home, job_id) for job_id in range(1, 5)] == [
+        Status.READY,
+        Status.DISMISSED,
+        Status.DISMISSED,
+        Status.APPLIED,
+    ]
+    assert kinds(home, 2) == kinds(home, 3) == [(FeedbackKind.DISMISS, "wrong role")]
+
+
+def test_the_dismiss_reasons_open_above_the_dialog(browser: Browser, home: Paths) -> None:
+    with closing(connect(home.database)) as db:
+        jobs.add_many(db, [samples.job()], NOW)
+        jobs.record_attempt(db, 1, AttemptRecord(Status.READY, NOW, "tailored", (), None))
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs/1")
+        page.get_by_role("button", name="Dismiss", exact=True).click()
+        trigger = page.get_by_role("dialog").get_by_role("combobox")
+        trigger.click()
+        choice = page.get_by_role("option", name="salary", exact=True)
+        choice.wait_for()
+        expect(page.get_by_role("option", name="job is closed", exact=True)).to_be_visible()
+        box, below = choice.bounding_box(), trigger.bounding_box()
+        assert box is not None
+        assert below is not None
+        assert box["y"] >= below["y"] + below["height"]
+        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        on_top = page.evaluate(
+            "([x, y]) => document.elementFromPoint(x, y)?.closest('[role=option]')?.textContent",
+            [x, y],
+        )
+        assert on_top == "salary"
+        choice.click()
+        with answered(page, "/api/jobs/1/dismiss"):
+            page.get_by_role("dialog").get_by_role("button", name="Dismiss", exact=True).click()
+        assert errors == []
+    assert kinds(home, 1) == [(FeedbackKind.DISMISS, "salary")]
+
+
+def test_the_back_link_returns_to_where_you_opened_the_job(browser: Browser, home: Paths) -> None:
+    with closing(connect(home.database)) as db:
+        seed_every_group(db, NOW)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/")
+        page.locator('main a[href="/jobs/9"]').first.click()
+        back = page.get_by_role("link", name="Home", exact=True).and_(page.locator("main a"))
+        back.click()
+        expect(page).to_have_url(server.url + "/")
+        page.goto(server.url + "/jobs?group=ready")
+        page.locator('main a[href="/jobs/9"]').first.click()
+        page.locator("main").get_by_role("link", name="All jobs", exact=True).click()
+        expect(page).to_have_url(server.url + "/jobs?group=ready")
+        page.goto(server.url + "/jobs/9")
+        page.locator("main").get_by_role("link", name="All jobs", exact=True).click()
+        expect(page).to_have_url(server.url + "/jobs")
+        assert errors == []
+
+
+SETTINGS_TABS = {
+    "Profile": ("About you", "Work rights", "Personal details", "Other true facts"),
+    "Job search": ("Job search", "Where you'll work", "Pay and notice"),
+    "Applying": ("Form answers", "Runs and limits"),
+    "Automation": ("Automatic runs",),
+    "Resume and extension": ("Resume", "Chrome extension"),
+}
+
+
+def test_every_setting_is_changed_from_the_settings_page(
+    browser: Browser, home: Paths, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agents = tmp_path / "agents"
+    monkeypatch.setattr(automatic, "agents", lambda: agents)
+    monkeypatch.setattr(automatic, "runner", lambda _arguments: 0)
+    monkeypatch.setattr(automatic, "supported", lambda: True)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/settings")
+        tabs = page.get_by_role("tablist", name="Settings")
+        for tab, titles in SETTINGS_TABS.items():
+            tabs.get_by_role("tab", name=tab, exact=True).click()
+            for title in titles:
+                heading = page.get_by_role("heading", level=2, name=title, exact=True)
+                expect(heading).to_be_visible()
+        tabs.get_by_role("tab", name="Profile", exact=True).click()
+        page.get_by_label("Years of experience").fill("3.5")
+        tabs.get_by_role("tab", name="Applying", exact=True).click()
+        page.get_by_label("Jobs to get ready each run").fill("12")
+        page.get_by_role("combobox", name="Write a cover letter").click()
+        page.get_by_role("option", name="Never", exact=True).click()
+        with answered(page, "/api/settings"):
+            page.get_by_role("button", name="Save settings").click()
+        tabs.get_by_role("tab", name="Automation", exact=True).click()
+        page.get_by_role("switch").click()
+        expect(page.get_by_text("On, every 3 h")).to_be_visible()
+        page.goto(server.url + "/runs")
+        expect(page.get_by_label("How many jobs")).to_have_value("12")
+        assert errors == []
+    saved = load(home)
+    assert saved.settings.jobs_per_run == 12
+    assert saved.years_experience == 3.5
+    assert saved.cover_letter == "never"
+    assert schedule.plist_path(agents).is_file()
+
+
+def test_the_learned_list_lines_up_with_its_heading(browser: Browser, home: Paths) -> None:
+    with closing(connect(home.database)) as db:
+        for text in ("no staffing agencies", "Pune is fine"):
+            rules.add(db, rules.NewRule(rules.RuleKind.RULE, text, rules.RuleState.ACTIVE, NOW))
+    wide = ViewportSize(width=1800, height=900)
+    with running(home) as server, opened(browser, viewport=wide) as (page, errors):
+        page.goto(server.url + "/learned")
+        item = page.get_by_text("no staffing agencies", exact=True)
+        item.wait_for()
+        heading = page.get_by_role("heading", level=1).bounding_box()
+        row = page.locator("main li").first.bounding_box()
+        assert heading is not None
+        assert row is not None
+        assert abs(row["x"] - heading["x"]) <= 8
+        assert errors == []
+
+
+def test_the_workflow_legend_stays_on_one_line_during_a_run(browser: Browser, home: Paths) -> None:
+    def live(route: Route) -> None:
+        answer = route.fetch().json()
+        answer["run"]["running"] = True
+        route.fulfill(json=answer)
+
+    with running(home) as server, opened(browser) as (page, errors):
+        page.route("**/api/summary", live)
+        page.goto(server.url + "/workflow")
+        legend = page.get_by_label("How to read the map")
+        expect(legend).to_contain_text("Live: a run is going")
+        box = legend.bounding_box()
+        assert box is not None
+        assert box["height"] < 40
+        assert errors == []
+
+
+def test_the_all_chip_shows_skipped_jobs_too(browser: Browser, home: Paths) -> None:
+    with closing(connect(home.database)) as db:
+        seed_every_group(db, NOW)
+    with running(home) as server, opened(browser) as (page, errors):
+        total = get(server, "/api/summary")[1]["total"]
+        page.goto(server.url + "/jobs")
+        chips = page.get_by_role("navigation", name="Filter by status")
+        chips.get_by_role("link", name=re.compile(r"^All ")).click()
+        expect(page).to_have_url(re.compile(r"show=all"))
+        expect(page.get_by_text(f"{total} jobs", exact=True)).to_be_visible()
+        expect(page.locator("main").get_by_text("Skipped", exact=True).first).to_be_visible()
+        assert errors == []
+
+
+def test_row_checkboxes_scroll_under_the_table_header(browser: Browser, home: Paths) -> None:
+    many = [
+        replace(samples.job(external_id=f"greenhouse/x/{n}"), title=f"Role {n}") for n in range(40)
+    ]
+    with closing(connect(home.database)) as db:
+        jobs.add_many(db, many, NOW)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs")
+        header = page.locator("thead th").first
+        header.wait_for()
+        page.locator("tbody tr").nth(30).scroll_into_view_if_needed()
+        box = header.bounding_box()
+        assert box is not None
+        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        on_top = page.evaluate(
+            "([x, y]) => document.elementFromPoint(x, y)?.closest('thead, tbody')?.tagName",
+            [x, y],
+        )
+        assert on_top == "THEAD"
+        assert errors == []
+
+
+def test_score_from_the_table_shows_a_spinner_then_the_score(
+    browser: Browser, home: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked: list[list[int]] = []
+    monkeypatch.setattr(runs, "score", lambda _paths, job_ids: asked.append(job_ids))
+    monkeypatch.setattr(runs, "scoring_now", lambda: [job for ids in asked for job in ids])
+    senior = replace(samples.job(external_id="greenhouse/x/1"), title="Senior Frontend Engineer")
+    with closing(connect(home.database)) as db:
+        jobs.add_outside_search(db, [senior], NOW)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs?show=all")
+        page.get_by_role("button", name="Score Senior Frontend Engineer at Northwind").click()
+        expect(page.locator("tbody").get_by_role("status")).to_have_text("Scoring")
+        with closing(connect(home.database)) as db:
+            jobs.save_score(db, 1, jobs.ScoreUpdate(86, Status.SCORED, NOW, "strong React fit"))
+        asked.clear()
+        page.reload()
+        expect(page.locator("tbody").get_by_text("86", exact=True)).to_be_visible()
+        assert errors == []
+
+
+def test_a_column_filter_stays_open_while_you_type(browser: Browser, home: Paths) -> None:
+    with closing(connect(home.database)) as db:
+        seed_every_group(db, NOW)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs?show=all")
+        page.get_by_role("button", name="Filter by location").click()
+        box = page.get_by_role("searchbox", name="Location contains")
+        for letter in "zqx":
+            box.press_sequentially(letter)
+            page.wait_for_timeout(600)
+            expect(box).to_be_visible()
+            expect(box).to_be_focused()
+        expect(page).to_have_url(re.compile(r"location=zqx"))
+        expect(page.get_by_text("No jobs match these filters.")).to_be_visible()
+        box.fill("")
+        page.wait_for_timeout(600)
+        expect(page.locator("tbody tr").first).not_to_have_text("No jobs match these filters.")
+        assert errors == []
+
+
+def test_the_clock_setting_changes_every_time_shown(browser: Browser, home: Paths) -> None:
+    home.runs.mkdir(parents=True, exist_ok=True)
+    log = home.runs / "20261027-170000-000000.log"
+    log.write_text("Automatic run\n", encoding="utf-8")
+    afternoon = datetime(2026, 10, 27, 17, 18).timestamp()
+    os.utime(log, (afternoon, afternoon))
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/settings?tab=automation")
+        clock = page.get_by_role("combobox", name="Clock")
+        clock.click()
+        page.get_by_role("option", name="24-hour (17:18)").click()
+        page.goto(server.url + "/runs")
+        recent = page.get_by_role("region", name="Recent runs")
+        expect(recent).to_contain_text("17:18")
+        expect(recent).to_contain_text("Automatic")
+        page.goto(server.url + "/settings?tab=automation")
+        page.get_by_role("combobox", name="Clock").click()
+        page.get_by_role("option", name="12-hour (5:18 pm)").click()
+        page.goto(server.url + "/runs")
+        expect(page.get_by_role("region", name="Recent runs")).to_contain_text("05:18")
+        assert errors == []

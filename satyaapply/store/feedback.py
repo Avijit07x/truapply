@@ -16,8 +16,6 @@ UPDATE_SENT = "update jobs set sent = ? where id = ?"
 UPDATE_THUMBS = "update jobs set feedback = ? where id = ?"
 SELECT_THUMBS = "select feedback from jobs where id = ?"
 UPDATE_APPLIED = "update jobs set status = ?, status_at = ?, note = ?, applied_at = ? where id = ?"
-SELECT_OPEN = "select question, label from questions where job_id = ? order by asked_at, question"
-DELETE_QUESTION = "delete from questions where question = ?"
 
 
 class FeedbackKind(StrEnum):
@@ -36,14 +34,12 @@ class Feedback:
     at: datetime
 
 
-@dataclass(frozen=True)
-class OpenQuestion:
-    question: str
-    label: str
-
-
 def add(db: sqlite3.Connection, job_id: int, items: Iterable[Feedback]) -> None:
-    rows = [(job_id, item.kind, item.value, item.at.isoformat()) for item in items]
+    add_each(db, ((job_id, item) for item in items))
+
+
+def add_each(db: sqlite3.Connection, items: Iterable[tuple[int, Feedback]]) -> None:
+    rows = [(job_id, item.kind, item.value, item.at.isoformat()) for job_id, item in items]
     with db:
         db.executemany(INSERT_FEEDBACK, rows)
 
@@ -76,12 +72,6 @@ def mark_applied(db: sqlite3.Connection, job_id: int, change: StatusChange) -> N
         db.execute(UPDATE_APPLIED, (Status.APPLIED, stamp, change.note, stamp, job_id))
 
 
-def open_for_job(db: sqlite3.Connection, job_id: int) -> tuple[OpenQuestion, ...]:
-    return tuple(
-        OpenQuestion(row["question"], row["label"]) for row in db.execute(SELECT_OPEN, (job_id,))
-    )
-
-
-def close_questions(db: sqlite3.Connection, questions: Iterable[str]) -> None:
-    with db:
-        db.executemany(DELETE_QUESTION, [(question,) for question in questions])
+def finished(db: sqlite3.Connection, job_id: int, change: StatusChange) -> None:
+    mark_applied(db, job_id, change)
+    add(db, job_id, [Feedback(FeedbackKind.FINISHED, "", change.at)])

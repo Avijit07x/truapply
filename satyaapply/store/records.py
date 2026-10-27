@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -10,8 +11,20 @@ from satyaapply.store.jobs import from_row
 
 SELECT_COUNTS = "select status, count(*) from jobs group by status"
 SELECT_ONE = "select * from jobs where id = ?"
-SELECT_LATEST = "select * from jobs order by status_at desc, id desc limit ?"
-SELECT_LATEST_IN = "select * from jobs where status = ? order by status_at desc, id desc limit ?"
+SELECT_STAMPS = """
+select id, status_at from jobs where status in (select value from json_each(?))
+order by status_at desc, id desc
+"""
+SELECT_IDS_IN = """
+select id from jobs
+where id in (select value from json_each(?)) and status in (select value from json_each(?))
+order by id
+"""
+SELECT_AT = """
+select * from jobs
+where url = :url or apply_url = :url or lower(key) in (select value from json_each(:keys))
+order by id desc limit 1
+"""
 SELECT_LATEST_EACH = """
 select * from (
     select *, row_number() over (
@@ -63,13 +76,20 @@ def find(db: sqlite3.Connection, job_id: int) -> JobRecord | None:
     return to_record(row) if row else None
 
 
-def latest(db: sqlite3.Connection, status: Status | None, limit: int) -> list[JobRecord]:
-    rows = (
-        db.execute(SELECT_LATEST, (limit,))
-        if status is None
-        else db.execute(SELECT_LATEST_IN, (status, limit))
-    )
-    return [to_record(row) for row in rows]
+def find_at(db: sqlite3.Connection, url: str, keys: Iterable[str]) -> JobRecord | None:
+    chosen = json.dumps(sorted({key.lower() for key in keys}))
+    row = db.execute(SELECT_AT, {"url": url, "keys": chosen}).fetchone()
+    return to_record(row) if row else None
+
+
+def ids_in(db: sqlite3.Connection, job_ids: Iterable[int], statuses: Iterable[Status]) -> list[int]:
+    chosen = (json.dumps(sorted(set(job_ids))), json.dumps([str(status) for status in statuses]))
+    return [int(row[0]) for row in db.execute(SELECT_IDS_IN, chosen)]
+
+
+def stamps(db: sqlite3.Connection, statuses: Iterable[Status]) -> dict[int, str]:
+    chosen = json.dumps([str(status) for status in statuses])
+    return {int(row[0]): str(row[1]) for row in db.execute(SELECT_STAMPS, (chosen,))}
 
 
 def latest_each(db: sqlite3.Connection, limit: int) -> dict[Status, list[JobRecord]]:

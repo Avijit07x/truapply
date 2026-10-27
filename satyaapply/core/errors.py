@@ -64,3 +64,30 @@ class BrowserUnavailableError(SatyaApplyError):
 
 class SetupCancelledError(SatyaApplyError):
     hint = "Run `satyaapply setup` again whenever you're ready."
+
+
+class RunAlreadyGoingError(SatyaApplyError):
+    hint = "Wait for it to finish, or stop it on the tracker's Run page."
+
+
+class DailyBudgetError(UsageLimitError):
+    hint = (
+        "Today's Claude call budget is used up, so the run stopped. It picks up again "
+        "tomorrow. Change the budget with settings.ai_calls_per_day in profile.json."
+    )
+
+
+class ScheduleError(SatyaApplyError):
+    hint = "Run `satyaapply schedule` again, or `satyaapply unschedule` to stop it."
+
+
+class DataFolderError(SatyaApplyError):
+    hint = "Run `satyaapply setup`, or check the folder's owner and permissions."
+
+
+class DatabaseBrokenError(SatyaApplyError):
+    hint = "Move satyaapply.db out of the data folder to start fresh, or restore a backup."
+
+
+class AppNotBuiltError(SatyaApplyError):
+    hint = "Build it once: cd web && npm ci && npm run build"

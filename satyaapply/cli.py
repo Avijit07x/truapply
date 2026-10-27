@@ -3,32 +3,34 @@ import hashlib
 import sys
 import webbrowser
 from collections.abc import Callable, Sequence
-from contextlib import closing
+from contextlib import closing, redirect_stderr, redirect_stdout
 from importlib import metadata
 from pathlib import Path
 
 from satyaapply import doctor
-from satyaapply.core import logs
+from satyaapply.core import logs, schedule
+from satyaapply.core.clock import utc_now
 from satyaapply.core.errors import SatyaApplyError
 from satyaapply.core.models import Job, Source, normalize
-from satyaapply.core.paths import Paths, default_paths
-from satyaapply.core.profile import load
+from satyaapply.core.paths import AUTOMATIC_RUN, MANUAL_RUN, Paths, default_paths
+from satyaapply.core.profile import MAX_EVERY_MINUTES, MIN_EVERY_MINUTES, load
 from satyaapply.onboarding import wizard
 from satyaapply.resume.diff import changed_lines
 from satyaapply.resume.master import load_resume, master_pdf
 from satyaapply.resume.tailor import Tailored, TailorRequest, file_name_for, tailor
 from satyaapply.run import RunOptions, RunReport, run
 from satyaapply.sources.discover import as_csv_rows, shared_boards
-from satyaapply.store import boards
+from satyaapply.sources.intake import NOT_A_BOARD, take_in_link
+from satyaapply.store import boards, rules
 from satyaapply.store.boards import BoardOrigin
 from satyaapply.store.db import connect
+from satyaapply.store.rules import RuleKind
 from satyaapply.tracker.server import DEFAULT_PORT, open_server
 
 Handler = Callable[[argparse.Namespace, Paths], int]
 JOB_ID_CHARS = 12
 EXIT_USAGE = 2
 EXIT_INTERRUPTED = 130
-STATUS_MARKS = {"ready": "✔", "applied": "✔", "needs_input": "?", "skipped": "-"}
 
 
 def _setup(args: argparse.Namespace, paths: Paths) -> int:
@@ -72,7 +74,10 @@ def _tailor(args: argparse.Namespace, paths: Paths) -> int:
         description=description,
     )
     folder = paths.previews / normalize(f"{args.company} {args.title}").replace(" ", "-")
-    request = TailorRequest(job, (), folder, file_name_for(profile.name), master_pdf(paths, resume))
+    with closing(connect(paths.database)) as db:
+        notes = rules.active_texts(db, RuleKind.TAILORING_NOTE)
+    master = master_pdf(paths, resume)
+    request = TailorRequest(job, notes, folder, file_name_for(profile.name), master)
     print(f"Tailoring your resume for {args.title} at {args.company} …")
     result = tailor(resume, request)
     original, tailored = resume.readable(resume.source), resume.readable(result.source)
@@ -97,26 +102,73 @@ def _print_run(report: RunReport) -> None:
     if not report.prepared:
         print("Prepared: nothing this run")
         return
-    print("Prepared:")
+    print("Ready for you to apply in your Chrome:")
     for item in report.prepared:
-        mark = STATUS_MARKS.get(item.attempt.status, "✘")
-        print(f"  {mark} {item.attempt.status:<12} {item.job.company} · {item.job.title}")
-        print(f"      {item.attempt.note}")
-        if item.attempt.questions:
-            print(f"      questions: {'; '.join(item.attempt.questions)}")
-        if item.shot:
-            print(f"      screenshot: {item.shot}")
+        kept = " (your original resume)" if item.resume.used_original else ""
+        print(f"  ✔ {item.job.company} · {item.job.title}{kept}")
 
 
 def _say(message: str) -> None:
     print(message, flush=True)
 
 
+def _explain(error: SatyaApplyError) -> None:
+    print(f"✘ {error}", file=sys.stderr)
+    if error.hint:
+        print(f"  → {error.hint}", file=sys.stderr)
+
+
 def _run(args: argparse.Namespace, paths: Paths) -> int:
     options = RunOptions(
-        limit=args.limit, search=not args.no_search, show=args.show, send=args.send, progress=_say
+        limit=args.limit,
+        search=not args.no_search,
+        find=not args.no_find,
+        job=args.job,
+        score=tuple(args.score or ()),
+        progress=_say,
     )
-    _print_run(run(paths, options))
+    if not args.scheduled:
+        print(MANUAL_RUN, flush=True)
+        _print_run(run(paths, options))
+        return 0
+    log = paths.run_log(utc_now())
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("w", encoding="utf-8") as out, redirect_stdout(out), redirect_stderr(out):
+        print(AUTOMATIC_RUN, flush=True)
+        try:
+            _print_run(run(paths, options))
+        except SatyaApplyError as error:
+            _explain(error)
+            return 1
+    return 0
+
+
+def _minutes(text: str) -> int:
+    value = int(text)
+    if not MIN_EVERY_MINUTES <= value <= MAX_EVERY_MINUTES:
+        raise argparse.ArgumentTypeError(f"use {MIN_EVERY_MINUTES} to {MAX_EVERY_MINUTES} minutes")
+    return value
+
+
+def _schedule(args: argparse.Namespace, paths: Paths) -> int:
+    every: int = args.every or load(paths).settings.run_every_minutes
+    plan = schedule.Plan(every)
+    if sys.platform != "darwin":
+        print("Add this line with `crontab -e`:")
+        print(schedule.cron_line(paths, plan))
+        return 0
+    schedule.install(paths, plan, schedule.agents_dir())
+    print(f"✔ Scheduled every {schedule.every(plan.every_minutes)}.")
+    print("  Logs show on the tracker's Run page. Stop with: satyaapply unschedule")
+    return 0
+
+
+def _unschedule(_args: argparse.Namespace, _paths: Paths) -> int:
+    if sys.platform != "darwin":
+        print("Remove the satyaapply line with `crontab -e`.")
+        return 0
+    removed = schedule.remove(schedule.agents_dir())
+    print("✔ Unscheduled. Nothing runs on its own now." if removed else "Nothing was scheduled.")
     return 0
 
 
@@ -146,6 +198,21 @@ def _boards(_args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def _add(args: argparse.Namespace, paths: Paths) -> int:
+    profile = load(paths)
+    with closing(connect(paths.database)) as db:
+        linked = take_in_link(db, args.link, profile, utc_now())
+    if linked is None:
+        print(f"✘ {NOT_A_BOARD}", file=sys.stderr)
+        return EXIT_USAGE
+    board, intake = linked
+    print(
+        f"✔ Added {board.company or board.slug}: {intake.found} open, {intake.kept} for you, "
+        f"{intake.added} new. They're scored on the next run."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="satyaapply", description="Honest job applications, from your own computer."
@@ -166,16 +233,31 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument("--title", required=True)
     preview.set_defaults(handler=_tailor)
 
-    runner = commands.add_parser(
-        "run", help="find and score jobs, fill forms, and send the ones you approved"
-    )
-    runner.add_argument("--limit", type=int, default=5, help="applications to prepare (default 5)")
+    runner = commands.add_parser("run", help="find and score jobs, and tailor your resume")
+    runner.add_argument("--limit", type=int, help="resumes to tailor (default: your settings)")
     runner.add_argument("--no-search", action="store_true", help="skip the daily web search")
-    runner.add_argument("--show", action="store_true", help="show the browser window")
+    runner.add_argument("--job", type=int, help="only score and tailor this one job")
     runner.add_argument(
-        "--send", action="store_true", help="really send the jobs you approved on the tracker"
+        "--score", type=int, nargs="+", help="score these jobs, then tailor the good matches"
     )
+    runner.add_argument(
+        "--no-find", action="store_true", help="skip career pages; score jobs already added"
+    )
+    runner.add_argument("--scheduled", action="store_true", help=argparse.SUPPRESS)
     runner.set_defaults(handler=_run)
+
+    timer = commands.add_parser("schedule", help="run on its own every few hours")
+    timer.add_argument(
+        "--every", type=_minutes, help="minutes between runs (default: your settings)"
+    )
+    timer.set_defaults(handler=_schedule)
+    commands.add_parser("unschedule", help="stop running on its own").set_defaults(
+        handler=_unschedule
+    )
+
+    adder = commands.add_parser("add", help="add a company's jobs from a job or board link")
+    adder.add_argument("link", help="a Greenhouse, Lever or Ashby job or board link")
+    adder.set_defaults(handler=_add)
 
     listing = commands.add_parser("boards", help="print boards you found that aren't shared yet")
     listing.add_argument("--new", action="store_true", help="only boards not in the shared list")
@@ -197,9 +279,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return handler(args, default_paths())
     except SatyaApplyError as error:
-        print(f"✘ {error}", file=sys.stderr)
-        if error.hint:
-            print(f"  → {error.hint}", file=sys.stderr)
+        _explain(error)
         return 1
     except KeyboardInterrupt:
         print("\nStopped.", file=sys.stderr)

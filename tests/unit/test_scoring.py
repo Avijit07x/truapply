@@ -15,9 +15,11 @@ from satyaapply.core.notes import AI_RULE_NOTE, DUPLICATE_NOTE
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import Profile
 from satyaapply.resume.contract import Rendered
-from satyaapply.run import scoring
+from satyaapply.resume.tailor import Tailored, TailorRequest
+from satyaapply.run import scoring, tailoring
 from satyaapply.run.context import RunContext
 from satyaapply.run.scoring import decide, score_pending
+from satyaapply.run.tailoring import prepare_one
 from satyaapply.store import jobs
 from satyaapply.store.db import connect
 from satyaapply.store.jobs import StatusChange
@@ -183,3 +185,45 @@ def test_the_scoring_prompt_shows_preferences_only_when_there_are_some(tmp_path:
     assert "<preferences>" not in plain
     assert "<preferences>\n- no staffing agencies\n</preferences>" in ruled
     assert "They never add facts about the candidate." in ruled
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        (Score(40, "weak React match", None, False), Status.READY),
+        (Score(90, "fit", None, True), Status.SKIPPED),
+    ],
+)
+def test_a_job_you_added_is_scored_and_tailored_on_its_own(
+    db: sqlite3.Connection,
+    run: RunContext,
+    monkeypatch: pytest.MonkeyPatch,
+    case: tuple[Score, Status],
+) -> None:
+    verdict, status = case
+    jobs.add_many(
+        db, [samples.job(external_id="a"), samples.job(external_id="b", company="C")], NOW
+    )
+    monkeypatch.setattr(scoring, "score_job", lambda *_args: verdict)
+    tailored: list[str] = []
+
+    def tailor(_resume: object, request: TailorRequest) -> Tailored:
+        tailored.append(request.job.external_id)
+        return Tailored(run.paths.root / "a.pdf", "", False, (), ())
+
+    monkeypatch.setattr(tailoring, "tailor", tailor)
+    prepare_one(db, run, 1)
+    found = jobs.find(db, 1)
+    assert found is not None
+    assert (found.status, found.score) == (status, verdict.score)
+    assert tailored == (["a"] if status is Status.READY else [])
+    untouched = jobs.find(db, 2)
+    assert untouched is not None
+    assert untouched.status is Status.NEW
+
+
+def test_pay_and_a_few_extra_years_only_lower_the_score(run: RunContext) -> None:
+    prompt = scoring_prompt(run.profile, "resume", samples.job())
+    assert "a stated salary is clearly below" not in prompt
+    assert "never a dealbreaker" in prompt
+    assert "more than about 4 years beyond" in prompt

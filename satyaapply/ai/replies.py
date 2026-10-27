@@ -53,3 +53,11 @@ class Score:
 @dataclass(frozen=True)
 class FoundPostings:
     urls: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Posting:
+    title: str
+    company: str
+    location: str
+    description: str

@@ -117,8 +117,6 @@ def test_records_show_counts_and_what_was_sent_newest_first(
     assert ready is not None
     assert (ready.note, ready.sent, ready.resume_pdf) == ("filled", sent, tmp_path / "r.pdf")
     assert ready.updated_at == later
-    assert [item.job.id for item in records.latest(db, None, 10)] == [2, 3, 1]
-    assert [item.job.id for item in records.latest(db, Status.NEW, 1)] == [3]
     assert records.find(db, 99) is None
 
 

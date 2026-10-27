@@ -1,7 +1,6 @@
 import re
 import sqlite3
 from collections.abc import Callable
-from dataclasses import replace
 
 from satyaapply.core.clock import utc_now
 from satyaapply.core.errors import SatyaApplyError
@@ -10,17 +9,19 @@ from satyaapply.core.paths import Paths
 from satyaapply.core.profile import load
 from satyaapply.resume.master import load_resume, master_pdf
 from satyaapply.resume.tailor import keep_original
-from satyaapply.store import feedback, jobs, records, trust
-from satyaapply.store.answers import AnswerSource, SavedAnswer, save_many
+from satyaapply.store import feedback, jobs, records
 from satyaapply.store.feedback import Feedback, FeedbackKind
 from satyaapply.store.jobs import StatusChange
 from satyaapply.store.records import JobRecord
-from satyaapply.tracker.body import Body, number, pairs, text
+from satyaapply.tracker import runs
+from satyaapply.tracker.body import Body, number, numbers, text
 from satyaapply.tracker.detail import (
     ALLOWED,
+    CLOSED_REASON,
     DISMISS_REASONS,
+    DISMISSABLE,
+    SCORABLE,
     Action,
-    editable,
     job_detail,
     job_id,
     resume_pdf,
@@ -29,12 +30,15 @@ from satyaapply.tracker.responses import Response, bad_request, not_found, ok
 from satyaapply.tracker.routes import Handler, Route, route
 
 MAX_TEXT = 5000
-APPROVED_NOTE = "approved by you; it's sent on the next run"
-ANSWERED_NOTE = "answered by you; it's filled on the next run"
 FINISHED_NOTE = "submitted by you"
+CLOSED_NOTE = "closed: you said the job is closed"
 REVERTED = "resume: reverted to your original"
 MOVED_ON = "This job has moved on since you opened it. Reload to see where it is now."
 NO_RESUME = "This job has no resume file to change yet."
+PICK_REASON = "Pick a reason from the list."
+PICK_JOBS = "Pick the jobs to dismiss."
+PICK_TO_SCORE = "Pick the jobs to score."
+BULK_LIMIT = 200
 THUMBS = frozenset({1, -1})
 
 Act = Callable[[sqlite3.Connection, Paths, JobRecord, Body], str | None]
@@ -44,45 +48,20 @@ def _note(db: sqlite3.Connection, record: JobRecord, item: Feedback) -> None:
     feedback.add(db, job_id(record), [item])
 
 
-def _approve(db: sqlite3.Connection, _paths: Paths, record: JobRecord, _body: Body) -> str | None:
+def dismiss_all(db: sqlite3.Connection, job_ids: list[int], reason: str) -> None:
     now = utc_now()
-    edited = any(item.kind is FeedbackKind.EDIT for item in feedback.for_job(db, job_id(record)))
-    jobs.set_status(db, job_id(record), StatusChange(Status.APPROVED, now, APPROVED_NOTE))
-    _note(db, record, Feedback(FeedbackKind.APPROVE, "edited" if edited else "clean", now))
-    return None
-
-
-def _edit(db: sqlite3.Connection, _paths: Paths, record: JobRecord, body: Body) -> str | None:
-    given = pairs(body, "answers", MAX_TEXT)
-    edits = {
-        index: given[item.question]
-        for index, item in enumerate(record.sent)
-        if editable(item) and given.get(item.question, "") not in {"", item.answer}
-    }
-    if not edits:
-        return None
-    now = utc_now()
-    sent = tuple(
-        replace(item, answer=edits[index]) if index in edits else item
-        for index, item in enumerate(record.sent)
-    )
-    changed = [sent[index] for index in edits]
-    save_many(db, [SavedAnswer(i.question, i.answer, AnswerSource.USER) for i in changed], now)
-    feedback.save_sent(db, job_id(record), sent)
-    feedback.add(
-        db, job_id(record), [Feedback(FeedbackKind.EDIT, i.question, now) for i in changed]
-    )
-    return None
+    if reason == CLOSED_REASON:
+        jobs.set_status_many(db, job_ids, StatusChange(Status.CLOSED, now, CLOSED_NOTE))
+        return
+    jobs.set_status_many(db, job_ids, StatusChange(Status.DISMISSED, now, f"dismissed: {reason}"))
+    feedback.add_each(db, [(item, Feedback(FeedbackKind.DISMISS, reason, now)) for item in job_ids])
 
 
 def _dismiss(db: sqlite3.Connection, _paths: Paths, record: JobRecord, body: Body) -> str | None:
     reason = text(body, "reason", MAX_TEXT)
     if reason not in DISMISS_REASONS:
-        return "Pick a reason from the list."
-    now = utc_now()
-    change = StatusChange(Status.DISMISSED, now, f"dismissed: {reason}")
-    jobs.set_status(db, job_id(record), change)
-    _note(db, record, Feedback(FeedbackKind.DISMISS, reason, now))
+        return PICK_REASON
+    dismiss_all(db, [job_id(record)], reason)
     return None
 
 
@@ -93,33 +72,11 @@ def _thumbs(db: sqlite3.Connection, _paths: Paths, record: JobRecord, body: Body
     now = utc_now()
     feedback.set_thumbs(db, job_id(record), value)
     _note(db, record, Feedback(FeedbackKind.THUMBS, str(value), now))
-    if value < 0:
-        trust.review(db, now)
-    return None
-
-
-def _answer(db: sqlite3.Connection, _paths: Paths, record: JobRecord, body: Body) -> str | None:
-    labels = {item.question: item.label for item in feedback.open_for_job(db, job_id(record))}
-    given = {q: a for q, a in pairs(body, "answers", MAX_TEXT).items() if q in labels and a}
-    if not given:
-        return "Answer at least one question."
-    now = utc_now()
-    save_many(db, [SavedAnswer(labels[q], a, AnswerSource.USER) for q, a in given.items()], now)
-    feedback.close_questions(db, given)
-    jobs.set_status(db, job_id(record), StatusChange(Status.SCORED, now, ANSWERED_NOTE))
-    feedback.add(db, job_id(record), [Feedback(FeedbackKind.ANSWER, labels[q], now) for q in given])
-    return None
-
-
-def _retry(db: sqlite3.Connection, _paths: Paths, record: JobRecord, _body: Body) -> str | None:
-    jobs.set_status(db, job_id(record), StatusChange(Status.SCORED, utc_now(), ANSWERED_NOTE))
     return None
 
 
 def _finished(db: sqlite3.Connection, _paths: Paths, record: JobRecord, _body: Body) -> str | None:
-    now = utc_now()
-    feedback.mark_applied(db, job_id(record), StatusChange(Status.APPLIED, now, FINISHED_NOTE))
-    _note(db, record, Feedback(FeedbackKind.FINISHED, "", now))
+    feedback.finished(db, job_id(record), StatusChange(Status.APPLIED, utc_now(), FINISHED_NOTE))
     return None
 
 
@@ -136,15 +93,18 @@ def _revert(db: sqlite3.Connection, paths: Paths, record: JobRecord, _body: Body
     return None
 
 
+def _get_ready(_db: sqlite3.Connection, paths: Paths, record: JobRecord, _body: Body) -> str | None:
+    runs.score(paths, [job_id(record)])
+    return None
+
+
 ACTS: dict[Action, Act] = {
-    Action.APPROVE: _approve,
-    Action.ANSWERS: _edit,
     Action.DISMISS: _dismiss,
     Action.THUMBS: _thumbs,
-    Action.QUESTIONS: _answer,
-    Action.RETRY: _retry,
     Action.FINISHED: _finished,
     Action.REVERT: _revert,
+    Action.SCORE: _get_ready,
+    Action.TAILOR: _get_ready,
 }
 
 
@@ -164,7 +124,35 @@ def _handler(action: Action) -> Handler:
     return handle
 
 
+def _dismiss_many(
+    db: sqlite3.Connection, _paths: Paths, _match: re.Match[str], body: Body
+) -> Response:
+    given = numbers(body, "ids")
+    if not given or len(given) > BULK_LIMIT:
+        return bad_request(PICK_JOBS)
+    reason = text(body, "reason", MAX_TEXT)
+    if reason not in DISMISS_REASONS:
+        return bad_request(PICK_REASON)
+    chosen = records.ids_in(db, given, DISMISSABLE)
+    dismiss_all(db, chosen, reason)
+    return ok({"dismissed": len(chosen), "skipped": len(set(given)) - len(chosen)})
+
+
+def _score_many(
+    db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body
+) -> Response:
+    given = numbers(body, "ids")
+    if not given or len(given) > BULK_LIMIT:
+        return bad_request(PICK_TO_SCORE)
+    chosen = records.ids_in(db, given, SCORABLE)
+    if chosen:
+        runs.score(paths, chosen)
+    return ok({"scoring": len(chosen), "skipped": len(set(given)) - len(chosen)})
+
+
 GET: tuple[Route, ...] = ()
-POST: tuple[Route, ...] = tuple(
-    route(rf"/jobs/(\d+)/{action}", _handler(action)) for action in Action
+POST: tuple[Route, ...] = (
+    route(r"/jobs/dismiss", _dismiss_many),
+    route(r"/jobs/score", _score_many),
+    *(route(rf"/jobs/(\d+)/{action}", _handler(action)) for action in Action),
 )

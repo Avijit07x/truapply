@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 
 from satyaapply.ai import job_prompts, prompts
 from satyaapply.ai.client import Model, Request, ask
@@ -7,11 +8,13 @@ from satyaapply.ai.replies import (
     FoundPostings,
     LatexRewrite,
     Pong,
+    Posting,
     ProfileDraft,
     Score,
     StructuredRewrite,
 )
 from satyaapply.core.documents import ResumeData, ResumeDocument
+from satyaapply.core.errors import AIError, UsageLimitError
 from satyaapply.core.forms import Field, FormAnswers, FormContext
 from satyaapply.core.models import Job
 from satyaapply.core.profile import Profile
@@ -82,13 +85,35 @@ def score_job(
     )
 
 
-def find_posting_urls(profile: Profile) -> tuple[str, ...]:
+def _search(profile: Profile, hosts: str) -> tuple[str, ...]:
     request = Request(
-        job_prompts.board_search(profile), prompts.SYSTEM, Model.SONNET, WEB_SEARCH_TOOL
+        job_prompts.board_search(profile, hosts), prompts.SYSTEM, Model.SONNET, WEB_SEARCH_TOOL
     )
     return ask(FoundPostings, request).urls
+
+
+def find_posting_urls(profile: Profile) -> tuple[str, ...]:
+    with ThreadPoolExecutor(len(job_prompts.SEARCH_HOSTS)) as pool:
+        searches = [pool.submit(_search, profile, hosts) for hosts in job_prompts.SEARCH_HOSTS]
+    found: list[str] = []
+    failed: list[AIError] = []
+    for search in searches:
+        try:
+            found.extend(search.result())
+        except UsageLimitError:
+            raise
+        except AIError as error:
+            failed.append(error)
+    if failed and not found:
+        raise failed[0]
+    return tuple(dict.fromkeys(found))
 
 
 def answer_fields(context: FormContext, fields: Sequence[Field]) -> FormAnswers:
     request = Request(job_prompts.form_answers(context, fields), prompts.SYSTEM, Model.SONNET)
     return ask(FormAnswers, request)
+
+
+def read_posting(page_text: str) -> Posting:
+    request = Request(job_prompts.posting_reading(page_text), prompts.SYSTEM, Model.HAIKU)
+    return ask(Posting, request)

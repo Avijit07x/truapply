@@ -2,16 +2,10 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import sync_playwright
 
 from satyaapply.ai import tasks
-from satyaapply.apply.fill import Files
-from satyaapply.apply.flow import ApplyRequest, apply
 from satyaapply.core.forms import Field, FieldKind, FormContext
-from satyaapply.core.models import Status
 from satyaapply.core.profile import WorkPlaces
-from satyaapply.store.answers import question_key
-from tests.e2e.test_form_filler import FORM
 from tests.unit import samples
 
 pytestmark = pytest.mark.ai
@@ -157,30 +151,3 @@ def test_form_answers_stay_true_even_when_a_label_says_otherwise(tmp_path: Path)
     assert values.get("f1", "0") in {"0", ""}
     assert values.get("f2") == "No"
     assert "f3" not in values or any(item.id == "f3" for item in reply.unknown)
-
-
-@pytest.mark.e2e
-def test_real_ai_fills_the_local_form(tmp_path: Path) -> None:
-    resume_pdf = tmp_path / "Asha_Rao_Resume.pdf"
-    resume_pdf.write_bytes(b"%PDF-1.4 test")
-    request = ApplyRequest(
-        context=replace(context(tmp_path), job=replace(samples.job(), apply_url=FORM.as_uri())),
-        files=Files(resume=resume_pdf, cover_letter=None),
-        known={question_key("Notice period"): "30 days"},
-        dry_run=False,
-        cover_letter_target=tmp_path / "Cover_Letter.pdf",
-    )
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        page = browser.new_page()
-        attempt = apply(page, request)
-        submitted = page.evaluate("window.__submission || null")
-        browser.close()
-    assert attempt.status is Status.APPLIED, attempt.note
-    assert isinstance(submitted, dict)
-    assert submitted["first"] == "Asha"
-    assert submitted["resume"] == "Asha_Rao_Resume.pdf"
-    assert submitted["authorized"] == "yes"
-    assert submitted["sponsorship"] == "no"
-    assert submitted["notice"] == "30 days"
-    assert submitted["consent"] == "on"

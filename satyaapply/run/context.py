@@ -23,7 +23,6 @@ class RunContext:
     resume: Resume
     master: Rendered
     clock: Clock
-    dry_run: bool = True
     progress: Progress = quiet
     notes: tuple[str, ...] = ()
     preferences: tuple[str, ...] = ()

@@ -2,12 +2,11 @@ from dataclasses import dataclass
 from datetime import date
 
 from satyaapply.ai.replies import ProfileDraft
-from satyaapply.core.models import Source, normalize_company
+from satyaapply.core.models import normalize_company
 from satyaapply.core.profile import (
     CoverLetter,
     Diversity,
     Salary,
-    SubmitMode,
     UnknownQuestions,
     WorkPlaces,
 )
@@ -31,25 +30,6 @@ CURRENCIES = {
     "united arab emirates": "AED",
 }
 NOTICE_PERIODS = ("Immediate", "15 days", "30 days", "60 days", "90 days")
-SITE_OPTIONS = (
-    Option(
-        "Company career pages (Greenhouse, Lever, Ashby)",
-        Source.CAREER_PAGES,
-        "No login, no account risk, the most reliable.",
-    ),
-    Option(
-        "LinkedIn",
-        Source.LINKEDIN,
-        "Biggest source. LinkedIn bans accounts it catches using bots; limited to 10 a day.",
-    ),
-    Option(
-        "Naukri",
-        Source.NAUKRI,
-        "Big in India. Sends the resume on your Naukri profile, not the tailored one.",
-    ),
-    Option("Indeed", Source.INDEED, "Uses your country's Indeed site."),
-    Option("Wellfound", Source.WELLFOUND, "Startups. Uses your Wellfound profile."),
-)
 
 
 @dataclass(frozen=True)
@@ -74,7 +54,6 @@ class Targets:
 
 @dataclass(frozen=True)
 class Autonomy:
-    submit_mode: SubmitMode
     unknown_questions: UnknownQuestions
     daily_cap: int | None
     cover_letter: CoverLetter
@@ -145,11 +124,6 @@ def ask_targets(draft: ProfileDraft, basics: Basics) -> Targets:
     )
 
 
-def ask_sites() -> tuple[Source, ...]:
-    ask.heading("Which sites")
-    return tuple(ask.choose_many("Which job sites should it use?", SITE_OPTIONS, defaults=[0]))
-
-
 def _skip_list(current_company: str) -> tuple[str, ...]:
     default = (current_company,) if current_company else ()
     chosen = ask.items("Companies to skip", default)
@@ -163,17 +137,7 @@ def _skip_list(current_company: str) -> tuple[str, ...]:
 def ask_autonomy(current_company: str) -> Autonomy:
     ask.heading("How much it does on its own")
     ask.say("Legal and eligibility questions are never guessed, whatever you pick here.")
-    submit_mode = ask.choose(
-        "Submitting",
-        [
-            Option(
-                "Review queue first; offer auto-submit once it has earned trust",
-                SubmitMode.TRUST,
-                "Auto-submit is offered after 20 approvals in a row with no edits.",
-            ),
-            Option("Review queue only, never auto-submit", SubmitMode.REVIEW_ONLY),
-        ],
-    )
+    ask.say("It never submits for you: you press Submit in your own Chrome.")
     unknown = ask.choose(
         "A form question your profile doesn't answer",
         [
@@ -199,7 +163,7 @@ def ask_autonomy(current_company: str) -> Autonomy:
             Option("Never (skips jobs that require one)", CoverLetter.NEVER),
         ],
     )
-    return Autonomy(submit_mode, unknown, cap, cover, _skip_list(current_company))
+    return Autonomy(unknown, cap, cover, _skip_list(current_company))
 
 
 def _notice_period() -> str:

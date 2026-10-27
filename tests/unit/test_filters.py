@@ -5,7 +5,14 @@ from pathlib import Path
 import pytest
 
 from satyaapply.core.profile import Profile, WorkPlaces
-from satyaapply.sources.filters import company_skipped, is_fresh, location_fits, title_fits
+from satyaapply.sources.filters import (
+    company_skipped,
+    in_your_field,
+    is_fresh,
+    location_fits,
+    role_fits,
+    title_fits,
+)
 from tests.unit import samples
 
 NOW = datetime(2026, 10, 25, tzinfo=UTC)
@@ -16,7 +23,7 @@ def profile(tmp_path: Path) -> Profile:
     base = samples.profile(tmp_path / "master.tex")
     return replace(
         base,
-        title_keywords=("frontend", "front-end", "react", "ui engineer"),
+        title_keywords=("frontend", "front-end", "react", "ui engineer", "full stack"),
         title_exclude=("senior", "staff", "sde 2"),
         work_places=WorkPlaces(True, True, True, ("Pune",), True),
     )
@@ -32,6 +39,9 @@ def profile(tmp_path: Path) -> Profile:
         ("SDE-2, Frontend", False),
         ("Backend Engineer", False),
         ("Reactor Physicist", False),
+        ("Fullstack Developer", True),
+        ("Front End Engineer", True),
+        ("Full-Stack Engineer", True),
     ],
 )
 def test_titles_match_whole_words_and_skip_excluded_ones(
@@ -92,3 +102,49 @@ def test_old_postings_are_stale_but_undated_ones_are_kept() -> None:
 def test_skipped_companies_match_despite_legal_suffixes(profile: Profile) -> None:
     assert company_skipped(samples.job(company="Acme Analytics Pvt. Ltd."), profile)
     assert not company_skipped(samples.job(company="Northwind"), profile)
+
+
+@pytest.mark.parametrize(
+    ("title", "description", "fits"),
+    [
+        ("Software Engineer II", "You will build our web app in React and TypeScript.", True),
+        ("SDE 1", "Own front-end features end to end.", True),
+        ("Software Engineer", "Go services on Kubernetes.", False),
+        ("Business Developer", "Sell our React component library to agencies.", False),
+        ("Senior Software Engineer", "React and TypeScript.", False),
+        ("Frontend Engineer", "", True),
+    ],
+)
+def test_a_general_title_counts_when_the_job_uses_your_stack(
+    profile: Profile, title: str, description: str, fits: bool
+) -> None:
+    job = replace(samples.job(), title=title, description=description)
+    assert role_fits(job, profile) is fits
+
+
+@pytest.mark.parametrize("place", ["Worldwide", "Anywhere", "Global"])
+def test_a_job_open_to_anywhere_fits_people_who_work_remotely_abroad(
+    profile: Profile, place: str
+) -> None:
+    assert location_fits(place, profile)
+    stay_home = replace(profile.work_places, remote_abroad=False, remote_country=False)
+    assert not location_fits(place, replace(profile, work_places=stay_home))
+
+
+@pytest.mark.parametrize(
+    ("title", "related"),
+    [
+        ("Senior Frontend Engineer", True),
+        ("Software Engineer, Payments", True),
+        ("Staff Web Developer", True),
+        ("Frontend Engineer (Remote, USA)", True),
+        ("Account Executive", False),
+        ("Recruiter", False),
+        ("Office Manager", False),
+        ("Mechanical Engineer", False),
+    ],
+)
+def test_software_jobs_count_as_your_field_even_when_skipped(
+    profile: Profile, title: str, related: bool
+) -> None:
+    assert in_your_field(replace(samples.job(), title=title), profile) is related

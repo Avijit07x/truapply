@@ -1,163 +1,233 @@
 import re
 import sqlite3
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from http import HTTPStatus
 
-from satyaapply.core.errors import ProfileInvalidError, ProfileMissingError
+from satyaapply.core.errors import ProfileInvalidError, ProfileMissingError, SatyaApplyError
 from satyaapply.core.paths import Paths
-from satyaapply.core.profile import Profile, load, save
+from satyaapply.core.profile import (
+    LAST_HOUR,
+    MAX_EVERY_MINUTES,
+    MAX_JOBS_PER_RUN,
+    MAX_LINKEDIN_READS,
+    MAX_SCORE,
+    MAX_SCORES_PER_RUN,
+    MIN_EVERY_MINUTES,
+    CoverLetter,
+    Diversity,
+    Profile,
+    Settings,
+    UnknownQuestions,
+    load,
+    save,
+)
 from satyaapply.core.profile import problems as profile_problems
-from satyaapply.tracker.body import Body, flag, number, strings, text
+from satyaapply.tracker import automatic
+from satyaapply.tracker.body import Body
+from satyaapply.tracker.extension import install_info
 from satyaapply.tracker.responses import Response, bad_request, ok, problem
 from satyaapply.tracker.routes import Route, route
+from satyaapply.tracker.settings_fields import (
+    MAX_ITEMS,
+    MAX_LONG_TEXT,
+    MAX_TEXT,
+    Number,
+    Reader,
+)
 
-MAX_ITEMS = 50
-MAX_TEXT = 200
 MAX_JOB_AGE_DAYS = 365
 MAX_DAILY_CAP = 500
+MAX_AI_CALLS = 5000
+MAX_YEARS = 60
 MAX_SALARY = 100_000_000_000
-LISTS = {
-    "titleKeywords": "Title keywords",
-    "titleExclude": "Titles to skip",
-    "skipCompanies": "Companies to skip",
-    "relocateCities": "Cities you'd move to",
-}
-PLACES = ("onsiteCity", "remoteCountry", "relocate", "remoteAbroad")
-NOTICE_LABEL = "Notice period"
 MISSING = "Run `satyaapply setup` first."
 NOT_SAVED = "Nothing was saved. Fix these first."
-
-
-@dataclass(frozen=True)
-class Number:
-    name: str
-    label: str
-    low: int
-    high: int
-
+UNKNOWN_LABEL = "Questions it can't answer"
 
 JOB_AGE = Number("maxJobAgeDays", "Oldest job to consider, in days", 1, MAX_JOB_AGE_DAYS)
+MIN_SCORE = Number("minScore", "Minimum match score", 0, MAX_SCORE)
 SALARY_MIN = Number("expectedMin", "Expected salary, lowest", 1, MAX_SALARY)
 SALARY_MAX = Number("expectedMax", "Expected salary, highest", 1, MAX_SALARY)
+SALARY_NOW = Number("currentSalary", "Current salary", 0, MAX_SALARY)
+YEARS = Number("yearsExperience", "Years of experience", 0, MAX_YEARS)
 DAILY_CAP = Number("dailyCap", "Applications per day", 1, MAX_DAILY_CAP)
+LINKEDIN_CAP = Number("linkedinCap", "LinkedIn applications per day", 0, MAX_DAILY_CAP)
+JOBS_PER_RUN = Number("jobsPerRun", "Jobs to tailor each run", 1, MAX_JOBS_PER_RUN)
+SCORES_PER_RUN = Number("scoresPerRun", "Jobs to score each run", 1, MAX_SCORES_PER_RUN)
+AI_CALLS = Number("aiCallsPerDay", "Claude calls per day", 1, MAX_AI_CALLS)
+EVERY_MINUTES = Number(
+    "runEveryMinutes", "Minutes between automatic runs", MIN_EVERY_MINUTES, MAX_EVERY_MINUTES
+)
+SUMMARY_HOUR = Number("summaryHour", "Daily summary hour", 0, LAST_HOUR)
+LINKEDIN_READS = Number("linkedinReadsPerDay", "LinkedIn jobs read a day", 1, MAX_LINKEDIN_READS)
+LIMITED = (
+    JOB_AGE,
+    MIN_SCORE,
+    DAILY_CAP,
+    LINKEDIN_CAP,
+    JOBS_PER_RUN,
+    SCORES_PER_RUN,
+    AI_CALLS,
+    EVERY_MINUTES,
+    SUMMARY_HOUR,
+    YEARS,
+    LINKEDIN_READS,
+)
+DIVERSITY = ("gender", "disability", "veteran", "ethnicity")
 
 
-def _min_score(profile: Profile) -> Number:
-    return Number("minScore", "Minimum match score", 0, profile.settings.strong_score)
+def _diversity(profile: Profile) -> dict[str, str]:
+    given = profile.diversity
+    return {name: getattr(given, name) if given else "" for name in DIVERSITY}
 
 
 def _values(profile: Profile) -> dict[str, object]:
-    places = profile.work_places
+    places, salary, chosen = profile.work_places, profile.salary, profile.settings
     return {
+        "name": profile.name,
+        "email": profile.email,
+        "phone": profile.phone,
+        "city": profile.city,
+        "country": profile.country,
+        "links": list(profile.links),
+        "currentCompany": profile.current_company,
+        "yearsExperience": profile.years_experience,
+        "roles": list(profile.roles),
         "titleKeywords": list(profile.title_keywords),
         "titleExclude": list(profile.title_exclude),
         "skipCompanies": list(profile.skip_companies),
         "relocateCities": list(places.relocate_cities),
-        "maxJobAgeDays": profile.settings.max_job_age_days,
-        "minScore": profile.settings.min_score,
-        "expectedMin": profile.salary.expected_min,
-        "expectedMax": profile.salary.expected_max,
-        "noticePeriod": profile.notice_period,
-        "dailyCap": profile.daily_cap,
+        "maxJobAgeDays": chosen.max_job_age_days,
+        "minScore": chosen.min_score,
         "onsiteCity": places.onsite_city,
         "remoteCountry": places.remote_country,
         "relocate": places.relocate,
         "remoteAbroad": places.remote_abroad,
+        "currency": salary.currency,
+        "expectedMin": salary.expected_min,
+        "expectedMax": salary.expected_max,
+        "currentSalary": salary.current,
+        "noticePeriod": profile.notice_period,
+        "citizenship": profile.citizenship,
+        "workWithoutVisa": list(profile.work_without_visa),
+        "needsSponsorship": profile.needs_sponsorship_elsewhere,
+        "dateOfBirth": profile.dob.isoformat() if profile.dob else "",
+        **_diversity(profile),
+        "extraFacts": profile.extra_facts,
+        "unknownQuestions": profile.unknown_questions.value,
+        "coverLetter": profile.cover_letter.value,
+        "jobsPerRun": chosen.jobs_per_run,
+        "scoresPerRun": chosen.scores_per_run,
+        "dailyCap": profile.daily_cap,
+        "linkedinCap": chosen.linkedin_cap,
+        "aiCallsPerDay": chosen.ai_calls_per_day,
+        "runEveryMinutes": chosen.run_every_minutes,
+        "summaryHour": chosen.summary_hour,
+        "linkedinReading": chosen.linkedin_reading,
+        "linkedinReadsPerDay": chosen.linkedin_reads_per_day,
     }
 
 
-def _view(profile: Profile) -> dict[str, object]:
-    fixed = {
-        "city": profile.city,
-        "country": profile.country,
-        "currency": profile.salary.currency,
-        "strongScore": profile.settings.strong_score,
-        "linkedinCap": profile.settings.linkedin_cap,
+def _limits() -> dict[str, object]:
+    return {
         "maxItems": MAX_ITEMS,
         "maxText": MAX_TEXT,
-        "maxJobAgeDays": MAX_JOB_AGE_DAYS,
-        "maxDailyCap": MAX_DAILY_CAP,
+        "maxLongText": MAX_LONG_TEXT,
+        "numbers": {spec.name: {"min": spec.low, "max": spec.high} for spec in LIMITED},
     }
-    return {"values": _values(profile), "fixed": fixed}
 
 
-def _items(body: Body, name: str, found: list[str]) -> tuple[str, ...]:
-    given = strings(body, name)
-    if given is None:
-        found.append(f"{LISTS[name]}: send a list of words.")
-        return ()
-    kept: dict[str, str] = {}
-    for part in given:
-        words = " ".join(part.split())
-        if words:
-            kept.setdefault(words.casefold(), words)
-    items = tuple(kept.values())
-    if len(items) > MAX_ITEMS or any(len(item) > MAX_TEXT for item in items):
-        found.append(f"{LISTS[name]}: up to {MAX_ITEMS} entries, each up to {MAX_TEXT} characters.")
-    return items
+def _settings(profile: Profile, read: Reader) -> Settings:
+    return replace(
+        profile.settings,
+        min_score=read.number(MIN_SCORE),
+        max_job_age_days=read.number(JOB_AGE),
+        jobs_per_run=read.number(JOBS_PER_RUN),
+        scores_per_run=read.number(SCORES_PER_RUN),
+        linkedin_cap=read.number(LINKEDIN_CAP),
+        ai_calls_per_day=read.number(AI_CALLS),
+        run_every_minutes=read.number(EVERY_MINUTES),
+        summary_hour=read.number(SUMMARY_HOUR),
+        linkedin_reading=read.flag("linkedinReading", "Read LinkedIn jobs on its own"),
+        linkedin_reads_per_day=read.number(LINKEDIN_READS),
+    )
 
 
-def _number(body: Body, spec: Number, found: list[str]) -> int:
-    value = number(body, spec.name)
-    if value is not None and spec.low <= value <= spec.high:
-        return value
-    found.append(f"{spec.label}: enter a whole number from {spec.low:,} to {spec.high:,}.")
-    return spec.low
+def _diversity_given(read: Reader) -> Diversity | None:
+    given = {name: read.text(name, name.capitalize()) for name in DIVERSITY}
+    return Diversity(**given) if any(given.values()) else None
 
 
-def _daily_cap(body: Body, found: list[str]) -> int | None:
-    return None if body.get(DAILY_CAP.name) is None else _number(body, DAILY_CAP, found)
+def _about(profile: Profile, read: Reader) -> Profile:
+    return replace(
+        profile,
+        name=read.text("name", "Name", required=True),
+        email=read.text("email", "Email", required=True),
+        phone=read.text("phone", "Phone"),
+        city=read.text("city", "City", required=True),
+        country=read.text("country", "Country", required=True),
+        links=read.items("links", "Links"),
+        current_company=read.text("currentCompany", "Current company"),
+        years_experience=read.decimal(YEARS),
+        citizenship=read.text("citizenship", "Citizenship"),
+        work_without_visa=read.items("workWithoutVisa", "Countries you can work in without a visa"),
+        needs_sponsorship_elsewhere=read.flag("needsSponsorship", "Needs visa sponsorship"),
+        dob=read.day("dateOfBirth", "Date of birth"),
+        diversity=_diversity_given(read),
+        extra_facts=read.long_text("extraFacts", "Other true facts"),
+    )
 
 
-def _notice(body: Body, found: list[str]) -> str:
-    words = " ".join(text(body, "noticePeriod", MAX_TEXT + 1).split())
-    if len(words) > MAX_TEXT:
-        found.append(f"{NOTICE_LABEL}: up to {MAX_TEXT} characters.")
-    return words
+def _search(profile: Profile, read: Reader) -> Profile:
+    places = replace(
+        profile.work_places,
+        onsite_city=read.flag("onsiteCity", "On-site in your city"),
+        remote_country=read.flag("remoteCountry", "Remote in your country"),
+        relocate=read.flag("relocate", "Moving cities"),
+        remote_abroad=read.flag("remoteAbroad", "Remote abroad"),
+        relocate_cities=read.items("relocateCities", "Cities you'd move to"),
+    )
+    return replace(
+        profile,
+        roles=read.items("roles", "Roles you want"),
+        title_keywords=read.items("titleKeywords", "Title keywords"),
+        title_exclude=read.items("titleExclude", "Titles to skip"),
+        skip_companies=read.items("skipCompanies", "Companies to skip"),
+        work_places=places,
+    )
 
 
-def _places(body: Body, found: list[str]) -> dict[str, bool]:
-    chosen = {name: flag(body, name) for name in PLACES}
-    if any(value is None for value in chosen.values()):
-        found.append("Where you'll work: tick or untick each kind of place.")
-    return {name: bool(value) for name, value in chosen.items()}
-
-
-def _salary_order(low: int, high: int, found: list[str]) -> None:
+def _pay_and_answers(profile: Profile, read: Reader) -> Profile:
+    low, high = read.number(SALARY_MIN), read.number(SALARY_MAX)
     if low > high:
-        found.append("Expected salary: the lowest can't be more than the highest.")
+        read.problems.append("Expected salary: the lowest can't be more than the highest.")
+    salary = replace(
+        profile.salary,
+        currency=read.text("currency", "Currency", required=True).upper(),
+        expected_min=low,
+        expected_max=high,
+        current=read.optional_number(SALARY_NOW),
+    )
+    return replace(
+        profile,
+        salary=salary,
+        notice_period=read.text("noticePeriod", "Notice period"),
+        unknown_questions=read.choice(
+            "unknownQuestions",
+            "Questions it can't answer",
+            UnknownQuestions,
+            profile.unknown_questions,
+        ),
+        cover_letter=read.choice("coverLetter", "Cover letters", CoverLetter, profile.cover_letter),
+        daily_cap=read.optional_number(DAILY_CAP),
+    )
 
 
 def updated(profile: Profile, body: Body) -> tuple[Profile, list[str]]:
-    found: list[str] = []
-    chosen = _places(body, found)
-    places = replace(
-        profile.work_places,
-        onsite_city=chosen["onsiteCity"],
-        remote_country=chosen["remoteCountry"],
-        relocate=chosen["relocate"],
-        remote_abroad=chosen["remoteAbroad"],
-        relocate_cities=_items(body, "relocateCities", found),
-    )
-    low, high = _number(body, SALARY_MIN, found), _number(body, SALARY_MAX, found)
-    _salary_order(low, high, found)
-    settings = replace(
-        profile.settings,
-        min_score=_number(body, _min_score(profile), found),
-        max_job_age_days=_number(body, JOB_AGE, found),
-    )
-    changed = replace(
-        profile,
-        title_keywords=_items(body, "titleKeywords", found),
-        title_exclude=_items(body, "titleExclude", found),
-        skip_companies=_items(body, "skipCompanies", found),
-        work_places=places,
-        salary=replace(profile.salary, expected_min=low, expected_max=high),
-        settings=settings,
-        notice_period=_notice(body, found),
-        daily_cap=_daily_cap(body, found),
-    )
-    return changed, found or profile_problems(changed)
+    read = Reader(body)
+    changed = _pay_and_answers(_search(_about(profile, read), read), read)
+    changed = replace(changed, settings=_settings(profile, read))
+    return changed, read.problems or profile_problems(changed)
 
 
 def _loaded(paths: Paths) -> Profile | Response:
@@ -169,9 +239,21 @@ def _loaded(paths: Paths) -> Profile | Response:
         return problem(HTTPStatus.CONFLICT, error.hint or str(error), error.problems)
 
 
+def _shown(profile: Profile) -> Response:
+    return ok(
+        {
+            "values": _values(profile),
+            "limits": _limits(),
+            "automatic": automatic.current(),
+            "resume": {"format": profile.resume.format.value},
+            "extension": install_info(),
+        }
+    )
+
+
 def _show(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
     profile = _loaded(paths)
-    return profile if isinstance(profile, Response) else ok(_view(profile))
+    return profile if isinstance(profile, Response) else _shown(profile)
 
 
 def _save(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
@@ -182,7 +264,11 @@ def _save(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Bo
     if found:
         return bad_request(NOT_SAVED, found)
     save(paths, changed)
-    return ok(_view(changed))
+    try:
+        automatic.follow(paths, changed.settings.run_every_minutes)
+    except SatyaApplyError as error:
+        return bad_request(f"Saved, but automatic runs didn't update: {error}")
+    return _shown(changed)
 
 
 GET: tuple[Route, ...] = (route("/settings", _show),)

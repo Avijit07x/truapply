@@ -15,8 +15,10 @@ on conflict (question) do update set
 where answers.source != 'user' or excluded.source = 'user'
 """
 SELECT_ANSWERS = "select question, answer from answers"
-INSERT_QUESTION = """
-insert or ignore into questions (question, label, job_id, asked_at) values (?, ?, ?, ?)
+SELECT_FOR_JOB = "select question, answer from job_answers where job_id = ?"
+UPSERT_FOR_JOB = """
+insert into job_answers (job_id, question, answer) values (?, ?, ?)
+on conflict (job_id, question) do update set answer = excluded.answer
 """
 
 
@@ -47,10 +49,11 @@ def save_many(db: sqlite3.Connection, answers: Iterable[SavedAnswer], now: datet
         db.executemany(UPSERT_ANSWER, rows)
 
 
-def open_questions(
-    db: sqlite3.Connection, labels: Iterable[str], job_id: int, now: datetime
-) -> None:
-    stamp = now.isoformat()
-    rows = [(question_key(label), label, job_id, stamp) for label in labels]
+def for_job(db: sqlite3.Connection, job_id: int) -> dict[str, str]:
+    return {row["question"]: row["answer"] for row in db.execute(SELECT_FOR_JOB, (job_id,))}
+
+
+def keep_for_job(db: sqlite3.Connection, job_id: int, answers: Iterable[tuple[str, str]]) -> None:
+    rows = [(job_id, question_key(question), answer) for question, answer in answers]
     with db:
-        db.executemany(INSERT_QUESTION, rows)
+        db.executemany(UPSERT_FOR_JOB, rows)

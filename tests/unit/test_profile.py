@@ -63,12 +63,40 @@ def test_inverted_salary_range_is_a_problem(resume: Path) -> None:
     assert "salary: need 0 < expected_min <= expected_max" in problems(profile)
 
 
-def test_min_score_above_strong_score_is_a_problem(resume: Path) -> None:
-    profile = replace(samples.profile(resume), settings=Settings(min_score=90, strong_score=80))
+def test_min_score_above_100_is_a_problem(resume: Path) -> None:
+    profile = replace(samples.profile(resume), settings=Settings(min_score=101))
     assert any("min_score" in problem for problem in problems(profile))
+
+
+def test_jobs_per_run_out_of_range_is_a_problem(resume: Path) -> None:
+    profile = replace(samples.profile(resume), settings=Settings(jobs_per_run=0))
+    assert any("jobs_per_run" in problem for problem in problems(profile))
+
+
+def test_retired_keys_are_dropped_on_load(paths: Paths, resume: Path) -> None:
+    save(paths, samples.profile(resume))
+    raw = json.loads(paths.profile.read_text(encoding="utf-8"))
+    raw["sites"] = ["linkedin"]
+    raw["settings"] |= {"strong_score": 80, "trust_after": 20, "ghosted_after_days": 21}
+    paths.profile.write_text(json.dumps(raw), encoding="utf-8")
+    assert load(paths).settings == Settings()
 
 
 def test_invalid_profile_is_never_saved(paths: Paths, resume: Path) -> None:
     with pytest.raises(ProfileInvalidError):
         save(paths, replace(samples.profile(resume), roles=()))
     assert not paths.profile.exists()
+
+
+def test_an_old_hours_setting_becomes_minutes(paths: Paths, resume: Path) -> None:
+    save(paths, samples.profile(resume))
+    raw = json.loads(paths.profile.read_text(encoding="utf-8"))
+    raw["settings"].pop("run_every_minutes")
+    raw["settings"]["run_every_hours"] = 1
+    paths.profile.write_text(json.dumps(raw), encoding="utf-8")
+    assert load(paths).settings.run_every_minutes == 60
+
+
+def test_runs_more_often_than_every_15_minutes_are_refused(resume: Path) -> None:
+    profile = replace(samples.profile(resume), settings=Settings(run_every_minutes=10))
+    assert any("run_every_minutes" in problem for problem in problems(profile))

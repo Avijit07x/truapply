@@ -25,6 +25,15 @@ def strings(body: Body, key: str) -> list[str] | None:
     return [str(item) for item in value]
 
 
+def numbers(body: Body, key: str) -> list[int] | None:
+    value = body.get(key)
+    if not isinstance(value, list) or not all(
+        isinstance(item, int) and not isinstance(item, bool) for item in value
+    ):
+        return None
+    return [int(item) for item in value]
+
+
 def pairs(body: Body, key: str, limit: int) -> dict[str, str]:
     value = body.get(key)
     items = value if isinstance(value, list) else []

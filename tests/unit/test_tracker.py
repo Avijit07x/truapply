@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -21,6 +22,7 @@ NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 INJECTED = "<script>alert(1)</script>"
 INDEX = b"<!doctype html><div id=root></div>"
 SCRIPT = b"console.log(1)"
+BURST = 48
 
 
 @pytest.fixture(autouse=True)
@@ -48,8 +50,6 @@ def tracker(tmp_path: Path) -> Iterator[TrackerServer]:
         sent = (Sent("Why us?", INJECTED),)
         jobs.record_attempt(db, 1, AttemptRecord(Status.READY, NOW, "filled", sent, trusted_pdf))
         jobs.record_attempt(db, 2, AttemptRecord(Status.READY, NOW, "filled", (), outside_pdf))
-    paths.shots.mkdir(parents=True, exist_ok=True)
-    (paths.shots / "1.png").write_bytes(b"\x89PNG fake")
     with running(paths) as server:
         yield server
 
@@ -78,20 +78,18 @@ def test_job_text_comes_back_as_plain_strings_and_unsafe_links_are_dropped(
     assert job["title"] == f"Engineer {INJECTED}"
     assert job["url"] is None
     assert job["applyUrl"] is None
-    assert job["sent"] == [{"question": "Why us?", "answer": INJECTED, "editable": True}]
-    assert job["hasScreenshot"]
+    assert job["sent"] == [{"question": "Why us?", "answer": INJECTED}]
     assert job["hasResume"]
     assert get(tracker, "/api/jobs/99")[0] == 404
 
 
 def test_files_are_served_by_job_id_only_from_the_data_folder(tracker: TrackerServer) -> None:
-    status, headers, body = fetch(tracker, "/jobs/1/screenshot.png")
-    assert (status, headers["Content-Type"], body) == (200, "image/png", b"\x89PNG fake")
-    assert fetch(tracker, "/jobs/1/resume.pdf")[2] == b"%PDF-1.4 tailored"
+    status, headers, body = fetch(tracker, "/jobs/1/resume.pdf")
+    assert (status, headers["Content-Type"], body) == (200, "application/pdf", b"%PDF-1.4 tailored")
     assert fetch(tracker, "/jobs/2/resume.pdf")[0] == 404
     assert get(tracker, "/api/jobs/2")[1]["hasResume"] is False
     assert b"elsewhere" not in fetch(tracker, "/jobs/1/../../outside.pdf")[2]
-    assert fetch(tracker, "/jobs/99/screenshot.png")[0] == 404
+    assert fetch(tracker, "/jobs/99/resume.pdf")[0] == 404
 
 
 def test_requests_from_other_websites_are_refused(tracker: TrackerServer) -> None:
@@ -136,3 +134,11 @@ def test_an_unbuilt_app_says_how_to_build_it(tracker: TrackerServer, built: Path
     assert status == 503
     assert b"npm run build" in body
     assert get(tracker, "/api/summary")[0] == 200
+
+
+def test_a_burst_of_requests_is_all_answered(tracker: TrackerServer) -> None:
+    def load(_: int) -> int:
+        return fetch(tracker, "/assets/index-a1B2.js")[0]
+
+    with ThreadPoolExecutor(BURST) as pool:
+        assert set(pool.map(load, range(BURST * 4))) == {200}

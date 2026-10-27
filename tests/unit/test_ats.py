@@ -79,6 +79,17 @@ def test_the_same_board_is_listed_once() -> None:
     assert boards_in(urls) == [Board(Ats.LEVER, "acme")]
 
 
+def test_a_greenhouse_posting_counts_from_its_latest_update() -> None:
+    posting = {
+        "id": 7,
+        "title": "Frontend Developer",
+        "first_published": "2026-09-14T10:44:18-04:00",
+        "updated_at": "2026-10-23T07:00:26-04:00",
+    }
+    [job] = GREENHOUSE.parse(Board(Ats.GREENHOUSE, "northwind"), {"jobs": [posting]})
+    assert job.posted_at == datetime(2026, 10, 23, 11, 0, 26, tzinfo=UTC)
+
+
 def test_greenhouse_postings_are_parsed_and_bad_ones_skipped() -> None:
     jobs = GREENHOUSE.parse(Board(Ats.GREENHOUSE, "northwind"), GREENHOUSE_DATA)
     assert len(jobs) == 1

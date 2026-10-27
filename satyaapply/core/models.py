@@ -31,25 +31,12 @@ class Status(StrEnum):
     SKIPPED = "skipped"
     SCORED = "scored"
     READY = "ready"
-    APPROVED = "approved"
     DISMISSED = "dismissed"
-    SUBMITTING = "submitting"
     APPLIED = "applied"
-    UNCONFIRMED = "unconfirmed"
-    NEEDS_INPUT = "needs_input"
-    EXTERNAL = "external"
-    FAILED = "failed"
     CLOSED = "closed"
-    FINISH = "finish"
 
 
-ACTIVE_STATUSES = (
-    Status.READY,
-    Status.APPROVED,
-    Status.SUBMITTING,
-    Status.APPLIED,
-    Status.UNCONFIRMED,
-)
+ACTIVE_STATUSES = (Status.READY, Status.APPLIED)
 
 
 class Ats(StrEnum):

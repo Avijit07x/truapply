@@ -1,10 +1,14 @@
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 HOME_ENV = "SATYAAPPLY_HOME"
 DEFAULT_HOME = "~/.satyaapply"
 PRIVATE_DIR_MODE = 0o700
+RUN_LOG_STAMP = "%Y%m%d-%H%M%S-%f"
+AUTOMATIC_RUN = "Automatic run"
+MANUAL_RUN = "Manual run"
 
 
 @dataclass(frozen=True)
@@ -39,20 +43,27 @@ class Paths:
     def resumes(self) -> Path:
         return self.root / "resumes"
 
-    @property
-    def shots(self) -> Path:
-        return self.root / "shots"
-
     def job_dir(self, job_id: int) -> Path:
         return self.resumes / str(job_id)
 
     @property
-    def browser(self) -> Path:
-        return self.root / "browser"
-
-    @property
     def log(self) -> Path:
         return self.root / "run.log"
+
+    @property
+    def lock(self) -> Path:
+        return self.root / "run.lock"
+
+    @property
+    def runs(self) -> Path:
+        return self.root / "runs"
+
+    def run_log(self, started: datetime) -> Path:
+        return self.runs / f"{started.strftime(RUN_LOG_STAMP)}.log"
+
+    @property
+    def summaries(self) -> Path:
+        return self.root / "summaries"
 
     def ensure(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)

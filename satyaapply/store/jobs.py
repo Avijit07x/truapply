@@ -5,16 +5,26 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from satyaapply.core.codec import decode, encode
-from satyaapply.core.errors import DecodeError
+from satyaapply.core.codec import encode
 from satyaapply.core.forms import Sent
 from satyaapply.core.models import ACTIVE_STATUSES, Job, Source, Status
+from satyaapply.core.notes import OUTSIDE_SEARCH_NOTE
 
 INSERT_JOB = """
 insert or ignore into jobs (
     key, dupe, source, url, apply_url, company, title, location, description,
     posted_at, found_at, status, status_at
 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+INSERT_OUTSIDE_SEARCH = """
+insert or ignore into jobs (
+    key, dupe, source, url, apply_url, company, title, location, description,
+    posted_at, found_at, status, status_at, note
+) values (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, 'skipped', ?, ?)
+"""
+BACK_IN_SEARCH = """
+update jobs set status = 'new', status_at = ?, note = null, description = ?
+where key = ? and status = 'skipped' and note = ?
 """
 SELECT_JOB = "select * from jobs where id = ?"
 SELECT_TO_SCORE = """
@@ -25,14 +35,8 @@ SELECT_TO_APPLY = """
 select * from jobs where status = 'scored'
 order by score desc, posted_at is null, posted_at desc limit ?
 """
-SELECT_APPROVED = "select * from jobs where status = 'approved' order by status_at, id limit ?"
 UPDATE_STATUS = "update jobs set status = ?, status_at = ?, note = ? where id = ?"
 UPDATE_ALL_IN = "update jobs set status = ?, status_at = ?, note = ? where status = ?"
-UPDATE_SUBMITTING = (
-    "update jobs set status = 'submitting', status_at = ?, note = ?, "
-    "auto_submitted = max(auto_submitted, ?) where id = ?"
-)
-SUBMITTING_NOTE = "clicking Submit"
 UPDATE_SCORE = (
     "update jobs set score = ?, status = ?, status_at = ?, note = ?, reason = ? where id = ?"
 )
@@ -41,11 +45,11 @@ update jobs set status = ?, status_at = ?, note = ?, sent = ?, resume_pdf = ?,
     applied_at = case when ? = 'applied' then ? else applied_at end
 where id = ?
 """
-SELECT_ACTIVE_TWIN = (
-    "select 1 from jobs where dupe = ? and key != ? and status in (?, ?, ?, ?, ?) limit 1"
-)
-COUNT_PREPARED = "select count(*) from jobs where status in (?, ?, ?, ?, ?) and status_at >= ?"
+SELECT_ACTIVE_TWIN = "select 1 from jobs where dupe = ? and key != ? and status in (?, ?) limit 1"
+COUNT_PREPARED = "select count(*) from jobs where status in (?, ?) and status_at >= ?"
 COUNT_PREPARED_ON = COUNT_PREPARED + " and source = ?"
+COUNT_APPLIED = "select count(*) from jobs where status = ? and applied_at >= ?"
+COUNT_FOUND_ON = "select count(*) from jobs where source = ? and found_at >= ?"
 
 
 @dataclass(frozen=True)
@@ -70,13 +74,6 @@ class AttemptRecord:
     note: str
     sent: tuple[Sent, ...]
     resume_pdf: Path | None
-
-
-@dataclass(frozen=True)
-class Approved:
-    job: Job
-    resume_pdf: Path | None
-    sent: tuple[Sent, ...]
 
 
 def _row(job: Job, now: datetime) -> tuple[object, ...]:
@@ -122,6 +119,27 @@ def add_many(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
         return db.total_changes - before
 
 
+def add_outside_search(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
+    stamp = now.isoformat()
+    rows = (
+        (*row[:8], *row[9:11], stamp, OUTSIDE_SEARCH_NOTE)
+        for row in (_row(job, now) for job in jobs)
+    )
+    with db:
+        before = db.total_changes
+        db.executemany(INSERT_OUTSIDE_SEARCH, rows)
+        return db.total_changes - before
+
+
+def back_in_search(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
+    stamp = now.isoformat()
+    rows = ((stamp, job.description, job.key, OUTSIDE_SEARCH_NOTE) for job in jobs)
+    with db:
+        before = db.total_changes
+        db.executemany(BACK_IN_SEARCH, rows)
+        return db.total_changes - before
+
+
 def find(db: sqlite3.Connection, job_id: int) -> Job | None:
     row = db.execute(SELECT_JOB, (job_id,)).fetchone()
     return from_row(row) if row else None
@@ -135,30 +153,6 @@ def next_to_apply(db: sqlite3.Connection, limit: int) -> list[Job]:
     return [from_row(row) for row in db.execute(SELECT_TO_APPLY, (limit,))]
 
 
-def _sent(raw: str | None) -> tuple[Sent, ...]:
-    try:
-        items = json.loads(raw) if raw else []
-        return tuple(decode(Sent, item) for item in items)
-    except (json.JSONDecodeError, TypeError, DecodeError):
-        return ()
-
-
-def next_approved(db: sqlite3.Connection, limit: int) -> list[Approved]:
-    return [
-        Approved(
-            from_row(row),
-            Path(row["resume_pdf"]) if row["resume_pdf"] else None,
-            _sent(row["sent"]),
-        )
-        for row in db.execute(SELECT_APPROVED, (limit,))
-    ]
-
-
-def mark_submitting(db: sqlite3.Connection, job_id: int, at: datetime, auto: bool) -> None:
-    with db:
-        db.execute(UPDATE_SUBMITTING, (at.isoformat(), SUBMITTING_NOTE, int(auto), job_id))
-
-
 def change_all(db: sqlite3.Connection, current: Status, change: StatusChange) -> int:
     with db:
         values = (change.status, change.at.isoformat(), change.note, current)
@@ -166,8 +160,13 @@ def change_all(db: sqlite3.Connection, current: Status, change: StatusChange) ->
 
 
 def set_status(db: sqlite3.Connection, job_id: int, change: StatusChange) -> None:
+    set_status_many(db, [job_id], change)
+
+
+def set_status_many(db: sqlite3.Connection, job_ids: Iterable[int], change: StatusChange) -> None:
+    rows = [(change.status, change.at.isoformat(), change.note, job_id) for job_id in job_ids]
     with db:
-        db.execute(UPDATE_STATUS, (change.status, change.at.isoformat(), change.note, job_id))
+        db.executemany(UPDATE_STATUS, rows)
 
 
 def save_score(db: sqlite3.Connection, job_id: int, update: ScoreUpdate) -> None:
@@ -197,4 +196,14 @@ def prepared_since(db: sqlite3.Connection, since: datetime, source: Source | Non
     values: tuple[object, ...] = (*ACTIVE_STATUSES, since.isoformat())
     query = COUNT_PREPARED if source is None else COUNT_PREPARED_ON
     count: int = db.execute(query, values if source is None else (*values, source)).fetchone()[0]
+    return count
+
+
+def found_since(db: sqlite3.Connection, source: Source, since: datetime) -> int:
+    count: int = db.execute(COUNT_FOUND_ON, (source, since.isoformat())).fetchone()[0]
+    return count
+
+
+def applied_since(db: sqlite3.Connection, since: datetime) -> int:
+    count: int = db.execute(COUNT_APPLIED, (Status.APPLIED, since.isoformat())).fetchone()[0]
     return count

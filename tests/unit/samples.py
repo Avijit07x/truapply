@@ -7,7 +7,6 @@ from satyaapply.core.profile import (
     Profile,
     ResumeRef,
     Salary,
-    SubmitMode,
     UnknownQuestions,
     WorkPlaces,
 )
@@ -28,8 +27,6 @@ def profile(resume_path: Path) -> Profile:
         title_keywords=("frontend", "react"),
         title_exclude=("senior",),
         work_places=WorkPlaces(True, True, False, (), False),
-        sites=(Source.CAREER_PAGES,),
-        submit_mode=SubmitMode.TRUST,
         unknown_questions=UnknownQuestions.SKIP,
         daily_cap=20,
         cover_letter=CoverLetter.REQUIRED,

@@ -8,17 +8,19 @@ from satyaapply.core.codec import decode, encode
 from satyaapply.core.documents import ResumeFormat
 from satyaapply.core.errors import DecodeError, ProfileInvalidError, ProfileMissingError
 from satyaapply.core.files import write_private
-from satyaapply.core.models import Source
 from satyaapply.core.paths import Paths
 
 PROFILE_VERSION = 1
+RETIRED_KEYS = frozenset({"submit_mode", "auto_submit", "sites"})
+RETIRED_SETTINGS = frozenset({"strong_score", "trust_after", "ghosted_after_days"})
 MAX_SCORE = 100
 LAST_HOUR = 23
-
-
-class SubmitMode(StrEnum):
-    TRUST = "trust"
-    REVIEW_ONLY = "review_only"
+MAX_JOBS_PER_RUN = 50
+MAX_SCORES_PER_RUN = 200
+MAX_LINKEDIN_READS = 500
+MIN_EVERY_MINUTES = 15
+MAX_EVERY_MINUTES = 1440
+MINUTES_PER_HOUR = 60
 
 
 class UnknownQuestions(StrEnum):
@@ -66,14 +68,15 @@ class Diversity:
 @dataclass(frozen=True)
 class Settings:
     min_score: int = 60
-    strong_score: int = 80
-    trust_after: int = 20
     linkedin_cap: int = 10
-    run_every_hours: int = 3
+    run_every_minutes: int = 180
     summary_hour: int = 20
     ai_calls_per_day: int = 300
-    ghosted_after_days: int = 21
     max_job_age_days: int = 30
+    jobs_per_run: int = 5
+    scores_per_run: int = 40
+    linkedin_reading: bool = False
+    linkedin_reads_per_day: int = 150
 
 
 @dataclass(frozen=True)
@@ -91,8 +94,6 @@ class Profile:
     title_keywords: tuple[str, ...]
     title_exclude: tuple[str, ...]
     work_places: WorkPlaces
-    sites: tuple[Source, ...]
-    submit_mode: SubmitMode
     unknown_questions: UnknownQuestions
     daily_cap: int | None
     cover_letter: CoverLetter
@@ -105,23 +106,30 @@ class Profile:
     dob: date | None
     diversity: Diversity | None
     extra_facts: str
-    auto_submit: bool = False
     settings: Settings = field(default_factory=Settings)
     version: int = PROFILE_VERSION
 
 
 def _settings_problems(settings: Settings) -> list[str]:
     problems = []
-    if not 0 <= settings.min_score <= settings.strong_score <= MAX_SCORE:
-        problems.append("settings: need 0 <= min_score <= strong_score <= 100")
-    if settings.trust_after < 1:
-        problems.append("settings.trust_after must be at least 1")
+    if not 0 <= settings.min_score <= MAX_SCORE:
+        problems.append("settings.min_score must be 0-100")
+    if not 1 <= settings.jobs_per_run <= MAX_JOBS_PER_RUN:
+        problems.append(f"settings.jobs_per_run must be 1-{MAX_JOBS_PER_RUN}")
+    if not 1 <= settings.linkedin_reads_per_day <= MAX_LINKEDIN_READS:
+        problems.append(f"settings.linkedin_reads_per_day must be 1-{MAX_LINKEDIN_READS}")
+    if not 1 <= settings.scores_per_run <= MAX_SCORES_PER_RUN:
+        problems.append(f"settings.scores_per_run must be 1-{MAX_SCORES_PER_RUN}")
     if settings.linkedin_cap < 0:
         problems.append("settings.linkedin_cap can't be negative")
     if not 0 <= settings.summary_hour <= LAST_HOUR:
         problems.append("settings.summary_hour must be 0-23")
-    if settings.run_every_hours < 1 or settings.ai_calls_per_day < 1:
-        problems.append("settings.run_every_hours and ai_calls_per_day must be at least 1")
+    if not MIN_EVERY_MINUTES <= settings.run_every_minutes <= MAX_EVERY_MINUTES:
+        problems.append(
+            f"settings.run_every_minutes must be {MIN_EVERY_MINUTES}-{MAX_EVERY_MINUTES}"
+        )
+    if settings.ai_calls_per_day < 1:
+        problems.append("settings.ai_calls_per_day must be at least 1")
     return problems
 
 
@@ -131,8 +139,6 @@ def problems(profile: Profile) -> list[str]:
         found.append("email doesn't look like an email address")
     if not profile.roles:
         found.append("roles: add at least one target job title")
-    if not profile.sites:
-        found.append("sites: pick at least one job site")
     if not 0 < profile.salary.expected_min <= profile.salary.expected_max:
         found.append("salary: need 0 < expected_min <= expected_max")
     if profile.daily_cap is not None and profile.daily_cap < 1:
@@ -144,11 +150,24 @@ def problems(profile: Profile) -> list[str]:
     return found
 
 
+def _current(raw: object) -> object:
+    if not isinstance(raw, dict):
+        return raw
+    kept = {key: value for key, value in raw.items() if key not in RETIRED_KEYS}
+    settings = kept.get("settings")
+    if isinstance(settings, dict):
+        hours = settings.pop("run_every_hours", None)
+        if isinstance(hours, int) and "run_every_minutes" not in settings:
+            settings["run_every_minutes"] = hours * MINUTES_PER_HOUR
+        kept["settings"] = {k: v for k, v in settings.items() if k not in RETIRED_SETTINGS}
+    return kept
+
+
 def load(paths: Paths) -> Profile:
     if not paths.profile.is_file():
         raise ProfileMissingError("No profile yet.")
     try:
-        raw = json.loads(paths.profile.read_text(encoding="utf-8"))
+        raw = _current(json.loads(paths.profile.read_text(encoding="utf-8")))
         profile = decode(Profile, raw)
     except json.JSONDecodeError as error:
         problem = f"not valid JSON (line {error.lineno})"

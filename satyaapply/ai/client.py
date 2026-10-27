@@ -8,6 +8,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeVar
 
+from satyaapply.ai.budget import charge
 from satyaapply.core.codec import decode, json_schema
 from satyaapply.core.errors import AIError, ClaudeUnavailableError, DecodeError, UsageLimitError
 
@@ -23,8 +24,8 @@ log = logging.getLogger(__name__)
 
 
 class Model(StrEnum):
-    HAIKU = "haiku"
-    SONNET = "sonnet"
+    HAIKU = "claude-haiku-5-5"
+    SONNET = "claude-sonnet-5-5"
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,7 @@ def _run(request: Request, schema: dict[str, object]) -> dict[str, object]:
     binary = shutil.which("claude")
     if binary is None:
         raise ClaudeUnavailableError("Claude Code (`claude`) isn't installed.")
+    charge()
     with tempfile.TemporaryDirectory(prefix="satyaapply-ai-") as sandbox:
         for attachment in request.attachments:
             shutil.copy2(attachment, Path(sandbox) / attachment.name)

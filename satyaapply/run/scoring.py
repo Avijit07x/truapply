@@ -86,7 +86,16 @@ def _batch(
 
 def score_pending(db: sqlite3.Connection, run: RunContext, limit: int) -> Scoring:
     batch, duplicates = _batch(db, run, jobs.next_to_score(db, limit))
-    counts: Counter[str] = Counter(skipped=duplicates)
+    return _score_all(db, run, batch, Counter(skipped=duplicates))
+
+
+def score_these(db: sqlite3.Connection, run: RunContext, chosen: Sequence[Job]) -> Scoring:
+    return _score_all(db, run, chosen, Counter())
+
+
+def _score_all(
+    db: sqlite3.Connection, run: RunContext, batch: Sequence[Job], counts: Counter[str]
+) -> Scoring:
     if batch:
         run.progress(f"Scoring {len(batch)} {'job' if len(batch) == 1 else 'jobs'} with AI …")
     score = partial(_verdict, run)
@@ -101,3 +110,7 @@ def score_pending(db: sqlite3.Connection, run: RunContext, limit: int) -> Scorin
             pool.shutdown(cancel_futures=True)
             raise
     return Scoring(counts["matched"], counts["skipped"], counts["failed"])
+
+
+def score_one(db: sqlite3.Connection, run: RunContext, job: Job) -> None:
+    _save(db, run, job, _verdict(run, job))

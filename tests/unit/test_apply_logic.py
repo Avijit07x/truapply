@@ -2,9 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from satyaapply.apply.answering import answer_form
 from satyaapply.apply.claims import made_up_numbers, without
-from satyaapply.apply.detect import PageState, is_confirmed, text_state
-from satyaapply.apply.flow import known_values
 from satyaapply.apply.options import as_number, best_option, is_truthy
 from satyaapply.core.forms import Answer, Field, FieldKind, FormAnswers, FormContext
 from tests.unit import samples
@@ -44,7 +43,11 @@ def test_numbers_are_taken_out_of_text() -> None:
     assert as_number("none") is None
 
 
-def test_saved_answers_fill_fields_whose_options_fit() -> None:
+def nothing_new(_context: FormContext, _fields: object) -> FormAnswers:
+    return FormAnswers((), (), None, None, None)
+
+
+def test_saved_answers_fill_fields_whose_options_fit(tmp_path: Path) -> None:
     fields = [
         field(FieldKind.TEXT, "Notice period *"),
         field(FieldKind.SELECT, "Country", ("India", "Germany")),
@@ -56,38 +59,9 @@ def test_saved_answers_fill_fields_whose_options_fit() -> None:
         for n, item in enumerate(fields)
     ]
     known = {"notice period": "30 days", "country": "India", "shirt size": "XXL", "resume": "x"}
-    assert known_values(fields, known) == {"f0": "30 days", "f1": "India"}
-
-
-@pytest.mark.parametrize(
-    ("text", "state"),
-    [
-        ("This job is no longer accepting applications.", PageState.CLOSED),
-        ("The position has been filled", PageState.CLOSED),
-        ("You have already applied for this role", PageState.ALREADY_APPLIED),
-        ("Please verify you are human", PageState.HUMAN_CHECK),
-        ("We are hiring a Frontend Engineer to build dashboards.", None),
-    ],
-)
-def test_page_text_reveals_closed_jobs_and_checks(text: str, state: PageState | None) -> None:
-    assert text_state(text) is state
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Thank you for applying!",
-        "Your application was successfully submitted.",
-        "Application submitted",
-        "We've received your application",
-    ],
-)
-def test_confirmations_are_recognised(text: str) -> None:
-    assert is_confirmed(text)
-
-
-def test_a_job_description_is_not_a_confirmation() -> None:
-    assert not is_confirmed("Submit your application below to join our team.")
+    context = FormContext(samples.profile(tmp_path / "m.tex"), "", samples.job())
+    reply = answer_form(context, fields, known, nothing_new)
+    assert reply.answers == {"f0": "30 days", "f1": "India", "f3": "RESUME"}
 
 
 def test_only_numbers_missing_from_the_resume_and_facts_are_flagged(tmp_path: Path) -> None:

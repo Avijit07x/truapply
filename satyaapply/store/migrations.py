@@ -75,4 +75,20 @@ MIGRATIONS: tuple[str, ...] = (
         at text not null
     );
     """,
+    """
+    update jobs set status = 'ready',
+        note = 'the old version may have sent this; check your email before applying again'
+    where status in ('submitting', 'unconfirmed');
+    update jobs set status = 'ready', note = 'ready for you to apply in your Chrome'
+    where status in ('approved', 'finish', 'needs_input', 'failed', 'external');
+    drop table questions;
+    """,
+    """
+    create table job_answers (
+        job_id integer not null references jobs (id),
+        question text not null,
+        answer text not null,
+        primary key (job_id, question)
+    );
+    """,
 )

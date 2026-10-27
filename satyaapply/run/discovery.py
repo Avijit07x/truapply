@@ -6,10 +6,10 @@ from datetime import datetime, timedelta
 from satyaapply.ai.tasks import find_posting_urls
 from satyaapply.core.errors import AIError, UsageLimitError
 from satyaapply.core.profile import Profile
-from satyaapply.sources.ats import boards_in, poll
+from satyaapply.sources.ats import boards_in
 from satyaapply.sources.discover import shared_boards
-from satyaapply.sources.filters import worth_scoring
-from satyaapply.store import boards, jobs, meta
+from satyaapply.sources.intake import fits, take_in
+from satyaapply.store import boards, meta
 from satyaapply.store.boards import BoardOrigin
 
 LAST_SEARCH_KEY = "last_board_search"
@@ -51,16 +51,13 @@ def discover(db: sqlite3.Connection, profile: Profile, now: datetime, search: bo
     if search and _search_due(db, now):
         new_boards += _search_boards(db, profile, now)
     active = boards.active(db)
-    result = poll(active)
-    boards.mark_checked(db, result.alive, result.dead, now)
-    kept = [job for job in result.jobs if worth_scoring(job, profile, now)]
-    added = jobs.add_many(db, kept, now)
+    intake = take_in(db, active, fits(profile, now), now)
     return Discovery(
         boards=len(active),
         new_boards=new_boards,
-        found=len(result.jobs),
-        kept=len(kept),
-        added=added,
-        dead=len(result.dead),
-        unreachable=len(result.unreachable),
+        found=intake.found,
+        kept=intake.kept,
+        added=intake.added,
+        dead=intake.dead,
+        unreachable=intake.unreachable,
     )

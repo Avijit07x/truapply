@@ -5,6 +5,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from satyaapply.core.paths import Paths
+from satyaapply.tracker import resume_upload
+from satyaapply.tracker.extension import EXTENSION_ORIGIN
 from satyaapply.tracker.responses import Response, bad_request, forbidden
 from satyaapply.tracker.views import respond_get, respond_post
 
@@ -24,6 +26,7 @@ NO_STORE = "no-store"
 FOREVER = "public, max-age=31536000, immutable"
 MAX_BODY_BYTES = 200_000
 JSON_TYPE = "application/json"
+PENDING_CONNECTIONS = 128
 NOT_JSON = "Send a JSON object."
 
 log = logging.getLogger(__name__)
@@ -31,13 +34,14 @@ log = logging.getLogger(__name__)
 
 class TrackerServer(ThreadingHTTPServer):
     daemon_threads = True
+    request_queue_size = PENDING_CONNECTIONS
 
     def __init__(self, paths: Paths, port: int = DEFAULT_PORT) -> None:
         super().__init__((HOST, port), TrackerHandler)
         self.paths = paths
         bound = self.server_address[1]
         self.hosts = frozenset({f"{HOST}:{bound}", f"localhost:{bound}"})
-        self.origins = frozenset(f"http://{host}" for host in self.hosts)
+        self.origins = frozenset({EXTENSION_ORIGIN, *(f"http://{host}" for host in self.hosts)})
 
     @property
     def url(self) -> str:
@@ -72,8 +76,11 @@ class TrackerHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", FOREVER if response.cacheable else NO_STORE)
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
-        self.end_headers()
-        self.wfile.write(response.body)
+        try:
+            self.end_headers()
+            self.wfile.write(response.body)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def _host_allowed(self) -> bool:
         return self.headers.get("Host", "") in self.tracker.hosts
@@ -90,6 +97,10 @@ class TrackerHandler(BaseHTTPRequestHandler):
             return None
         return parsed if isinstance(parsed, dict) else None
 
+    def _limit(self) -> int:
+        upload = urlsplit(self.path).path == f"/api{resume_upload.PATH}"
+        return resume_upload.MAX_UPLOAD_BYTES if upload else MAX_BODY_BYTES
+
     def _length(self) -> int:
         try:
             return int(self.headers.get("Content-Length") or 0)
@@ -105,7 +116,7 @@ class TrackerHandler(BaseHTTPRequestHandler):
         self._send(respond_get(self.tracker.paths, url.path, query))
 
     def do_POST(self) -> None:
-        if not self._post_allowed() or not 0 <= self._length() <= MAX_BODY_BYTES:
+        if not self._post_allowed() or not 0 <= self._length() <= self._limit():
             self._send(forbidden())
             return
         body = self._body()

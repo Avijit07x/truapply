@@ -5,7 +5,7 @@ from satyaapply.sources.ats.base import AtsReader, company_name, external_id
 from satyaapply.sources.text import html_to_text, identifier, iso_time, items, mapping, text
 
 BOARD_URL = re.compile(
-    r"https?://(?:job-boards|boards)\.greenhouse\.io/(?:embed/job_board\?for=)?([\w-]+)",
+    r"https?://(?:job-boards|boards)\.greenhouse\.io/(?:embed/job_(?:board|app)(?:/confirmation)?\?for=)?([\w-]+)",
     re.IGNORECASE,
 )
 
@@ -26,13 +26,16 @@ def application_form(slug: str, posting_id: str) -> str:
     return f"https://job-boards.greenhouse.io/embed/job_app?for={slug}&token={posting_id}"
 
 
+DATES = ("first_published", "updated_at")
+
+
 def _job(board: Board, raw: object) -> Job | None:
     posting = mapping(raw)
     posting_id, title = identifier(posting, "id"), text(posting, "title")
     if not posting_id or not title:
         return None
     page = job_page(board.slug, posting_id)
-    published = text(posting, "first_published") or text(posting, "updated_at")
+    stamps = [stamp for key in DATES if (stamp := iso_time(text(posting, key)))]
     return Job(
         source=Source.CAREER_PAGES,
         external_id=external_id(board, posting_id),
@@ -42,7 +45,7 @@ def _job(board: Board, raw: object) -> Job | None:
         location=text(mapping(posting.get("location")), "name"),
         description=html_to_text(text(posting, "content")),
         apply_url=application_form(board.slug, posting_id),
-        posted_at=iso_time(published) if published else None,
+        posted_at=max(stamps, default=None),
     )
 
 

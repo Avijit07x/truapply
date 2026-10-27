@@ -4,18 +4,17 @@ from satyaapply.ai import tasks
 from satyaapply.ai.replies import ProfileDraft
 from satyaapply.core.documents import ResumeDocument, ResumeFormat
 from satyaapply.core.errors import SatyaApplyError, SetupCancelledError
-from satyaapply.core.files import write_private
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import Profile, ResumeRef, save
 from satyaapply.onboarding import ask, steps
 from satyaapply.onboarding.ask import Option
 from satyaapply.onboarding.latex import install_tinytex
+from satyaapply.resume import storing
 from satyaapply.resume.contract import Resume
 from satyaapply.resume.importer import read_document
-from satyaapply.resume.latex import LatexResume, split_document
+from satyaapply.resume.latex import split_document
 from satyaapply.resume.master import master_pdf
 from satyaapply.resume.render import find_pdflatex
-from satyaapply.resume.structured import StructuredResume, to_json
 
 NEXT_STEPS = (
     "satyaapply doctor                       check that everything works",
@@ -51,30 +50,24 @@ def _pdflatex() -> Path | None:
     return install_tinytex()
 
 
-def _store_structured(paths: Paths, document: ResumeDocument) -> tuple[ResumeRef, Resume]:
+def _structured(document: ResumeDocument) -> Resume:
     ask.say("Moving your resume into the built-in design with Claude …")
-    data = tasks.convert_resume(document)
-    target = paths.resume_dir / "master.json"
-    write_private(target, to_json(data))
-    return ResumeRef(ResumeFormat.STRUCTURED, target), StructuredResume(data)
+    return storing.converted(document)
 
 
 def store_resume(paths: Paths, document: ResumeDocument) -> tuple[ResumeRef, Resume]:
-    if document.path.suffix.lower() != ".tex" or document.text is None:
-        return _store_structured(paths, document)
-    split_document(document.text)
-    pdflatex = _pdflatex()
-    if pdflatex is None:
-        return _store_structured(paths, document)
-    target = paths.resume_dir / "master.tex"
-    write_private(target, document.text)
-    return ResumeRef(ResumeFormat.LATEX, target), LatexResume(document.text, pdflatex)
+    if not storing.is_latex(document):
+        resume = _structured(document)
+    else:
+        split_document(document.text or "")
+        pdflatex = _pdflatex()
+        resume = _structured(document) if pdflatex is None else storing.as_latex(document, pdflatex)
+    return storing.keep(paths, resume), resume
 
 
 def _compose(draft: ProfileDraft, resume: ResumeRef) -> Profile:
     basics = steps.confirm_basics(draft)
     targets = steps.ask_targets(draft, basics)
-    sites = steps.ask_sites()
     autonomy = steps.ask_autonomy(basics.current_company)
     facts = steps.ask_facts(basics.country)
     diversity = steps.ask_diversity()
@@ -93,8 +86,6 @@ def _compose(draft: ProfileDraft, resume: ResumeRef) -> Profile:
         title_keywords=targets.title_keywords,
         title_exclude=targets.title_exclude,
         work_places=targets.work_places,
-        sites=sites,
-        submit_mode=autonomy.submit_mode,
         unknown_questions=autonomy.unknown_questions,
         daily_cap=autonomy.daily_cap,
         cover_letter=autonomy.cover_letter,

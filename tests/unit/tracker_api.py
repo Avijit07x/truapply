@@ -20,34 +20,25 @@ from tests.unit import samples
 
 JSON_TYPE = "application/json"
 Reply = tuple[int, Any]
-SEEDED: tuple[tuple[Status, str, bool, set[Group]], ...] = (
-    (Status.NEW, "", False, {Group.WAITING_SCORE}),
-    (Status.SKIPPED, DUPLICATE_NOTE, False, {Group.DUPLICATE}),
-    (Status.SKIPPED, AI_RULE_NOTE, False, {Group.NO_AI}),
-    (Status.SKIPPED, f"{DEALBREAKER_PREFIX}on-site only", False, {Group.NOT_A_FIT}),
-    (Status.SKIPPED, "score 41: weak React match", False, {Group.NOT_A_FIT}),
-    (Status.SKIPPED, "title doesn't fit", False, {Group.SKIPPED_OTHER}),
-    (Status.SCORED, "good match", False, {Group.SCORED}),
-    (Status.CLOSED, "removed", False, {Group.CLOSED}),
-    (Status.NEEDS_INPUT, "needs you", False, {Group.NEEDS_INPUT}),
-    (Status.FINISH, "picture check", False, {Group.FINISH}),
-    (Status.FAILED, "crashed", False, {Group.FAILED}),
-    (Status.EXTERNAL, "unsupported form", False, {Group.EXTERNAL}),
-    (Status.READY, "filled", False, {Group.READY}),
-    (Status.APPROVED, "approved", False, {Group.APPROVED}),
-    (Status.SUBMITTING, "sending", False, {Group.APPROVED}),
-    (Status.SUBMITTING, "sending", True, {Group.AUTO_SENT}),
-    (Status.APPLIED, "sent", True, {Group.AUTO_SENT, Group.APPLIED}),
-    (Status.DISMISSED, "dismissed: location", False, {Group.DISMISSED}),
-    (Status.APPLIED, "sent", False, {Group.APPLIED}),
-    (Status.UNCONFIRMED, "no confirmation", False, {Group.UNCONFIRMED}),
+SEEDED: tuple[tuple[Status, str, set[Group]], ...] = (
+    (Status.NEW, "", {Group.WAITING_SCORE}),
+    (Status.SKIPPED, DUPLICATE_NOTE, {Group.DUPLICATE}),
+    (Status.SKIPPED, AI_RULE_NOTE, {Group.NO_AI}),
+    (Status.SKIPPED, f"{DEALBREAKER_PREFIX}on-site only", {Group.NOT_A_FIT}),
+    (Status.SKIPPED, "score 41: weak React match", {Group.NOT_A_FIT}),
+    (Status.SKIPPED, "title doesn't fit", {Group.SKIPPED_OTHER}),
+    (Status.SCORED, "good match", {Group.SCORED}),
+    (Status.CLOSED, "removed", {Group.CLOSED}),
+    (Status.READY, "tailored", {Group.READY}),
+    (Status.DISMISSED, "dismissed: location", {Group.DISMISSED}),
+    (Status.APPLIED, "sent", {Group.APPLIED}),
 )
 
 
 def ids_in(group: Group) -> list[int]:
     found = [
         index + 1
-        for index, (_, _, _, groups) in enumerate(SEEDED)
+        for index, (_, _, groups) in enumerate(SEEDED)
         if group is Group.FOUND or group in groups
     ]
     return sorted(found, reverse=True)
@@ -56,15 +47,9 @@ def ids_in(group: Group) -> list[int]:
 def seed_every_group(db: sqlite3.Connection, now: datetime) -> None:
     picks = [samples.job(external_id=str(index)) for index in range(len(SEEDED))]
     jobs.add_many(db, picks, now)
-    for index, (status, note, auto, _) in enumerate(SEEDED, start=1):
-        at = now + timedelta(minutes=index)
-        if status is Status.SUBMITTING:
-            jobs.mark_submitting(db, index, at, auto=auto)
-        elif status is not Status.NEW:
-            jobs.set_status(db, index, StatusChange(status, at, note))
-        if auto and status is not Status.SUBMITTING:
-            with db:
-                db.execute("update jobs set auto_submitted = 1 where id = ?", (index,))
+    for index, (status, note, _) in enumerate(SEEDED, start=1):
+        if status is not Status.NEW:
+            jobs.set_status(db, index, StatusChange(status, now + timedelta(minutes=index), note))
 
 
 @contextmanager

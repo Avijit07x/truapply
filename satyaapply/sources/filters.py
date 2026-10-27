@@ -48,6 +48,22 @@ ANYWHERE_WORDS = frozenset(
     }
 )
 PARTS = re.compile(r"[/;|]")
+MOST_JOINED = 3
+ROLE_WORDS = frozenset({"engineer", "developer", "programmer"})
+COMMON_WORDS = frozenset({"software", "design", "ui", "web", "product", "application"})
+GENERAL_TITLES = (
+    "software engineer",
+    "software developer",
+    "software development engineer",
+    "sde",
+    "web developer",
+    "web engineer",
+    "product engineer",
+    "application developer",
+    "application engineer",
+    "member of technical staff",
+    "programmer",
+)
 CITY_ALIASES = {
     "bengaluru": ("bangalore",),
     "bangalore": ("bengaluru",),
@@ -64,11 +80,49 @@ def mentions(phrase: str, text: str) -> bool:
     return bool(wanted) and f" {wanted} " in f" {normalize(text)} "
 
 
+def says(phrase: str, text: str) -> bool:
+    wanted = normalize(phrase).replace(" ", "")
+    words = normalize(text).split()
+    longest = max(MOST_JOINED, len(normalize(phrase).split()) + 1)
+    return bool(wanted) and any(
+        "".join(words[start : start + size]) == wanted
+        for size in range(1, longest + 1)
+        for start in range(len(words))
+    )
+
+
+def _excluded(title: str, profile: Profile) -> bool:
+    return any(says(word, title) for word in profile.title_exclude)
+
+
 def title_fits(title: str, profile: Profile) -> bool:
-    if any(mentions(word, title) for word in profile.title_exclude):
+    if _excluded(title, profile):
         return False
     keywords = [keyword for keyword in profile.title_keywords if normalize(keyword)]
-    return not keywords or any(mentions(keyword, title) for keyword in keywords)
+    return not keywords or any(says(keyword, title) for keyword in keywords)
+
+
+def _stack_terms(profile: Profile) -> list[str]:
+    terms = []
+    for keyword in profile.title_keywords:
+        words = [word for word in normalize(keyword).split() if word not in ROLE_WORDS]
+        term = " ".join(words)
+        if term and term not in COMMON_WORDS:
+            terms.append(term)
+    return terms
+
+
+def role_fits(job: Job, profile: Profile) -> bool:
+    if title_fits(job.title, profile):
+        return True
+    if _excluded(job.title, profile) or not any(says(t, job.title) for t in GENERAL_TITLES):
+        return False
+    return any(says(term, job.description) for term in _stack_terms(profile))
+
+
+def in_your_field(job: Job, profile: Profile) -> bool:
+    phrases = (*profile.title_keywords, *profile.roles, *GENERAL_TITLES)
+    return any(says(phrase, job.title) for phrase in phrases if normalize(phrase))
 
 
 def _city_names(city: str) -> tuple[str, ...]:
@@ -104,7 +158,7 @@ def _place_fits(place: str, profile: Profile) -> bool:
     places = profile.work_places
     home_city = any(mentions(name, place) for name in _city_names(profile.city))
     in_country = home_city or _in_country(place, profile)
-    if REMOTE.search(place):
+    if REMOTE.search(place) or _is_anywhere(place):
         if in_country or _in_home_region(place, profile):
             return places.remote_country
         return _is_anywhere(place) and (places.remote_country or places.remote_abroad)
@@ -129,8 +183,8 @@ def company_skipped(job: Job, profile: Profile) -> bool:
 
 def worth_scoring(job: Job, profile: Profile, now: datetime) -> bool:
     return (
-        title_fits(job.title, profile)
-        and location_fits(job.location, profile)
+        location_fits(job.location, profile)
+        and role_fits(job, profile)
         and is_fresh(job, now, profile.settings.max_job_age_days)
         and not company_skipped(job, profile)
     )

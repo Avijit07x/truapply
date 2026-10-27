@@ -5,7 +5,6 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from satyaapply.core.errors import SatyaApplyError
-from satyaapply.core.forms import Sent
 from satyaapply.core.models import Status
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import load
@@ -16,7 +15,7 @@ from satyaapply.store.records import JobRecord
 from satyaapply.tracker.plain import readable_changes
 
 WEB_SCHEMES = frozenset({"http", "https"})
-FILE_ENDINGS = ("not uploaded)", ".pdf")
+CLOSED_REASON = "job is closed"
 DISMISS_REASONS = (
     "wrong role",
     "too senior",
@@ -24,41 +23,29 @@ DISMISS_REASONS = (
     "location",
     "salary",
     "company",
+    CLOSED_REASON,
     "other",
 )
-DISMISSABLE = frozenset(
-    {
-        Status.READY,
-        Status.SCORED,
-        Status.NEEDS_INPUT,
-        Status.FINISH,
-        Status.FAILED,
-        Status.UNCONFIRMED,
-        Status.EXTERNAL,
-    }
-)
+DISMISSABLE = frozenset({Status.READY, Status.SCORED})
 
 
 class Action(StrEnum):
-    APPROVE = "approve"
-    ANSWERS = "answers"
     DISMISS = "dismiss"
     THUMBS = "thumbs"
-    QUESTIONS = "questions"
-    RETRY = "retry"
     FINISHED = "finished"
     REVERT = "revert"
+    SCORE = "score"
+    TAILOR = "tailor"
 
 
+SCORABLE = frozenset({Status.NEW, Status.SKIPPED})
 ALLOWED: dict[Action, frozenset[Status]] = {
-    Action.APPROVE: frozenset({Status.READY}),
-    Action.ANSWERS: frozenset({Status.READY}),
     Action.DISMISS: DISMISSABLE,
     Action.THUMBS: frozenset(Status),
-    Action.QUESTIONS: frozenset({Status.NEEDS_INPUT}),
-    Action.RETRY: frozenset({Status.NEEDS_INPUT}),
-    Action.FINISHED: frozenset({Status.FINISH}),
-    Action.REVERT: frozenset({Status.READY, Status.APPROVED}),
+    Action.FINISHED: frozenset({Status.READY}),
+    Action.REVERT: frozenset({Status.READY}),
+    Action.SCORE: SCORABLE,
+    Action.TAILOR: frozenset({Status.SCORED}),
 }
 
 
@@ -68,10 +55,6 @@ def iso(moment: datetime) -> str:
 
 def web_link(url: str) -> str | None:
     return url if urlsplit(url).scheme in WEB_SCHEMES else None
-
-
-def editable(item: Sent) -> bool:
-    return not item.answer.endswith(FILE_ENDINGS)
 
 
 def job_id(record: JobRecord) -> int:
@@ -95,10 +78,6 @@ def inside(path: Path | None, root: Path) -> Path | None:
     if path is None or not path.is_file():
         return None
     return path if path.resolve().is_relative_to(root.resolve()) else None
-
-
-def screenshot(paths: Paths, record: JobRecord) -> Path | None:
-    return inside(paths.shots / f"{job_id(record)}.png", paths.root)
 
 
 def resume_pdf(paths: Paths, record: JobRecord) -> Path | None:
@@ -126,20 +105,10 @@ def _actions(status: Status, tailored: bool) -> list[str]:
     ]
 
 
-def _questions(db: sqlite3.Connection, record: JobRecord) -> list[dict[str, str]]:
-    if record.job.status is not Status.NEEDS_INPUT:
-        return []
-    asked = feedback.open_for_job(db, job_id(record))
-    return [{"question": item.question, "label": item.label} for item in asked]
-
-
 def job_detail(db: sqlite3.Connection, paths: Paths, record: JobRecord) -> dict[str, object]:
     job = record.job
     changed = changes(paths, record)
-    sent = [
-        {"question": item.question, "answer": item.answer, "editable": editable(item)}
-        for item in record.sent
-    ]
+    sent = [{"question": item.question, "answer": item.answer} for item in record.sent]
     return job_row(record) | {
         "reason": record.reason,
         "note": record.note,
@@ -148,9 +117,7 @@ def job_detail(db: sqlite3.Connection, paths: Paths, record: JobRecord) -> dict[
         "applyUrl": web_link(job.apply_url),
         "description": job.description,
         "sent": sent,
-        "questions": _questions(db, record),
         "changes": changed,
-        "hasScreenshot": screenshot(paths, record) is not None,
         "hasResume": resume_pdf(paths, record) is not None,
         "feedback": feedback.thumbs(db, job_id(record)),
         "actions": _actions(job.status, changed is not None),

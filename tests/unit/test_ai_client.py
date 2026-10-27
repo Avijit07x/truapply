@@ -25,7 +25,7 @@ def test_every_call_is_locked_down() -> None:
         assert flag in args
     assert args[args.index("--tools") + 1] == ""
     assert args[args.index("--permission-prompts") + 1] == "none"
-    assert args[args.index("--model") + 1] == "haiku"
+    assert args[args.index("--model") + 1] == "claude-haiku-5-5"
 
 
 def test_tools_are_passed_only_when_asked_for() -> None:
