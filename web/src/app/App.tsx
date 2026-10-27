@@ -15,7 +15,7 @@ export function App() {
     window.scrollTo(0, 0);
   }, [path]);
   return (
-    <Layout path={path} bleed={found?.bleed ?? false}>
+    <Layout path={path} layout={found?.layout ?? "page"}>
       <QueryErrorResetBoundary>
         {({ reset }) => (
           <ErrorBoundary resetKey={path} onReset={reset}>

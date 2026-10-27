@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
+import { prefersLessMotion } from "../lib/motion";
 
 const DURATION_MS = 700;
-const CALM = "(prefers-reduced-motion: reduce)";
 
 function eased(progress: number): number {
   return 1 - (1 - progress) ** 3;
@@ -13,7 +13,7 @@ export function CountUp({ value }: { value: number }) {
   useLayoutEffect(() => {
     const target = node.current;
     const from = shown.current;
-    if (!target || from === value || window.matchMedia(CALM).matches) {
+    if (!target || from === value || prefersLessMotion()) {
       shown.current = value;
       return;
     }

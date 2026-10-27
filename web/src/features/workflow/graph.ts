@@ -41,7 +41,7 @@ export function buildNodes(counts: Counts, running: boolean): FlowNode[] {
     id: step.id,
     type: "step",
     position: { x: step.x, y: step.y },
-    data: { step, count: step.group ? counts[step.group] : null, running },
+    data: { step, count: step.group ? counts[step.group] : null, total: counts.found, running },
     style: { width: STEP_WIDTH },
     selectable: step.group !== undefined,
     focusable: step.group !== undefined,
@@ -50,7 +50,13 @@ export function buildNodes(counts: Counts, running: boolean): FlowNode[] {
     id: item.id,
     type: "outcome",
     position: { x: item.x, y: item.y },
-    data: { group: item.group, branch: item.branch, title: item.title, count: counts[item.group] },
+    data: {
+      group: item.group,
+      branch: item.branch,
+      title: item.title,
+      count: counts[item.group],
+      total: counts.found,
+    },
     style: { width: OUTCOME_WIDTH },
   }));
   return [...lanes, ...steps, ...outcomes];
@@ -60,10 +66,12 @@ export function refreshNodes(nodes: FlowNode[], counts: Counts, running: boolean
   return nodes.map((node) => {
     if (node.type === "step") {
       const { group } = node.data.step;
-      return { ...node, data: { ...node.data, count: group ? counts[group] : null, running } };
+      const count = group ? counts[group] : null;
+      return { ...node, data: { ...node.data, count, total: counts.found, running } };
     }
     if (node.type === "outcome") {
-      return { ...node, data: { ...node.data, count: counts[node.data.group] } };
+      const count = counts[node.data.group];
+      return { ...node, data: { ...node.data, count, total: counts.found } };
     }
     return node;
   });
@@ -79,12 +87,73 @@ function routeOf(link: Link): { gapX: number; exitY: number } | undefined {
   return { gapX: target.x - GAP_INSET, exitY: lane.exitY };
 }
 
-export function buildEdges(running: boolean): FlowEdge[] {
+function linked(direction: "from" | "to"): ReadonlyMap<string, readonly string[]> {
+  const found = new Map<string, string[]>();
+  for (const link of LINKS) {
+    const start = direction === "from" ? link.from : link.to;
+    const end = direction === "from" ? link.to : link.from;
+    found.set(start, [...(found.get(start) ?? []), end]);
+  }
+  return found;
+}
+
+const NEXT = linked("from");
+const PREVIOUS = linked("to");
+
+function reach(start: string, steps: ReadonlyMap<string, readonly string[]>): Set<string> {
+  const seen = new Set([start]);
+  const waiting = [start];
+  for (let id = waiting.pop(); id !== undefined; id = waiting.pop()) {
+    for (const next of steps.get(id) ?? []) {
+      if (!seen.has(next)) {
+        seen.add(next);
+        waiting.push(next);
+      }
+    }
+  }
+  return seen;
+}
+
+export type Path = { nodes: ReadonlySet<string>; edges: ReadonlySet<string> };
+
+export function pathThrough(id: string): Path {
+  const before = reach(id, PREVIOUS);
+  const after = reach(id, NEXT);
+  const edges = LINKS.filter(
+    (link) =>
+      (before.has(link.from) && before.has(link.to)) ||
+      (after.has(link.from) && after.has(link.to)),
+  ).map(edgeId);
+  return { nodes: new Set([...before, ...after]), edges: new Set(edges) };
+}
+
+function carried(counts: Counts): (id: string) => number {
+  const known = new Map<string, number>();
+  const total = (id: string): number => {
+    const cached = known.get(id);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const group = GROUP_OF.get(id);
+    const own = group && group !== "found" ? counts[group] : 0;
+    const sum = (NEXT.get(id) ?? []).reduce((all, next) => all + total(next), own);
+    known.set(id, sum);
+    return sum;
+  };
+  return total;
+}
+
+function edgeId(link: Link): string {
+  return `${link.from}-${link.to}`;
+}
+
+export function buildEdges(counts: Counts, running: boolean): FlowEdge[] {
+  const total = carried(counts);
   return LINKS.map((link) => {
     const [sourceHandle, targetHandle] = HANDLES[link.kind];
     const route = routeOf(link);
     return {
-      id: `${link.from}-${link.to}`,
+      id: edgeId(link),
       source: link.from,
       target: link.to,
       sourceHandle,
@@ -96,6 +165,7 @@ export function buildEdges(running: boolean): FlowEdge[] {
         kind: link.kind,
         automatic: link.automatic === true || STEP_BY_ID.get(link.to)?.kind === "auto",
         running,
+        flowing: total(link.to) > 0,
         ...(link.label === undefined ? {} : { label: link.label }),
         ...(route === undefined ? {} : { route }),
       },

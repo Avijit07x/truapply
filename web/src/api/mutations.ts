@@ -3,13 +3,18 @@ import { post } from "./client";
 import { queries } from "./queries";
 import type {
   Action,
+  Dismissed,
+  Linked,
   JobDetail,
   Learned,
+  Automatic,
+  ResumeReplaced,
+  ResumeUpload,
   RunChoice,
   RunState,
+  Scoring,
   SettingsValues,
   SettingsView,
-  Trust,
 } from "./types";
 
 type Request = readonly [path: string, body: object];
@@ -56,10 +61,6 @@ export const learnedPaths = {
   dismiss: (id: number) => `/api/suggestions/${String(id)}/dismiss`,
 } as const;
 
-export function useAutoSubmit() {
-  return useChange<Trust, boolean>((on) => ["/api/auto-submit", { on }]);
-}
-
 export function useRunStart() {
   return useChange<RunState, RunChoice>(
     (choice) => ["/api/runs/start", choice],
@@ -71,9 +72,34 @@ export function useRunStop() {
   return useChange<RunState, undefined>(() => ["/api/runs/stop", {}], queries.runs().queryKey);
 }
 
+export function useSetAutomatic() {
+  return useChange<Automatic, boolean>((on) => ["/api/settings/automatic", { on }]);
+}
+
+export function useReplaceResume() {
+  return useChange<ResumeReplaced, ResumeUpload>((upload) => ["/api/settings/resume", upload]);
+}
+
 export function useSaveSettings() {
   return useChange<SettingsView, SettingsValues>(
     (values) => ["/api/settings", values],
     queries.settings().queryKey,
   );
+}
+
+export type DismissMany = { ids: number[]; reason: string };
+
+export function useDismissMany() {
+  return useChange<Dismissed, DismissMany>(({ ids, reason }) => [
+    "/api/jobs/dismiss",
+    { ids, reason },
+  ]);
+}
+
+export function useScoreMany() {
+  return useChange<Scoring, readonly number[]>((ids) => ["/api/jobs/score", { ids }]);
+}
+
+export function useAddLink() {
+  return useChange<Linked, string>((link) => ["/api/boards/link", { link }]);
 }

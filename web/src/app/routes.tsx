@@ -1,7 +1,8 @@
 import { type ComponentType, use } from "react";
 import { queries } from "../api/queries";
-import { jobFilter } from "../domain/filters";
+import { jobQuery } from "../domain/filters";
 import type { PageProps } from "../lib/router";
+import type { PageLayout } from "./Layout";
 import { queryClient } from "./queryClient";
 
 type Page = ComponentType<PageProps>;
@@ -11,17 +12,17 @@ type Route = {
   pattern: RegExp;
   load: () => Promise<Module>;
   warm: Warm;
-  bleed: boolean;
+  layout: PageLayout;
   Page: Page;
 };
-type Options = { warm?: Warm; bleed?: boolean };
+type Options = { warm?: Warm; layout?: PageLayout };
 
 const NOTHING: Warm = () => [];
 
 function page(
   pattern: RegExp,
   importer: () => Promise<Module>,
-  { warm = NOTHING, bleed = false }: Options = {},
+  { warm = NOTHING, layout = "page" }: Options = {},
 ): Route {
   let ready: Module | null = null;
   let loading: Promise<Module> | null = null;
@@ -43,11 +44,12 @@ function page(
     const { default: Loaded } = ready ?? use(load());
     return <Loaded {...props} />;
   }
-  return { pattern, load, warm, bleed, Page };
+  return { pattern, load, warm, layout, Page };
 }
 
 const ROUTES: readonly Route[] = [
   page(/^\/$/, () => import("../features/home/HomePage"), {
+    layout: "fit",
     warm: () => [
       queryClient.query(queries.summary()),
       queryClient.query(queries.board()),
@@ -55,31 +57,37 @@ const ROUTES: readonly Route[] = [
     ],
   }),
   page(/^\/board$/, () => import("../features/board/BoardPage"), {
+    layout: "fit",
     warm: () => [queryClient.query(queries.board())],
   }),
   page(/^\/workflow$/, () => import("../features/workflow/WorkflowPage"), {
-    bleed: true,
+    layout: "bleed",
     warm: () => [queryClient.query(queries.workflow())],
   }),
   page(/^\/jobs$/, () => import("../features/jobs/JobsPage"), {
+    layout: "fit",
     warm: (_params, url) => [
       queryClient.query(queries.summary()),
-      queryClient.query(queries.jobs(jobFilter(url.searchParams))),
+      queryClient.query(queries.jobs(jobQuery(url.searchParams))),
     ],
   }),
   page(/^\/jobs\/(\d+)$/, () => import("../features/job/JobPage"), {
     warm: (params) => [queryClient.query(queries.job(Number(params[0])))],
   }),
   page(/^\/runs$/, () => import("../features/runs/RunsPage"), {
+    layout: "fit",
     warm: () => [queryClient.query(queries.runs())],
   }),
   page(/^\/runs\/(\d{8}-\d{6}-\d{6}\.log)$/, () => import("../features/runs/RunLogPage"), {
+    layout: "fit",
     warm: (params) => [queryClient.query(queries.runLog(params[0] ?? ""))],
   }),
   page(/^\/learned$/, () => import("../features/learned/LearnedPage"), {
+    layout: "fit",
     warm: () => [queryClient.query(queries.learned())],
   }),
   page(/^\/settings$/, () => import("../features/settings/SettingsPage"), {
+    layout: "fit",
     warm: () => [queryClient.query(queries.settings())],
   }),
 ];
@@ -94,9 +102,13 @@ function match(path: string): { route: Route; params: string[] } | null {
   return null;
 }
 
-export function findRoute(path: string): { Page: Page; params: string[]; bleed: boolean } | null {
+export function findRoute(
+  path: string,
+): { Page: Page; params: string[]; layout: PageLayout } | null {
   const found = match(path);
-  return found ? { Page: found.route.Page, params: found.params, bleed: found.route.bleed } : null;
+  return found
+    ? { Page: found.route.Page, params: found.params, layout: found.route.layout }
+    : null;
 }
 
 export function preload(to: string): Promise<unknown> {

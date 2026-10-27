@@ -1,4 +1,5 @@
-import type { JobFilter, Status } from "../../api/types";
+import type { JobQuery, Status } from "../../api/types";
+import { jobsHref } from "../../domain/filters";
 import { GROUP_LABEL } from "../../domain/groups";
 import { STATUS, STATUSES } from "../../domain/status";
 import { Link } from "../../lib/router";
@@ -8,30 +9,42 @@ import styles from "./Jobs.module.css";
 type Chip = { to: string; label: string; count: number; on: boolean };
 
 type FilterChipsProps = {
-  filter: JobFilter;
+  query: JobQuery;
   counts: Partial<Record<Status, number>>;
   total: number;
 };
 
-function chips({ filter, counts, total }: FilterChipsProps): Chip[] {
-  const all = { to: "/jobs", label: "All", count: total, on: !filter.status && !filter.group };
+function chips({ query, counts, total }: FilterChipsProps): Chip[] {
+  const kept: JobQuery = { q: query.q, sort: query.sort, order: query.order };
+  const all = {
+    to: jobsHref({ ...kept, show: "all" }),
+    label: "All",
+    count: total,
+    on: query.show === "all" && !query.status && !query.group,
+  };
+  const active = {
+    to: jobsHref(kept),
+    label: "Active",
+    count: total - (counts.skipped ?? 0),
+    on: !query.show && !query.status && !query.group,
+  };
   const statuses = STATUSES.filter(
-    (status) => (counts[status] ?? 0) > 0 || status === filter.status,
+    (status) => (counts[status] ?? 0) > 0 || status === query.status,
   ).map((status) => ({
-    to: `/jobs?status=${status}`,
+    to: jobsHref({ ...kept, status }),
     label: STATUS[status].label,
     count: counts[status] ?? 0,
-    on: status === filter.status,
+    on: status === query.status,
   }));
-  return [all, ...statuses];
+  return [all, active, ...statuses];
 }
 
 export function FilterChips(props: FilterChipsProps) {
-  const { group } = props.filter;
+  const { group, q, sort, order } = props.query;
   return (
     <nav className={styles.chips} aria-label="Filter by status">
       {group && (
-        <Link to="/jobs" className={styles.chip} aria-current="true">
+        <Link to={jobsHref({ q, sort, order })} className={styles.chip} aria-current="true">
           From the workflow map: {GROUP_LABEL[group]}
           <Close size={10} />
         </Link>

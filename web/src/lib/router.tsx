@@ -19,11 +19,21 @@ type Location = { url: URL; pending: boolean; preload: Preload };
 
 const LocationContext = createContext<Location | null>(null);
 
+type Visit = { from: string };
+
+const here = () => window.location.pathname + window.location.search;
+
+export function cameFrom(): string | null {
+  const state: unknown = window.history.state;
+  if (typeof state !== "object" || state === null || !("from" in state)) return null;
+  return typeof state.from === "string" && state.from.startsWith("/") ? state.from : null;
+}
+
 export function navigate(to: string, replace = false): void {
   if (replace) {
-    window.history.replaceState(null, "", to);
+    window.history.replaceState(window.history.state, "", to);
   } else {
-    window.history.pushState(null, "", to);
+    window.history.pushState({ from: here() } satisfies Visit, "", to);
   }
   window.dispatchEvent(new Event(NAVIGATED));
 }

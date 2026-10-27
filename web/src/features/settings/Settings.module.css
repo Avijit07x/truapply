@@ -1,34 +1,109 @@
 .page {
-  max-width: 840px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabs {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  margin: 0 calc(-1 * var(--scrollbar)) 0 -4px;
+  padding: var(--space-5) 4px var(--space-6);
+  overflow: hidden auto;
+  scrollbar-gutter: stable;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.group + .group {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.groupHead {
+  display: grid;
+  gap: 2px;
+}
+
+.groupTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.groupNote {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
 .pair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+
+.folder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+
+.folder code {
+  overflow-wrap: anywhere;
+  font: 13px/1.5 var(--mono);
 }
 
 .problems {
-  margin-top: var(--space-5);
-}
-
-.problems ul {
   margin: 0;
   padding-left: 18px;
 }
 
+.notice {
+  margin-top: var(--space-5);
+}
+
 .bar {
-  position: sticky;
-  bottom: 0;
+  margin-top: var(--space-5);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-6);
-  padding: var(--space-3) 0;
+  padding-top: var(--space-4);
   border-top: 1px solid var(--line);
-  background: var(--bg);
 }
 
 .state {

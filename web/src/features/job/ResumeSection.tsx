@@ -2,22 +2,44 @@ import { useState } from "react";
 import { useJobChange } from "../../api/mutations";
 import type { JobDetail } from "../../api/types";
 import { RuleForm } from "../../components/RuleForm";
-import { Card, Empty, Note, Row, Section, Stack } from "../../ui/Blocks";
+import { Empty, Note, Row, Section, Stack } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Callout";
 import { Dialog } from "../../ui/Dialog";
 import { ExternalLink } from "../../ui/ExternalLink";
-import { Undo } from "../../ui/icons";
+import { Spark, Undo } from "../../ui/icons";
 import { toast } from "../../ui/toasts";
 import styles from "./Job.module.css";
 
+function TailorNow({ job }: { job: JobDetail }) {
+  const change = useJobChange(job.id);
+  const [asked, setAsked] = useState(false);
+  if (asked && !change.isPending && !change.isError) {
+    return <Empty>Tailoring your resume now. It shows here in about a minute.</Empty>;
+  }
+  return (
+    <div className={styles.tailorNow}>
+      <span>Not tailored yet.</span>
+      <Button
+        variant="primary"
+        icon={<Spark />}
+        busy={change.isPending}
+        onClick={() => {
+          setAsked(true);
+          change.mutate({ action: "tailor" });
+        }}
+      >
+        Tailor my resume
+      </Button>
+    </div>
+  );
+}
+
 function Changes({ job }: { job: JobDetail }) {
   if (job.changes === null) {
-    return job.hasResume ? (
-      <Note>Your original resume is used for this job.</Note>
-    ) : (
-      <Empty>Not tailored yet. It's tailored when the form is filled in.</Empty>
-    );
+    if (job.hasResume) return <Note>Your original resume is used for this job.</Note>;
+    if (job.actions.includes("tailor")) return <TailorNow job={job} />;
+    return <Empty>Not tailored yet. Good matches are tailored on the next run.</Empty>;
   }
   if (job.changes.length === 0) {
     return <Note>Tailored, but nothing changed from your original.</Note>;
@@ -70,9 +92,9 @@ export function ResumeSection({ job }: { job: JobDetail }) {
         {reverted && (
           <Callout>Tell it what went wrong, so the next tailored resume is better.</Callout>
         )}
-        <Card>
-          <RuleForm kind="tailoring_note" autoFocus={reverted} key={String(reverted)} />
-        </Card>
+        <div className={styles.note}>
+          <RuleForm kind="tailoring_note" compact autoFocus={reverted} key={String(reverted)} />
+        </div>
       </Stack>
       <Dialog open={confirming} title="Use your original resume?" onClose={close}>
         <Note>This job gets your original resume. The tailored version is deleted.</Note>

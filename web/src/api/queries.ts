@@ -3,8 +3,8 @@ import { get } from "./client";
 import type {
   Board,
   JobDetail,
-  JobFilter,
   JobList,
+  JobQuery,
   Learned,
   RunLogLines,
   RunState,
@@ -16,13 +16,26 @@ import type {
 const RUN_POLL_MS = 1_500;
 const LIVE_POLL_MS = 4_000;
 
-function search(filter: JobFilter): string {
+const QUERY_KEYS = [
+  "show",
+  "status",
+  "group",
+  "q",
+  "company",
+  "location",
+  "minScore",
+  "sort",
+  "order",
+  "page",
+] as const;
+
+export function jobSearch(query: JobQuery): string {
   const params = new URLSearchParams();
-  if (filter.status) {
-    params.set("status", filter.status);
-  }
-  if (filter.group) {
-    params.set("group", filter.group);
+  for (const key of QUERY_KEYS) {
+    const value = query[key];
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
   }
   const text = params.toString();
   return text ? `?${text}` : "";
@@ -35,10 +48,10 @@ export const queries = {
       queryFn: ({ signal }) => get<Summary>("/api/summary", signal),
       refetchInterval: (query) => (query.state.data?.run.running ? LIVE_POLL_MS : false),
     }),
-  jobs: (filter: JobFilter) =>
+  jobs: (query: JobQuery) =>
     queryOptions({
-      queryKey: ["jobs", filter],
-      queryFn: ({ signal }) => get<JobList>(`/api/jobs${search(filter)}`, signal),
+      queryKey: ["jobs", query],
+      queryFn: ({ signal }) => get<JobList>(`/api/jobs${jobSearch(query)}`, signal),
     }),
   board: () =>
     queryOptions({

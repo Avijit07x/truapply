@@ -60,8 +60,8 @@ function outcome(index: number, y: number, group: Group, branch: string, title: 
 
 export const LANES: readonly Lane[] = [
   { id: "lane-find", title: "1 · Find and score", x: lane(0), height: 524, exitY: 500 },
-  { id: "lane-fill", title: "2 · Fill the form", x: lane(1), height: 564, exitY: 540 },
-  { id: "lane-send", title: "3 · Send", x: lane(2), height: 700 },
+  { id: "lane-tailor", title: "2 · Tailor the resume", x: lane(1), height: 412, exitY: 388 },
+  { id: "lane-apply", title: "3 · You apply", x: lane(2), height: 364 },
 ];
 
 export const STEPS: readonly Step[] = [
@@ -85,30 +85,21 @@ export const STEPS: readonly Step[] = [
   step(0, row(3), { id: "fit", kind: "question", title: "A fit for you?" }),
   step(1, row(0), { id: "scored", kind: "jobs", title: "Good matches", group: "scored" }),
   step(1, row(1), {
-    id: "fill",
+    id: "tailor",
     kind: "auto",
-    title: "Tailors resume, fills the form",
-    note: "Fact-checked, never guesses",
+    title: "Tailors your resume",
+    note: "Fact-checked, never adds anything",
   }),
-  step(1, row(2), { id: "worked", kind: "question", title: "Did the form work?" }),
-  step(1, 432, { id: "needs", kind: "question", title: "Needs you to step in?" }),
+  step(1, row(2), { id: "open", kind: "question", title: "Still open?" }),
   step(2, row(0), {
-    id: "earned",
-    kind: "question",
-    title: "Auto-submit earned?",
-    note: "Strong matches only",
-  }),
-  step(2, row(1), { id: "ready", kind: "jobs", title: "Waiting for your OK", group: "ready" }),
-  step(2, row(2), { id: "approve", kind: "question", title: "Do you approve it?" }),
-  step(2, row(3), {
-    id: "approved",
+    id: "ready",
     kind: "jobs",
-    title: "Approved",
-    note: "Sent on a run with Really send",
-    group: "approved",
+    title: "Ready for you to apply",
+    note: "Open it in your Chrome",
+    group: "ready",
   }),
-  step(2, row(4), { id: "confirmed", kind: "question", title: "Did the site confirm it?" }),
-  step(2, row(5), { id: "applied", kind: "done", title: "Applied", group: "applied" }),
+  step(2, row(1), { id: "apply", kind: "question", title: "Do you apply?" }),
+  step(2, row(2), { id: "applied", kind: "done", title: "Applied", group: "applied" }),
 ];
 
 export const OUTCOMES: readonly Outcome[] = [
@@ -116,14 +107,8 @@ export const OUTCOMES: readonly Outcome[] = [
   outcome(0, 170, "duplicate", "Yes", "Duplicates"),
   outcome(0, 364, "no_ai", "No", "Bans AI help"),
   outcome(0, 424, "not_a_fit", "No", "Not a fit"),
-  outcome(1, 224, "closed", "Gone", "Job closed"),
-  outcome(1, 282, "failed", "Error", "Something broke"),
-  outcome(1, 340, "external", "Unsupported", "Apply on their site"),
-  outcome(1, 408, "needs_input", "A question", "Needs your answer"),
-  outcome(1, 468, "finish", "Picture check", "Finish these"),
-  outcome(2, 68, "auto_sent", "Yes", "Sent automatically"),
-  outcome(2, 282, "dismissed", "No", "Dismissed"),
-  outcome(2, 506, "unconfirmed", "No", "Not confirmed"),
+  outcome(1, 282, "closed", "Gone", "Job closed"),
+  outcome(2, 170, "dismissed", "No", "Dismissed"),
 ];
 
 export const LINKS: readonly Link[] = [
@@ -135,23 +120,13 @@ export const LINKS: readonly Link[] = [
   { from: "fit", to: "o-no_ai", kind: "branch" },
   { from: "fit", to: "o-not_a_fit", kind: "branch" },
   { from: "fit", to: "scored", label: "Yes", kind: "lane" },
-  { from: "scored", to: "fill", kind: "spine" },
-  { from: "fill", to: "worked", kind: "spine" },
-  { from: "worked", to: "o-closed", kind: "branch" },
-  { from: "worked", to: "o-failed", kind: "branch" },
-  { from: "worked", to: "o-external", kind: "branch" },
-  { from: "worked", to: "needs", label: "Yes", kind: "spine" },
-  { from: "needs", to: "o-needs_input", kind: "branch" },
-  { from: "needs", to: "o-finish", kind: "branch" },
-  { from: "needs", to: "earned", label: "No", kind: "lane" },
-  { from: "earned", to: "o-auto_sent", kind: "branch" },
-  { from: "earned", to: "ready", label: "No", kind: "spine" },
-  { from: "ready", to: "approve", kind: "spine" },
-  { from: "approve", to: "o-dismissed", kind: "branch" },
-  { from: "approve", to: "approved", label: "Yes", kind: "spine" },
-  { from: "approved", to: "confirmed", kind: "spine", automatic: true },
-  { from: "confirmed", to: "o-unconfirmed", kind: "branch" },
-  { from: "confirmed", to: "applied", label: "Yes", kind: "spine" },
+  { from: "scored", to: "tailor", kind: "spine" },
+  { from: "tailor", to: "open", kind: "spine" },
+  { from: "open", to: "o-closed", kind: "branch" },
+  { from: "open", to: "ready", label: "Yes", kind: "lane" },
+  { from: "ready", to: "apply", kind: "spine" },
+  { from: "apply", to: "o-dismissed", kind: "branch" },
+  { from: "apply", to: "applied", label: "Yes", kind: "spine" },
 ];
 
 export const EXPLAIN: Record<Group, string> = {
@@ -161,16 +136,10 @@ export const EXPLAIN: Record<Group, string> = {
   duplicate: "The same job seen again on another board or posting.",
   no_ai: "The employer doesn't accept AI-assisted applications, so it's left alone.",
   not_a_fit: "Scored below your minimum, or it has a deal-breaker.",
-  scored: "Good matches. The next run tailors your resume and fills their forms.",
+  scored: "Good matches. The next run tailors your resume for each one.",
   closed: "The job was removed from the company's board.",
-  failed: "Something broke while filling the form. Open a job to see the last step.",
-  external: "A site it can't fill. Apply on their site yourself.",
-  needs_input: "A legal or eligibility question it never guesses. Answer once and it's reused.",
-  finish: "Filled, but the site shows a picture check. Finish it in your own browser.",
-  auto_sent: "Sent for you, because auto-submit is on and it was a strong match.",
-  ready: "Filled and waiting for your OK. Approve or dismiss each one.",
+  ready:
+    "Tailored and ready. Open one in your Chrome; the extension fills it in and you press Submit.",
   dismissed: "Jobs you said no to. Your reasons help it suggest what to skip.",
-  approved: "Approved by you. Sent on the next run where you tick Really send.",
-  unconfirmed: "Sent, but the site didn't show a confirmation. Check your email.",
-  applied: "Sent and confirmed.",
+  applied: "Jobs you submitted.",
 };

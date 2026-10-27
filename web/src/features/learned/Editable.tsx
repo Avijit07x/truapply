@@ -1,12 +1,18 @@
 import { type ReactNode, useState } from "react";
+import { cx } from "../../lib/cx";
 import { Row } from "../../ui/Blocks";
-import { Button } from "../../ui/Button";
+import { Button, IconButton } from "../../ui/Button";
 import { TextField } from "../../ui/Fields";
+import { Pencil, Trash } from "../../ui/icons";
 import styles from "./Learned.module.css";
+
+const LONG = 220;
 
 type EditableProps = {
   heading?: ReactNode;
-  label: ReactNode;
+  compact?: boolean;
+  label: string;
+  name: string;
   value: string;
   limit: number;
   busy: boolean;
@@ -14,28 +20,53 @@ type EditableProps = {
   onDelete: () => void;
 };
 
-export function Editable({ heading, label, value, limit, busy, onSave, onDelete }: EditableProps) {
+export function Editable({
+  heading,
+  compact = false,
+  label,
+  name,
+  value,
+  limit,
+  busy,
+  onSave,
+  onDelete,
+}: EditableProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   if (draft === null) {
+    const long = value.length > LONG;
     return (
-      <div className={styles.item}>
-        <div className={styles.body}>
-          {heading}
-          <p className={styles.text}>{value}</p>
+      <div className={cx(styles.item, heading ? compact && styles.compact : styles.plain)}>
+        {heading && <div className={styles.head}>{heading}</div>}
+        <div className={styles.value}>
+          <p className={cx(styles.text, long && !open && styles.clamped)}>{value}</p>
+          {long && (
+            <button
+              type="button"
+              className={styles.more}
+              aria-expanded={open}
+              onClick={() => {
+                setOpen(!open);
+              }}
+            >
+              {open ? "Show less" : "Show all"}
+            </button>
+          )}
         </div>
-        <Row>
-          <Button
-            variant="ghost"
+        <div className={styles.tools}>
+          <IconButton
+            label={`Edit ${name}`}
+            title="Edit"
             onClick={() => {
               setDraft(value);
             }}
           >
-            Edit
-          </Button>
-          <Button variant="ghost" busy={busy} onClick={onDelete}>
-            Delete
-          </Button>
-        </Row>
+            <Pencil size={14} />
+          </IconButton>
+          <IconButton label={`Delete ${name}`} title="Delete" disabled={busy} onClick={onDelete}>
+            <Trash size={14} />
+          </IconButton>
+        </div>
       </div>
     );
   }

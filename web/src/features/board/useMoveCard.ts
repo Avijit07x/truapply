@@ -5,7 +5,7 @@ import type { Board, JobDetail, JobRow, Status } from "../../api/types";
 import { toast } from "../../ui/toasts";
 
 export type Move =
-  { job: JobRow; to: "approved" } | { job: JobRow; to: "dismissed"; reason: string };
+  { job: JobRow; to: "applied" } | { job: JobRow; to: "dismissed"; reason: string };
 
 export function moveCard(board: Board, job: JobRow, to: Status): Board {
   const moved = { ...job, status: to };
@@ -24,8 +24,8 @@ export function moveCard(board: Board, job: JobRow, to: Status): Board {
 
 function request(move: Move): [string, object] {
   const path = `/api/jobs/${String(move.job.id)}`;
-  return move.to === "approved"
-    ? [`${path}/approve`, {}]
+  return move.to === "applied"
+    ? [`${path}/finished`, {}]
     : [`${path}/dismiss`, { reason: move.reason }];
 }
 
@@ -47,9 +47,7 @@ export function useMoveCard() {
     },
     onSuccess: (job, move) => {
       client.setQueryData(queries.job(job.id).queryKey, job);
-      toast(
-        move.to === "approved" ? `Approved. ${job.company} is sent on the next run.` : "Dismissed.",
-      );
+      toast(move.to === "applied" ? `Marked as applied to ${job.company}.` : "Dismissed.");
     },
     onSettled: () => client.invalidateQueries(),
   });

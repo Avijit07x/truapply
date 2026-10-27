@@ -15,7 +15,9 @@ export default function RunLogPage({ params }: PageProps) {
         title="Run log"
         description={`Finished ${when(log.finishedAt)}.`}
       />
-      <LogView lines={log.lines} />
+      <div className={styles.output}>
+        <LogView lines={log.lines} />
+      </div>
     </div>
   );
 }

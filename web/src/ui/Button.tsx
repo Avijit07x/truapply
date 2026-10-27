@@ -3,7 +3,7 @@ import { cx } from "../lib/cx";
 import { Link } from "../lib/router";
 import styles from "./Button.module.css";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "dangerSoft";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;

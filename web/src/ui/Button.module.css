@@ -71,6 +71,15 @@
   background: var(--bad-bg);
 }
 
+.dangerSoft {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.dangerSoft:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad) 16%, var(--bad-bg));
+}
+
 .iconButton {
   display: inline-grid;
   place-items: center;

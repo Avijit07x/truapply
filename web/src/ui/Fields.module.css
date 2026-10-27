@@ -27,8 +27,9 @@
 }
 
 .input:focus-visible {
-  outline-offset: 0;
   border-color: var(--accent);
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 
 textarea.input {
@@ -48,8 +49,8 @@ textarea.input {
 
 .tags:focus-within {
   border-color: var(--accent);
-  outline: 2px solid var(--accent);
-  outline-offset: 0;
+  outline: 0;
+  box-shadow: var(--focus-ring);
 }
 
 .tag {
@@ -106,7 +107,7 @@ textarea.input {
 }
 
 .positioner {
-  z-index: 20;
+  z-index: 35;
   outline: 0;
 }
 

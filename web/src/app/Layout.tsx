@@ -4,6 +4,7 @@ import { cx } from "../lib/cx";
 import { Link, useLocation } from "../lib/router";
 import { Toaster } from "../ui/Toaster";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { PAGE_NAMES } from "../lib/pages";
 import { Columns, Flow, Home, type IconProps, Play, Rows, Sliders, Spark } from "../ui/icons";
 import styles from "./Layout.module.css";
 import { useLiveRefresh } from "./useLiveRefresh";
@@ -11,13 +12,13 @@ import { useLiveRefresh } from "./useLiveRefresh";
 type NavItem = { to: string; label: string; Icon: ComponentType<IconProps> };
 
 const NAV: readonly NavItem[] = [
-  { to: "/", label: "Home", Icon: Home },
-  { to: "/board", label: "Board", Icon: Columns },
-  { to: "/workflow", label: "Workflow", Icon: Flow },
-  { to: "/jobs", label: "All jobs", Icon: Rows },
-  { to: "/runs", label: "Run", Icon: Play },
-  { to: "/learned", label: "Learned", Icon: Spark },
-  { to: "/settings", label: "Settings", Icon: Sliders },
+  { to: "/", label: PAGE_NAMES["/"], Icon: Home },
+  { to: "/board", label: PAGE_NAMES["/board"], Icon: Columns },
+  { to: "/workflow", label: PAGE_NAMES["/workflow"], Icon: Flow },
+  { to: "/jobs", label: PAGE_NAMES["/jobs"], Icon: Rows },
+  { to: "/runs", label: PAGE_NAMES["/runs"], Icon: Play },
+  { to: "/learned", label: PAGE_NAMES["/learned"], Icon: Spark },
+  { to: "/settings", label: PAGE_NAMES["/settings"], Icon: Sliders },
 ];
 
 function section(path: string): string {
@@ -25,15 +26,17 @@ function section(path: string): string {
   return match?.to ?? "/";
 }
 
-type LayoutProps = { path: string; bleed: boolean; children: ReactNode };
+export type PageLayout = "page" | "fit" | "bleed";
 
-export function Layout({ path, bleed, children }: LayoutProps) {
+type LayoutProps = { path: string; layout: PageLayout; children: ReactNode };
+
+export function Layout({ path, layout, children }: LayoutProps) {
   const { pending } = useLocation();
   const running = useLiveRefresh();
   const active = section(path);
   return (
     <CSPProvider disableStyleElements>
-      <div className={cx(styles.app, bleed && styles.rail)}>
+      <div className={styles.app}>
         <a className={styles.skip} href="#content">
           Skip to content
         </a>
@@ -50,7 +53,6 @@ export function Layout({ path, bleed, children }: LayoutProps) {
                 key={to}
                 to={to}
                 className={styles.navLink}
-                title={bleed ? label : undefined}
                 aria-current={to === active ? "page" : undefined}
               >
                 <Icon />
@@ -59,23 +61,25 @@ export function Layout({ path, bleed, children }: LayoutProps) {
             ))}
           </nav>
           {running && (
-            <Link
-              to="/runs"
-              className={styles.running}
-              title={bleed ? "Run in progress" : undefined}
-            >
+            <Link to="/runs" className={styles.running}>
               <span className={styles.pip} aria-hidden="true" />
               <span className={styles.navLabel}>Run in progress</span>
             </Link>
           )}
           <div className={styles.bottom}>
-            <ThemeSwitch compact={bleed} />
-            <p className={styles.foot}>Runs on your computer. Nothing is sent without your OK.</p>
+            <ThemeSwitch />
+            <p className={styles.foot}>
+              Runs on your computer. You press Submit on every application.
+            </p>
           </div>
         </aside>
         <main
           id="content"
-          className={cx(styles.content, bleed && styles.bleed)}
+          className={cx(
+            styles.content,
+            layout === "bleed" && styles.bleed,
+            layout === "fit" && styles.fit,
+          )}
           aria-busy={pending}
         >
           {pending && <div className={styles.progress} aria-hidden="true" />}

@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useRunStart } from "../../api/mutations";
 import type { RunLimits } from "../../api/types";
-import { Card, Note, Row, Stack } from "../../ui/Blocks";
+import { Note, Row, Stack } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
-import { Dialog } from "../../ui/Dialog";
 import { Checkbox, TextField } from "../../ui/Fields";
 import { Play } from "../../ui/icons";
 import { toast } from "../../ui/toasts";
@@ -13,34 +12,27 @@ export function RunForm({ limits }: { limits: RunLimits }) {
   const start = useRunStart();
   const [limit, setLimit] = useState(String(limits.default));
   const [search, setSearch] = useState(true);
-  const [send, setSend] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const count = Number(limit);
   const valid = Number.isInteger(count) && count >= limits.min && count <= limits.max;
-  const close = () => {
-    setConfirming(false);
-  };
   const run = () => {
     start.mutate(
-      { limit: count, search, send },
+      { limit: count, search },
       {
         onSuccess: () => {
-          close();
-          toast(send ? "Run started. Approved jobs are sent." : "Run started. Nothing is sent.");
+          toast("Run started. Nothing is sent.");
         },
       },
     );
   };
   return (
-    <Card title="Start a run">
+    <section className={styles.block} aria-labelledby="start-title">
+      <h2 id="start-title" className={styles.blockTitle}>
+        Start a run
+      </h2>
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (send) {
-            setConfirming(true);
-          } else {
-            run();
-          }
+          run();
         }}
       >
         <Stack>
@@ -57,36 +49,20 @@ export function RunForm({ limits }: { limits: RunLimits }) {
             />
           </div>
           <Checkbox label="Search for new jobs first" checked={search} onChange={setSearch} />
-          <Checkbox label="Really send the jobs I approved" checked={send} onChange={setSend} />
-          <Note>
-            {send
-              ? "Approved jobs are sent to the employers."
-              : "Dry run: forms are filled in, nothing is sent."}
-          </Note>
+          <Note>It finds, scores and tailors. You apply yourself in your Chrome.</Note>
           <Row>
             <Button
               type="submit"
               variant="primary"
               icon={<Play />}
-              busy={start.isPending && !confirming}
+              busy={start.isPending}
               disabled={!valid}
             >
-              {send ? "Run and send" : "Run now"}
+              Run now
             </Button>
           </Row>
         </Stack>
       </form>
-      <Dialog open={confirming} title="Send real applications?" onClose={close}>
-        <Note>The jobs you approved are sent to the employers. This can't be undone.</Note>
-        <Row>
-          <Button variant="primary" busy={start.isPending} onClick={run}>
-            Run and send
-          </Button>
-          <Button variant="ghost" onClick={close}>
-            Cancel
-          </Button>
-        </Row>
-      </Dialog>
-    </Card>
+    </section>
   );
 }

@@ -1,40 +1,79 @@
 import { useSuspenseQueries } from "@tanstack/react-query";
 import { queries } from "../../api/queries";
-import type { JobFilter } from "../../api/types";
-import { JobList } from "../../components/JobList";
-import { jobFilter } from "../../domain/filters";
+import type { JobList, JobQuery } from "../../api/types";
+import { jobQuery, jobsHref } from "../../domain/filters";
 import { GROUP_LABEL } from "../../domain/groups";
 import { STATUS } from "../../domain/status";
 import { plural } from "../../lib/format";
-import { useLocation } from "../../lib/router";
-import { PageHeader, Stack } from "../../ui/Blocks";
+import { navigate, useLocation } from "../../lib/router";
+import { PageHeader } from "../../ui/Blocks";
 import { FilterChips } from "./FilterChips";
+import { SearchBox } from "../../ui/SearchBox";
+import styles from "./Jobs.module.css";
+import { ActiveFilters } from "./ActiveFilters";
+import { AddLink } from "./AddLink";
+import { JobGrid } from "./JobGrid";
+import { Pager } from "./Pager";
 
-function titleOf(filter: JobFilter): string {
-  if (filter.group) {
-    return GROUP_LABEL[filter.group];
+function titleOf(query: JobQuery): string {
+  if (query.group) {
+    return GROUP_LABEL[query.group];
   }
-  return filter.status ? STATUS[filter.status].label : "All jobs";
+  return query.status ? STATUS[query.status].label : "All jobs";
+}
+
+function describe(query: JobQuery, list: JobList): string {
+  const count = plural(list.total, "job");
+  if (query.q) {
+    return `${count} matching “${query.q}”`;
+  }
+  const narrowed =
+    query.show ?? query.status ?? query.group ?? query.company ?? query.location ?? query.minScore;
+  return narrowed === undefined ? `${count}, not counting skipped ones` : count;
 }
 
 export default function JobsPage() {
-  const { url } = useLocation();
-  const filter = jobFilter(url.searchParams);
+  const { url, pending } = useLocation();
+  const query = jobQuery(url.searchParams);
   const [{ data: summary }, { data: list }] = useSuspenseQueries({
-    queries: [queries.summary(), queries.jobs(filter)],
+    queries: [queries.summary(), queries.jobs(query)],
   });
-  const shown = list.jobs.length;
-  const description =
-    list.total > shown
-      ? `Showing the newest ${shown.toLocaleString()} of ${list.total.toLocaleString()}.`
-      : plural(list.total, "job");
   return (
-    <>
-      <PageHeader title={titleOf(filter)} description={description} />
-      <Stack>
-        <FilterChips filter={filter} counts={summary.counts} total={summary.total} />
-        <JobList jobs={list.jobs} empty="No jobs here yet." />
-      </Stack>
-    </>
+    <div className={styles.page}>
+      <PageHeader
+        title={titleOf(query)}
+        description={describe(query, list)}
+        actions={
+          <>
+            <AddLink />
+            <SearchBox
+              value={query.q ?? ""}
+              onSearch={(q) => {
+                navigate(
+                  jobsHref({ ...query, q: q === "" ? undefined : q, page: undefined }),
+                  true,
+                );
+              }}
+            />
+          </>
+        }
+      />
+      <FilterChips query={query} counts={summary.counts} total={summary.total} />
+      <ActiveFilters query={query} />
+      <JobGrid
+        query={query}
+        list={list}
+        counts={summary.counts}
+        total={summary.total}
+        pending={pending}
+      />
+      <footer className={styles.footer}>
+        <p className={styles.keys}>
+          <kbd>↑</kbd>
+          <kbd>↓</kbd> move <kbd>Enter</kbd> open <kbd>X</kbd> select
+        </p>
+        <Pager query={query} list={list} />
+      </footer>
+    </div>
   );
 }

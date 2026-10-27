@@ -7,31 +7,34 @@ import { cx } from "../../lib/cx";
 import { Link } from "../../lib/router";
 import { PageHeader } from "../../ui/Blocks";
 import { Dialog } from "../../ui/Dialog";
+import { ArrowRight, Check, Close } from "../../ui/icons";
 import styles from "./Board.module.css";
 import { BoardCard } from "./BoardCard";
 import { DropZone } from "./DropZone";
 import { canMove, useDrag } from "./dragStore";
 import { type Move, useMoveCard } from "./useMoveCard";
 
-const COLUMN_NAME: Partial<Record<Status, string>> = {
-  needs_input: "Needs your answer",
-  finish: "Finish these",
-  ready: "Waiting for your OK",
-  approved: "Approved",
-  applied: "Applied",
-  scored: "Good matches to fill",
+type Lane = { name: string; tone: "plain" | "warn" | "bad" | "accent" | "good"; empty: string };
+
+const LANES: Partial<Record<Status, Lane>> = {
+  scored: { name: "Good matches to tailor", tone: "plain", empty: "No good matches waiting." },
+  ready: { name: "Ready for you to apply", tone: "accent", empty: "Nothing ready yet." },
+  applied: { name: "Applied", tone: "good", empty: "Drag a job here once you submitted it." },
 };
 
+function laneOf(status: Status): Lane {
+  return LANES[status] ?? { name: STATUS[status].label, tone: "plain", empty: "Nothing here." };
+}
+
 function BoardColumn({ column, onMove }: { column: Column; onMove: (move: Move) => void }) {
-  const { label, tone } = STATUS[column.status];
-  const name = COLUMN_NAME[column.status] ?? label;
+  const { name, tone, empty } = laneOf(column.status);
   return (
     <DropZone
       className={styles.column}
       label={name}
-      active={column.status === "approved"}
+      active={column.status === "applied"}
       onDrop={(job) => {
-        onMove({ job, to: "approved" });
+        onMove({ job, to: "applied" });
       }}
     >
       <header className={styles.columnHead}>
@@ -43,11 +46,12 @@ function BoardColumn({ column, onMove }: { column: Column; onMove: (move: Move) 
         {column.jobs.map((job) => (
           <BoardCard key={job.id} job={job} />
         ))}
-        {column.jobs.length === 0 && <p className={styles.nothing}>Nothing here</p>}
+        {column.jobs.length === 0 && <p className={styles.empty}>{empty}</p>}
       </div>
       {column.total > column.jobs.length && (
         <Link to={`/jobs?status=${column.status}`} className={styles.seeAll}>
           See all {column.total.toLocaleString()}
+          <ArrowRight size={12} />
         </Link>
       )}
     </DropZone>
@@ -62,10 +66,10 @@ export default function BoardPage() {
   const askDismiss = useDrag((state) => state.askDismiss);
   const closeDismiss = useDrag((state) => state.closeDismiss);
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader
         title="Board"
-        description="Drag a job that's waiting for your OK to Approved, or to Dismiss."
+        description="Drag a job you submitted to Applied, or one you don't want to Dismiss."
       />
       <div className={styles.board} role="region" aria-label="Board" tabIndex={0}>
         {board.columns.map((column) => (
@@ -79,9 +83,28 @@ export default function BoardPage() {
         ))}
       </div>
       {canMove(dragging) && (
-        <DropZone className={styles.dismiss} label="Dismiss" active onDrop={askDismiss}>
-          Drop here to dismiss
-        </DropZone>
+        <div className={styles.dock}>
+          <DropZone
+            className={cx(styles.target, styles.appliedTarget)}
+            label="I submitted it"
+            active
+            onDrop={(job) => {
+              move.mutate({ job, to: "applied" });
+            }}
+          >
+            <Check size={14} />
+            Drop when you submitted it
+          </DropZone>
+          <DropZone
+            className={cx(styles.target, styles.dismissTarget)}
+            label="Dismiss"
+            active
+            onDrop={askDismiss}
+          >
+            <Close size={14} />
+            Drop to dismiss
+          </DropZone>
+        </div>
       )}
       <Dialog
         open={dismissing !== null}
@@ -100,6 +123,6 @@ export default function BoardPage() {
           />
         )}
       </Dialog>
-    </>
+    </div>
   );
 }

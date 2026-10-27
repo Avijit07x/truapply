@@ -1,14 +1,50 @@
 .page {
-  max-width: 840px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.console {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-6);
+  min-height: 0;
+}
+
+.controls {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-height: 0;
+  margin: -4px;
+  padding: 4px;
+  overflow: hidden auto;
+}
+
+.block {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.block + .block {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.blockTitle {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .limit {
-  max-width: 180px;
+  max-width: 160px;
 }
 
 .live {
   display: inline-flex;
-  flex: 1;
   align-items: center;
   gap: var(--space-2);
   font-size: 14px;
@@ -28,10 +64,79 @@
   }
 }
 
+.runs {
+  display: grid;
+  margin: 0 -4px;
+  padding: 0;
+  list-style: none;
+}
+
+.logRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto 12px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 4px;
+  border-radius: var(--radius-small);
+  color: var(--text);
+  font-size: 13.5px;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+
+.logRow:hover {
+  background: var(--subtle);
+}
+
+.logRow:focus-visible {
+  outline-offset: -2px;
+}
+
+.kind {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.automatic {
+  background: var(--auto-bg);
+  color: var(--auto);
+}
+
+.ago,
+.logRow svg {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.output {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.outputHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.outputState {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .log {
   display: flex;
+  flex: 1;
   flex-direction: column-reverse;
-  max-height: 480px;
+  min-height: 0;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -41,25 +146,29 @@
 .log pre {
   margin: 0;
   padding: var(--space-3) var(--space-4);
-  font: 12.5px/1.6 var(--mono);
+  font: 12.5px/1.65 var(--mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.logRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px var(--space-4);
-  color: var(--text);
-  font-size: 14px;
-  text-decoration: none;
-}
-
-.logRow:hover {
-  background: var(--subtle);
-}
-
-.logRow svg {
+.logEmpty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 160px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
   color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .console {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(320px, 1fr);
+  }
+
+  .controls {
+    overflow: visible;
+  }
 }

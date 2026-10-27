@@ -1,18 +1,4 @@
-export type Status =
-  | "new"
-  | "skipped"
-  | "scored"
-  | "ready"
-  | "approved"
-  | "dismissed"
-  | "submitting"
-  | "applied"
-  | "unconfirmed"
-  | "needs_input"
-  | "external"
-  | "failed"
-  | "closed"
-  | "finish";
+export type Status = "new" | "skipped" | "scored" | "ready" | "dismissed" | "applied" | "closed";
 
 export type Group =
   | "found"
@@ -23,16 +9,9 @@ export type Group =
   | "skipped_other"
   | "scored"
   | "closed"
-  | "needs_input"
-  | "finish"
-  | "failed"
-  | "external"
   | "ready"
-  | "auto_sent"
-  | "approved"
   | "dismissed"
-  | "applied"
-  | "unconfirmed";
+  | "applied";
 
 export type JobRow = {
   id: number;
@@ -44,10 +23,8 @@ export type JobRow = {
   updatedAt: string;
 };
 
-export type Sent = { question: string; answer: string; editable: boolean };
-export type OpenQuestion = { question: string; label: string };
-export type Action =
-  "approve" | "answers" | "dismiss" | "thumbs" | "questions" | "retry" | "finished" | "revert";
+export type Sent = { question: string; answer: string };
+export type Action = "dismiss" | "thumbs" | "finished" | "revert" | "score" | "tailor";
 export type Thumbs = -1 | 0 | 1;
 
 export type JobDetail = JobRow & {
@@ -58,28 +35,46 @@ export type JobDetail = JobRow & {
   applyUrl: string | null;
   description: string;
   sent: Sent[];
-  questions: OpenQuestion[];
   changes: string[] | null;
-  hasScreenshot: boolean;
   hasResume: boolean;
   feedback: Thumbs;
   actions: Action[];
   dismissReasons: string[];
 };
 
-export type JobFilter = { status?: Status; group?: Group };
-export type JobList = { jobs: JobRow[]; total: number };
+export type Sort = "updated" | "score" | "title" | "company" | "location";
+export type Order = "asc" | "desc";
+export type JobQuery = {
+  show?: "all";
+  status?: Status;
+  group?: Group;
+  q?: string;
+  sort?: Sort;
+  order?: Order;
+  page?: number;
+  company?: string;
+  location?: string;
+  minScore?: number;
+};
+export type JobList = {
+  jobs: JobRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  dismissable: Status[];
+  scorable: Status[];
+  scoring: number[];
+  dismissReasons: string[];
+};
+export type Dismissed = { dismissed: number; skipped: number };
+export type Scoring = { scoring: number; skipped: number };
+export type Linked = { company: string; open: number; kept: number; added: number; gone: boolean };
 export type Column = { status: Status; total: number; jobs: JobRow[] };
 export type Board = { columns: Column[]; dismissReasons: string[] };
 export type Workflow = { groups: Record<Group, number> };
 
-export type Trust = {
-  count: number;
-  offerAt: number;
-  autoSubmit: boolean;
-  autoSubmitScore: number;
-};
-export type RunLog = { name: string; finishedAt: string };
+export type RunKind = "automatic" | "manual";
+export type RunLog = { name: string; finishedAt: string; kind: RunKind | null };
 export type RunLimits = { min: number; max: number; default: number };
 export type RunState = {
   running: boolean;
@@ -90,12 +85,11 @@ export type RunState = {
   limits: RunLimits;
 };
 export type RunLogLines = RunLog & { lines: string[] };
-export type RunChoice = { limit: number; search: boolean; send: boolean };
+export type RunChoice = { limit: number; search: boolean };
 
 export type Summary = {
   total: number;
   counts: Partial<Record<Status, number>>;
-  trust: Trust;
   run: RunState;
   suggestions: number;
 };
@@ -112,32 +106,70 @@ export type Learned = {
 };
 
 export type SettingsValues = {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  links: string[];
+  currentCompany: string;
+  yearsExperience: number;
+  roles: string[];
   titleKeywords: string[];
   titleExclude: string[];
   skipCompanies: string[];
   relocateCities: string[];
   maxJobAgeDays: number;
   minScore: number;
-  expectedMin: number;
-  expectedMax: number;
-  noticePeriod: string;
-  dailyCap: number | null;
   onsiteCity: boolean;
   remoteCountry: boolean;
   relocate: boolean;
   remoteAbroad: boolean;
-};
-export type SettingsFixed = {
-  city: string;
-  country: string;
   currency: string;
-  strongScore: number;
+  expectedMin: number;
+  expectedMax: number;
+  currentSalary: number | null;
+  noticePeriod: string;
+  citizenship: string;
+  workWithoutVisa: string[];
+  needsSponsorship: boolean;
+  dateOfBirth: string;
+  gender: string;
+  disability: string;
+  veteran: string;
+  ethnicity: string;
+  extraFacts: string;
+  unknownQuestions: "skip" | "guess";
+  coverLetter: "required" | "always" | "never";
+  jobsPerRun: number;
+  scoresPerRun: number;
+  dailyCap: number | null;
   linkedinCap: number;
+  aiCallsPerDay: number;
+  runEveryMinutes: number;
+  summaryHour: number;
+  linkedinReading: boolean;
+  linkedinReadsPerDay: number;
+};
+export type NumberLimit = { min: number; max: number };
+export type SettingsLimits = {
   maxItems: number;
   maxText: number;
-  maxJobAgeDays: number;
-  maxDailyCap: number;
+  maxLongText: number;
+  numbers: Record<string, NumberLimit>;
 };
-export type SettingsView = { values: SettingsValues; fixed: SettingsFixed };
+export type Automatic = { supported: boolean; on: boolean; everyMinutes: number | null };
+export type Extension = { folder: string; built: boolean };
+export type ResumeFormat = "latex" | "structured";
+export type ResumeInfo = { format: ResumeFormat };
+export type ResumeReplaced = { format: ResumeFormat; pages: number };
+export type ResumeUpload = { name: string; data: string };
+export type SettingsView = {
+  values: SettingsValues;
+  limits: SettingsLimits;
+  automatic: Automatic;
+  resume: ResumeInfo;
+  extension: Extension;
+};
 
 export type ApiError = { error: string; problems?: string[] };

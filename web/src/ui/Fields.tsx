@@ -14,9 +14,10 @@ type TextFieldProps = {
   onChange: (value: string) => void;
   multiline?: boolean;
   rows?: number;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date" | "email" | "tel";
   min?: number;
   max?: number;
+  step?: number | "any";
   maxLength?: number;
   required?: boolean;
   autoFocus?: boolean;
@@ -144,7 +145,11 @@ export function SelectField({ label, value, options, onChange }: SelectFieldProp
         </Select.Trigger>
       </div>
       <Select.Portal>
-        <Select.Positioner className={styles.positioner} sideOffset={4}>
+        <Select.Positioner
+          className={styles.positioner}
+          sideOffset={4}
+          alignItemWithTrigger={false}
+        >
           <Select.Popup className={styles.popup}>
             <Select.List className={styles.list}>
               {options.map((option) => (

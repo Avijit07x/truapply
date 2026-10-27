@@ -1,7 +1,6 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import type { ComponentType } from "react";
-import { IconButton } from "../ui/Button";
 import { type IconProps, Monitor, Moon, Sun } from "../ui/icons";
 import styles from "./Layout.module.css";
 import { THEMES, type Theme, useTheme } from "./theme";
@@ -16,24 +15,9 @@ function isTheme(value: string | undefined): value is Theme {
   return value !== undefined && value in CHOICE;
 }
 
-export function ThemeSwitch({ compact }: { compact: boolean }) {
+export function ThemeSwitch() {
   const theme = useTheme((state) => state.theme);
   const setTheme = useTheme((state) => state.setTheme);
-  if (compact) {
-    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length] ?? "light";
-    const { Icon } = CHOICE[theme];
-    return (
-      <IconButton
-        label={`Theme: ${CHOICE[theme].label}. Switch to ${CHOICE[next].label}`}
-        title={`Theme: ${CHOICE[theme].label}`}
-        onClick={() => {
-          setTheme(next);
-        }}
-      >
-        <Icon size={14} />
-      </IconButton>
-    );
-  }
   return (
     <ToggleGroup
       className={styles.themes}

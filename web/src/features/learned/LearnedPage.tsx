@@ -1,32 +1,30 @@
+import { Tabs } from "@base-ui/react/tabs";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { learnedPaths, useLearnedChange } from "../../api/mutations";
 import { queries } from "../../api/queries";
-import type { Rule, SavedAnswer, Suggestion } from "../../api/types";
+import type { Rule, RuleKind, SavedAnswer, Suggestion } from "../../api/types";
 import { RULE_LIMIT, RuleForm } from "../../components/RuleForm";
-import { Card, Empty, List, Note, PageHeader, Row, Section, Stack } from "../../ui/Blocks";
+import { plural } from "../../lib/format";
+import { PageHeader, Row } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
-import { TextField } from "../../ui/Fields";
+import { SearchBox } from "../../ui/SearchBox";
+import { type TabItem, TabList } from "../../ui/Tabs";
 import { toast } from "../../ui/toasts";
 import { Editable } from "./Editable";
+import { grouped } from "./groups";
 import styles from "./Learned.module.css";
 
 const ANSWER_LIMIT = 2000;
-const SOURCE: Record<SavedAnswer["source"], string> = { user: "From you", ai: "From the AI" };
 
-function Listed({ empty, children }: { empty?: string; children: ReactNode[] }) {
-  if (children.length > 0) {
-    return <List>{children}</List>;
-  }
-  return empty ? <Empty>{empty}</Empty> : null;
-}
-
-function RuleItem({ rule, label }: { rule: Rule; label: string }) {
+function RuleItem({ rule, kind }: { rule: Rule; kind: RuleKind }) {
   const change = useLearnedChange();
+  const name = kind === "rule" ? "rule" : "note";
   return (
     <li>
       <Editable
-        label={label}
+        label={kind === "rule" ? "Rule" : "Tailoring note"}
+        name={`${name}: ${rule.text}`}
         value={rule.text}
         limit={RULE_LIMIT}
         busy={change.isPending}
@@ -50,18 +48,25 @@ function RuleItem({ rule, label }: { rule: Rule; label: string }) {
   );
 }
 
-function AnswerItem({ answer }: { answer: SavedAnswer }) {
+function AnswerItem({ answer, compact }: { answer: SavedAnswer; compact: boolean }) {
   const change = useLearnedChange();
   const { question } = answer;
   return (
     <li>
       <Editable
+        compact={compact}
         heading={
-          <p className={styles.question}>
-            {question} <span className={styles.tag}>{SOURCE[answer.source]}</span>
-          </p>
+          <>
+            <span className={compact ? styles.label : styles.question}>{question}</span>
+            {!compact && answer.source === "ai" && (
+              <span className={styles.ai} title="Written by the AI from your resume and notes">
+                AI
+              </span>
+            )}
+          </>
         }
         label={question}
+        name={`answer to ${question}`}
         value={answer.answer}
         limit={ANSWER_LIMIT}
         busy={change.isPending}
@@ -128,70 +133,113 @@ function SavedAnswers({ answers }: { answers: readonly SavedAnswer[] }) {
     ? answers.filter((item) => `${item.question} ${item.answer}`.toLowerCase().includes(words))
     : answers;
   return (
-    <Section title="Saved answers">
-      <Stack>
-        <Note>
-          Reused when a form asks the same question. Answers you give on a job's page are saved
-          here.
-        </Note>
-        {answers.length > 0 && (
-          <TextField label="Find an answer" value={query} onChange={setQuery} />
-        )}
-        <Listed empty={words ? "No saved answer matches that." : "No saved answers yet."}>
-          {shown.map((answer) => (
-            <AnswerItem key={answer.question} answer={answer} />
+    <>
+      <div className={styles.toolbar}>
+        <SearchBox
+          label="Find a saved answer"
+          placeholder="Find a question or answer"
+          value={query}
+          onSearch={setQuery}
+        />
+        <p className={styles.hint}>
+          Reused when a form asks the same question. Written answers marked AI were drafted from
+          your resume and notes, so they're worth a quick read.
+        </p>
+      </div>
+      {shown.length > 0 ? (
+        grouped(shown).map((group) => (
+          <section key={group.title} className={styles.group} aria-label={group.title}>
+            <h3 className={styles.groupTitle}>
+              {group.title}
+              <span className={styles.groupCount}>{group.answers.length}</span>
+            </h3>
+            <ul className={styles.list}>
+              {group.answers.map((answer) => (
+                <AnswerItem key={answer.question} answer={answer} compact={!group.written} />
+              ))}
+            </ul>
+          </section>
+        ))
+      ) : (
+        <p className={styles.empty}>
+          {words ? "No saved answer matches that." : "No saved answers yet."}
+        </p>
+      )}
+    </>
+  );
+}
+
+function RulesPanel({
+  kind,
+  items,
+  empty,
+}: {
+  kind: RuleKind;
+  items: readonly Rule[];
+  empty: string;
+}) {
+  return (
+    <>
+      <div className={styles.add}>
+        <RuleForm kind={kind} />
+      </div>
+      {items.length > 0 ? (
+        <ul className={styles.list}>
+          {items.map((rule) => (
+            <RuleItem key={rule.id} rule={rule} kind={kind} />
           ))}
-        </Listed>
-      </Stack>
-    </Section>
+        </ul>
+      ) : (
+        <p className={styles.empty}>{empty}</p>
+      )}
+    </>
   );
 }
 
 export default function LearnedPage() {
   const { data } = useSuspenseQuery(queries.learned());
+  const tabs: TabItem[] = [
+    ...(data.suggestions.length > 0
+      ? [{ value: "suggestions", label: "Suggestions", count: data.suggestions.length }]
+      : []),
+    { value: "rules", label: "Your rules", count: data.rules.length },
+    { value: "notes", label: "Tailoring notes", count: data.notes.length },
+    { value: "answers", label: "Saved answers", count: data.answers.length },
+  ];
   return (
     <div className={styles.page}>
       <PageHeader
         title="What it learned"
-        description="Rules, notes and answers SatyaApply uses. Change or delete any of them."
+        description={`${plural(data.rules.length, "rule")}, ${plural(data.notes.length, "tailoring note")} and ${plural(data.answers.length, "saved answer")}. Change or delete any of them.`}
       />
-      {data.suggestions.length > 0 && (
-        <Section title="Suggestions">
-          <Stack>
-            <Note>From jobs you dismissed as too senior.</Note>
-            <List>
-              {data.suggestions.map((suggestion) => (
-                <SuggestionItem key={suggestion.id} suggestion={suggestion} />
-              ))}
-            </List>
-          </Stack>
-        </Section>
-      )}
-      <Section title="Your rules">
-        <Stack>
-          <Listed>
-            {data.rules.map((rule) => (
-              <RuleItem key={rule.id} rule={rule} label="Edit rule" />
+      <Tabs.Root defaultValue={tabs[0]?.value ?? "rules"} className={styles.tabs}>
+        <TabList label="What it learned" items={tabs} />
+        <Tabs.Panel value="suggestions" className={styles.panel}>
+          <p className={styles.hint}>From jobs you dismissed as too senior.</p>
+          <ul className={styles.list}>
+            {data.suggestions.map((suggestion) => (
+              <SuggestionItem key={suggestion.id} suggestion={suggestion} />
             ))}
-          </Listed>
-          <Card>
-            <RuleForm kind="rule" />
-          </Card>
-        </Stack>
-      </Section>
-      <Section title="Tailoring notes">
-        <Stack>
-          <Listed>
-            {data.notes.map((rule) => (
-              <RuleItem key={rule.id} rule={rule} label="Edit note" />
-            ))}
-          </Listed>
-          <Card>
-            <RuleForm kind="tailoring_note" />
-          </Card>
-        </Stack>
-      </Section>
-      <SavedAnswers answers={data.answers} />
+          </ul>
+        </Tabs.Panel>
+        <Tabs.Panel value="rules" className={styles.panel}>
+          <RulesPanel
+            kind="rule"
+            items={data.rules}
+            empty="No rules yet. Rules change how jobs are scored."
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="notes" className={styles.panel}>
+          <RulesPanel
+            kind="tailoring_note"
+            items={data.notes}
+            empty="No tailoring notes yet. Notes change how your resume is tailored."
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="answers" className={styles.panel}>
+          <SavedAnswers answers={data.answers} />
+        </Tabs.Panel>
+      </Tabs.Root>
     </div>
   );
 }

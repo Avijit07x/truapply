@@ -1,10 +1,11 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRunStop } from "../../api/mutations";
 import { queries } from "../../api/queries";
-import type { RunLog, RunState } from "../../api/types";
-import { when } from "../../lib/format";
+import type { RunKind, RunLog, RunState } from "../../api/types";
+import { cx } from "../../lib/cx";
+import { ago, when } from "../../lib/format";
 import { Link } from "../../lib/router";
-import { List, Note, PageHeader, Row, Section, Stack } from "../../ui/Blocks";
+import { PageHeader, Row } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { ArrowRight, Stop } from "../../ui/icons";
 import { toast } from "../../ui/toasts";
@@ -25,31 +26,31 @@ function outcome(code: number | null): string {
 function Progress({ run }: { run: RunState }) {
   const stop = useRunStop();
   return (
-    <Section title="Running now">
-      <Stack>
-        <Row>
-          <span className={styles.live}>
-            <span className={styles.pip} aria-hidden="true" />
-            Started {when(run.startedAt)}
-          </span>
-          <Button
-            variant="danger"
-            icon={<Stop size={14} />}
-            busy={stop.isPending}
-            onClick={() => {
-              stop.mutate(undefined, {
-                onSuccess: () => {
-                  toast("Run stopped.");
-                },
-              });
-            }}
-          >
-            Stop
-          </Button>
-        </Row>
-        <LogView lines={run.log} />
-      </Stack>
-    </Section>
+    <section className={styles.block} aria-labelledby="running-title">
+      <h2 id="running-title" className={styles.blockTitle}>
+        Running now
+      </h2>
+      <p className={styles.live}>
+        <span className={styles.pip} aria-hidden="true" />
+        Started {when(run.startedAt)}
+      </p>
+      <Row>
+        <Button
+          variant="danger"
+          icon={<Stop size={14} />}
+          busy={stop.isPending}
+          onClick={() => {
+            stop.mutate(undefined, {
+              onSuccess: () => {
+                toast("Run stopped.");
+              },
+            });
+          }}
+        >
+          Stop
+        </Button>
+      </Row>
+    </section>
   );
 }
 
@@ -58,18 +59,68 @@ function RecentRuns({ logs }: { logs: readonly RunLog[] }) {
     return null;
   }
   return (
-    <Section title="Recent runs">
-      <List>
+    <section className={styles.block} aria-labelledby="recent-title">
+      <h2 id="recent-title" className={styles.blockTitle}>
+        Recent runs
+      </h2>
+      <ul className={styles.runs}>
         {logs.map((log) => (
           <li key={log.name}>
             <Link to={`/runs/${log.name}`} className={styles.logRow}>
               <time dateTime={log.finishedAt}>{when(log.finishedAt)}</time>
+              {log.kind ? (
+                <span className={cx(styles.kind, log.kind === "automatic" && styles.automatic)}>
+                  {KIND_LABEL[log.kind]}
+                </span>
+              ) : (
+                <span />
+              )}
+              <span className={styles.ago}>{ago(log.finishedAt)}</span>
               <ArrowRight size={12} />
             </Link>
           </li>
         ))}
-      </List>
-    </Section>
+      </ul>
+    </section>
+  );
+}
+
+const KIND_LABEL: Record<RunKind, string> = { automatic: "Automatic", manual: "Manual" };
+
+function state(run: RunState): string {
+  if (run.running) {
+    return "Updates every few seconds.";
+  }
+  return run.exitCode === null ? "" : outcome(run.exitCode);
+}
+
+function SavedLog({ name }: { name: string }) {
+  const { data: log } = useSuspenseQuery(queries.runLog(name));
+  return <LogView lines={log.lines} />;
+}
+
+function Output({ run }: { run: RunState }) {
+  const latest = run.logs[0];
+  const live = run.running || run.log.length > 0 || !latest;
+  return (
+    <section className={styles.output} aria-labelledby="log-title">
+      <header className={styles.outputHead}>
+        <h2 id="log-title" className={styles.blockTitle}>
+          {run.running ? "Live log" : "Last run"}
+        </h2>
+        <span className={styles.outputState}>
+          {live ? state(run) : `Finished ${when(latest.finishedAt)}`}
+        </span>
+      </header>
+      {live ? (
+        <LogView
+          lines={run.log}
+          empty={run.running ? "Starting..." : "No runs yet. Start one on the left."}
+        />
+      ) : (
+        <SavedLog name={latest.name} />
+      )}
+    </section>
   );
 }
 
@@ -79,18 +130,15 @@ export default function RunsPage() {
     <div className={styles.page}>
       <PageHeader
         title="Run"
-        description="Finds new jobs, scores them, fills forms, and sends the jobs you approved."
+        description="Finds new jobs, scores them and tailors your resume for the good ones. Nothing is sent."
       />
-      {run.running ? <Progress run={run} /> : <RunForm limits={run.limits} />}
-      {!run.running && run.exitCode !== null && (
-        <Section title="Last run">
-          <Stack>
-            <Note>{outcome(run.exitCode)}</Note>
-            <LogView lines={run.log} />
-          </Stack>
-        </Section>
-      )}
-      <RecentRuns logs={run.logs} />
+      <div className={styles.console}>
+        <div className={styles.controls}>
+          {run.running ? <Progress run={run} /> : <RunForm limits={run.limits} />}
+          <RecentRuns logs={run.logs} />
+        </div>
+        <Output run={run} />
+      </div>
     </div>
   );
 }

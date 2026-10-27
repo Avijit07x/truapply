@@ -43,13 +43,25 @@
 }
 
 .score {
-  min-width: 28px;
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-small);
-  color: var(--text);
+  min-width: 30px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
   text-align: center;
+}
+
+.strong {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.fair {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 @media (max-width: 760px) {

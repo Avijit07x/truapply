@@ -304,3 +304,39 @@ export function Inbox(props: IconProps) {
     </Svg>
   );
 }
+
+export function Search(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5L13.5 13.5" />
+    </Svg>
+  );
+}
+
+export function Filter(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2.5 4H13.5M4.5 8H11.5M6.5 12H9.5" />
+    </Svg>
+  );
+}
+
+export function Copy(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.75" />
+      <path d="M10.5 3.25V3.25A1.25 1.25 0 0 0 9.25 2H3.25A1.25 1.25 0 0 0 2 3.25V9.25A1.25 1.25 0 0 0 3.25 10.5" />
+    </Svg>
+  );
+}
+
+export function Trash(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2.5 4.5H13.5" />
+      <path d="M6 4.5V3.25A1.25 1.25 0 0 1 7.25 2H8.75A1.25 1.25 0 0 1 10 3.25V4.5" />
+      <path d="M3.75 4.5L4.4 12.85A1.25 1.25 0 0 0 5.65 14H10.35A1.25 1.25 0 0 0 11.6 12.85L12.25 4.5" />
+    </Svg>
+  );
+}

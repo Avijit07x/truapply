@@ -23,9 +23,9 @@ const COPY: Record<RuleKind, { label: string; hint: string; button: string; save
   },
 };
 
-type RuleFormProps = { kind: RuleKind; autoFocus?: boolean };
+type RuleFormProps = { kind: RuleKind; autoFocus?: boolean; compact?: boolean };
 
-export function RuleForm({ kind, autoFocus = false }: RuleFormProps) {
+export function RuleForm({ kind, autoFocus = false, compact = false }: RuleFormProps) {
   const [text, setText] = useState("");
   const change = useLearnedChange();
   const copy = COPY[kind];
@@ -46,7 +46,7 @@ export function RuleForm({ kind, autoFocus = false }: RuleFormProps) {
           label={copy.label}
           hint={copy.hint}
           multiline
-          rows={2}
+          rows={compact ? 1 : 2}
           maxLength={RULE_LIMIT}
           required
           autoFocus={autoFocus}
@@ -54,7 +54,12 @@ export function RuleForm({ kind, autoFocus = false }: RuleFormProps) {
           onChange={setText}
         />
         <Row>
-          <Button type="submit" variant="primary" busy={change.isPending} disabled={!text.trim()}>
+          <Button
+            type="submit"
+            variant={compact ? "secondary" : "primary"}
+            busy={change.isPending}
+            disabled={!text.trim()}
+          >
             {copy.button}
           </Button>
         </Row>

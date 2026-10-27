@@ -183,30 +183,12 @@
 }
 
 @media (min-width: 761px) {
-  .rail {
-    grid-template-columns: 56px minmax(0, 1fr);
-  }
-
-  .rail .sidebar {
-    align-items: center;
-    padding: var(--space-4) var(--space-2);
-  }
-
-  .rail .brand,
-  .rail .navLink,
-  .rail .running {
-    justify-content: center;
-    padding: 8px;
-  }
-
-  .rail .brandName,
-  .rail .navLabel,
-  .rail .foot {
-    display: none;
-  }
-
-  .rail .bottom {
-    justify-items: center;
+  .fit {
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    height: 100dvh;
+    padding-bottom: var(--space-4);
   }
 }
 
@@ -232,6 +214,8 @@
     display: flex;
     flex: 1 0 100%;
     gap: var(--space-1);
+    margin: -4px;
+    padding: 4px;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -256,4 +240,8 @@
     height: 78dvh;
     padding: 0;
   }
+}
+
+.navLink:focus-visible {
+  outline-offset: -2px;
 }

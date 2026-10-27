@@ -12,7 +12,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { queries } from "../../api/queries";
 import { CanvasControls } from "./CanvasControls";
 import { edgeTypes } from "./FlowEdge";
-import { GROUP_OF, buildEdges, buildNodes, refreshNodes } from "./graph";
+import { GROUP_OF, buildEdges, buildNodes, pathThrough, refreshNodes } from "./graph";
 import { Inspector } from "./Inspector";
 import { type FlowNode, nodeTypes } from "./nodes";
 import styles from "./Workflow.module.css";
@@ -55,7 +55,27 @@ export default function WorkflowPage() {
     setShown({ groups: data.groups, running });
     setNodes((current) => refreshNodes(current, data.groups, running));
   }
-  const edges = useMemo(() => buildEdges(running), [running]);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const path = useMemo(() => (hovered ? pathThrough(hovered) : null), [hovered]);
+  const edges = useMemo(() => {
+    const built = buildEdges(data.groups, running);
+    if (!path) {
+      return built;
+    }
+    return built.map((edge) =>
+      edge.data ? { ...edge, data: { ...edge.data, dim: !path.edges.has(edge.id) } } : edge,
+    );
+  }, [data.groups, running, path]);
+  const shownNodes = useMemo(() => {
+    if (!path) {
+      return nodes;
+    }
+    return nodes.map((node) =>
+      node.type === "lane" || path.nodes.has(node.id)
+        ? node
+        : { ...node, className: styles.dimNode },
+    );
+  }, [nodes, path]);
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
     setNodes((current) => applyNodeChanges(changes, current));
   }, []);
@@ -72,11 +92,17 @@ export default function WorkflowPage() {
       <h1 className={styles.hiddenTitle}>Workflow</h1>
       <div className={styles.canvas} ref={canvas}>
         <ReactFlow
-          nodes={nodes}
+          nodes={shownNodes}
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
+          onNodeMouseEnter={(_event, node) => {
+            setHovered(node.type === "lane" ? null : node.id);
+          }}
+          onNodeMouseLeave={() => {
+            setHovered(null);
+          }}
           minZoom={0.3}
           maxZoom={1.75}
           nodesDraggable={false}

@@ -34,6 +34,8 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, Menlo, monospace;
+  --scrollbar: 10px;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 :root[data-theme="light"] {
@@ -48,6 +50,10 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -81,6 +87,47 @@ select {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+:not(html, body)::-webkit-scrollbar {
+  width: var(--scrollbar);
+  height: var(--scrollbar);
+}
+
+:not(html, body)::-webkit-scrollbar-track,
+:not(html, body)::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  --scroll-thumb: transparent;
+  scroll-padding: 8px;
+}
+
+:hover {
+  --scroll-thumb: var(--line-strong);
+}
+
+:not(html, body)::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--scroll-thumb) padding-box;
+}
+
+:not(html, body)::-webkit-scrollbar-thumb:hover,
+:not(html, body)::-webkit-scrollbar-thumb:active {
+  background-color: var(--muted);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  body * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  body :hover {
+    scrollbar-color: var(--line-strong) transparent;
+  }
 }
 
 .base-ui-disable-scrollbar {
