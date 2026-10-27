@@ -34,16 +34,17 @@ Even in "best guess" mode, these come **only** from the profile or your saved an
 
 **Blockers.** These are never filled in, solved or got past:
 
-- CAPTCHAs and "verify you're human" checks: the job goes to **Finish these** (`finish`), with whatever was filled in saved. You finish it in your own browser and mark it on the tracker.
-- email or SMS verification codes: the job goes to `needs_input`
+- CAPTCHAs and "verify you're human" checks: the job goes to **Finish these** (`finish`), with whatever was filled in saved. The filled-in browser opens it as a tab, filled in and stopped before Submit; you do the check and press Submit yourself. It's marked applied only when the site confirms.
+- consent and agreement boxes ("I agree", "I consent to the processing of my data", privacy policy, terms): never ticked by SatyaApply. You tick them yourself in the filled-in browser. A send that meets one, required or not, stops before Submit and the job goes to **Finish these**
+- email or SMS verification codes ("enter the code we emailed you to confirm you're human"): the job goes to **Finish these**, and you enter the code yourself
 - creating an account or entering a password: the job goes to `needs_input`
 
 ## 3. Trust before auto-submit
 
-- **Nobody starts with auto-submit**, the project owner included. Every application waits in the review queue (`ready`) until you approve it on the tracker. An approved job is sent for real on the next run.
+- **Nobody starts with auto-submit**, the project owner included. Every application waits in the review queue (`ready`) until you approve it on the tracker, or until you turn auto-submit on. An approved job is sent for real on the next run with Really send.
 - **The trust count** is your clean approvals in a row: approvals with no edits. An edit or a 👎 resets it to 0.
-- Auto-submit is **offered** on the home page only once the count reaches 20. It's never switched on by itself.
-- Even with auto-submit on, it applies only to strong matches (score ≥ 80). Those are sent without waiting and marked as auto-submitted. Everything else still waits for you.
+- Auto-submit is **suggested** on the home page once the count reaches 20. You can also turn it on sooner with **Turn on now**. It's never switched on by itself.
+- Even with auto-submit on, it applies only to strong matches (score ≥ 80). Those are sent without waiting and marked as auto-submitted. Everything else still waits for you, and so does any job whose site wants a human check (it goes to Finish these) or asks something your profile doesn't answer (Needs you).
 - **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, auto-submit turns off, every job waits for your OK again, and you get a desktop notification (a macOS notification, or `notify-send` on Linux).
 - **Never sent twice.** `submitting` is written before Submit is clicked. A job still in `submitting` when a run starts means the last run crashed: it becomes `unconfirmed` and is never sent again.
 - **A human check is never solved.** If one shows up after Submit, the job goes to **Finish these** (`finish`) for you to complete yourself.

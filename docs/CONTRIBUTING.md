@@ -111,6 +111,8 @@ How a senior engineer works on this codebase.
 - `strict` TypeScript, and the strictest typescript-eslint rules with type information. No `any`, no `!` assertions, no comments.
 - Every API call goes through TanStack Query (`src/api/queries.ts`, `src/api/mutations.ts`). Components never call `fetch` themselves.
 - Shared client state lives in small zustand stores (drag state, theme). Everything else is component state.
+- Data grids use TanStack Table (headless) with our own markup and styles. Anything the server sorts, filters or pages lives in the URL, not in table state.
+- Scrollbars: inner scroll areas get the thin pill from `base.css`, shown on hover. The page itself keeps the system scrollbar.
 - Interactive parts (dialogs, selects, switches, toasts) are built on Base UI, wrapped once in `src/ui/`. Styles are CSS Modules using the color tokens in `src/styles/base.css`, which have light and dark values.
 - Icons are drawn in `src/ui/icons.tsx` on a 16 px grid with round ends and soft corners. No icon library.
 - Motion stays small: things rise in once when a page opens, numbers count up, cards lift on hover. Everything stops when the system asks for less motion.

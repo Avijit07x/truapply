@@ -41,23 +41,11 @@ Setup then builds `master.pdf`. If a LaTeX package is missing, it installs it wi
 | Where are you willing to work? | multiple choice, pick several | On-site/hybrid in *your city* · Remote within *your country* · Other cities in *your country* (you'd relocate) · Remote for companies abroad |
 | Which cities? | typed | Only if you'd relocate. Enter = any. |
 
-## 3. Which sites
-
-**"Which job sites should it use?"** Pick several.
-
-| Option | What to know |
-|---|---|
-| Company career pages (Greenhouse, Lever, Ashby) | No login, no account risk, the most reliable. **Recommended.** |
-| LinkedIn | Biggest source. LinkedIn bans accounts it catches using bots. Limited to 10 a day. |
-| Naukri | Big in India. Sends the resume on your Naukri profile, not the tailored one. |
-| Indeed | Uses your country's Indeed site |
-| Wellfound | Startups. Uses your Wellfound profile. |
-
-## 4. How much it does on its own
+## 3. How much it does on its own
 
 | Question | Options (recommended first) |
 |---|---|
-| Submitting | **Review queue first; offer auto-submit once it has earned trust** (after 20 approvals in a row with no edits) · Review queue only, never auto-submit |
+| Submitting | **Review queue first; suggest auto-submit once it has earned trust** (after 20 approvals in a row with no edits; you can turn it on sooner) · Review queue only, never auto-submit |
 | A form question your profile doesn't answer | **Skip the job and flag the question** (your answer is reused from then on) · Best guess from your profile |
 | Applications per day, at most | **About 20** · About 50 · No limit (LinkedIn stays at 10 or less either way) |
 | Cover letters | **Only when the form requires one** · Every application · Never (skips jobs that require one) |
@@ -65,7 +53,7 @@ Setup then builds `master.pdf`. If a LaTeX package is missing, it installs it wi
 
 > Legal and eligibility questions are **never** guessed, whatever you pick here. See [safety.md](safety.md).
 
-## 5. Facts forms ask for
+## 4. Facts forms ask for
 
 | Question | Type | Why it's asked |
 |---|---|---|
@@ -78,7 +66,7 @@ Setup then builds `master.pdf`. If a LaTeX package is missing, it installs it wi
 | Current salary | number, optional | Required on Naukri and many Indian forms. Blank means those jobs are skipped. |
 | Date of birth | optional | Some Indian forms. Blank means those jobs are skipped. |
 
-## 6. Diversity questions (optional)
+## 5. Diversity questions (optional)
 
 **"How should it answer optional diversity questions?"** · **Prefer not to say** (recommended) · Answer them
 
@@ -91,11 +79,11 @@ If you choose to answer them:
 | Veteran | No · Yes · Prefer not to say | "Have you served in a country's armed forces? Mostly asked by US companies." |
 | Race / ethnicity | typed, or Enter for "Prefer not to say" | "Asked by US companies" |
 
-## 7. Anything else
+## 6. Anything else
 
 **"Is there anything true about you that isn't on your resume?"** Typed, optional: skills, older projects, certifications, languages spoken. Tailoring and form answers may use this as well as the resume, and **nothing else**.
 
-## 8. Reply tracking (optional, recommended)
+## 7. Reply tracking (optional, recommended)
 
 **"Track replies from your email?"** · **Yes** · Not now
 
@@ -105,18 +93,17 @@ If yes, setup runs the `satyaapply email` steps from [outcomes.md](outcomes.md#s
 
 ## Settings not asked (defaults)
 
-These are in `profile.json` under `settings`. Change them there, or on the tracker page.
+These are in `profile.json` under `settings`. Every one of them, and every answer above, can be changed on the tracker's Settings page.
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `min_score` | 60 | Jobs scoring below this are skipped |
-| `strong_score` | 80 | Only jobs scoring this or more are auto-submitted |
-| `trust_after` | 20 | Approvals in a row with no edits before auto-submit is offered |
+| `jobs_per_run` | 5 | Jobs got ready each run, and the starting number on the Run page |
+| `scores_per_run` | 40 | Jobs scored each run |
 | `linkedin_cap` | 10 | LinkedIn applications per day, at most |
-| `run_every_hours` | 3 | How often the background run starts |
-| `summary_hour` | 20 | When the daily summary is sent (24 h clock) |
+| `run_every_minutes` | 180 | Minutes between background runs, once they're on (15 to 1,440) |
+| `summary_hour` | 20 | When the daily summary is written (24 h clock) |
 | `ai_calls_per_day` | 300 | Daily Claude call budget |
-| `ghosted_after_days` | 21 | No reply after this many days = ghosted |
 | `max_job_age_days` | 30 | Older postings are ignored |
 
 ## After setup
@@ -124,7 +111,7 @@ These are in `profile.json` under `settings`. Change them there, or on the track
 ```
 satyaapply login            # log in to the job sites once
 satyaapply doctor           # check everything works
-satyaapply run --dry-run    # try it: fills forms, submits nothing
+satyaapply run              # try it: fills forms, submits nothing
 satyaapply tracker          # see what it did
-satyaapply schedule         # run it every 3 hours in the background
+satyaapply schedule         # run it every 3 hours in the background (dry runs unless --send)
 ```

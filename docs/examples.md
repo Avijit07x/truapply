@@ -25,9 +25,6 @@ Real shapes of the data SatyaApply works with. Every person, company and number 
     "relocate_cities": ["Hyderabad", "Pune"],
     "remote_abroad": true
   },
-  "sites": ["career_pages", "linkedin", "naukri"],
-  "submit_mode": "trust",
-  "auto_submit": false,
   "unknown_questions": "skip",
   "daily_cap": 20,
   "cover_letter": "required",
@@ -42,8 +39,8 @@ Real shapes of the data SatyaApply works with. Every person, company and number 
   "extra_facts": "Speaks English, Hindi and Kannada.",
   "email_tracking": { "address": "asha.rao@example.com", "imap_host": "imap.gmail.com" },
   "settings": {
-    "min_score": 60, "strong_score": 80, "trust_after": 20, "linkedin_cap": 10, "run_every_hours": 3,
-    "summary_hour": 20, "ai_calls_per_day": 300, "ghosted_after_days": 21, "max_job_age_days": 30
+    "min_score": 60, "linkedin_cap": 10, "run_every_minutes": 180, "summary_hour": 20,
+    "ai_calls_per_day": 300, "max_job_age_days": 30, "jobs_per_run": 5, "scores_per_run": 40
   }
 }
 ```
@@ -245,11 +242,16 @@ Suggestion: jobs scoring 60–69 got 0 replies in 18 applications. Raise the min
 ## `satyaapply doctor`
 
 ```
-✔ Claude Code 2.1 · logged in
-✔ Chrome found
-✔ pdflatex · master resume builds (1 page)
-✔ LinkedIn logged in
-✘ Indeed logged out          → run: satyaapply login
-✔ Email · imap.gmail.com · read-only test passed
-✘ Schedule not installed     → run: satyaapply schedule
+✔ Data folder: /Users/asha/.satyaapply
+✔ Database: 1,284 jobs saved
+✔ Profile: /Users/asha/.satyaapply/profile.json
+✔ Resume: latex resume builds (1 page)
+✔ Claude budget: 37 of 300 calls used today
+✔ Claude Code: installed and logged in
+✔ Browser: chrome 141.0.7390.54
+✔ Tracker page: built
+✘ Schedule: The schedule runs /Users/asha/old-venv/bin/python, which no longer exists.
+   → Run `satyaapply schedule` again, or `satyaapply unschedule` to stop it.
 ```
+
+Each check that fails names what's broken and the fix. The exit code is 1 when anything is broken. Logins and email are checked here once those phases land.

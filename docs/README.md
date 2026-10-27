@@ -34,6 +34,7 @@ flowchart LR
 | [risks.md](risks.md) | The what-if list: everything that can go wrong and what the tool does about it |
 | [examples.md](examples.md) | Real samples: profile, AI prompt and reply, form answers, resume changes, tracker, summary, logs |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Coding rules, dev setup, tests, how to add a job site or a company, how to report a broken site |
+| [extension.md](extension.md) | Plan for the Chrome extension that fills forms in your own browser |
 
 ## Words used in these docs
 
@@ -45,9 +46,10 @@ flowchart LR
 | **Dry run** | Does everything except clicking the final Submit and uploading files |
 | **Review queue** | Mode where every filled application waits for you to approve it |
 | **Tracker page** | The local page at `127.0.0.1:8765` (`satyaapply tracker`) where you approve, answer, dismiss and teach SatyaApply |
-| **Finish these** | Jobs whose site wants a human check (a CAPTCHA). The answers are saved, and you submit them yourself in your own browser. |
+| **Finish these** | Jobs whose site wants a human check (a CAPTCHA, a picture puzzle or an emailed code). They open in the filled-in browser, and you submit them yourself. |
+| **Filled-in browser** | One window with a tab for every job waiting for you, filled in and stopped before Submit. It opens after a run, or from **Open it filled in**. |
 | **Trust count** | Your approvals in a row with no edits. An edit or a 👎 resets it. |
-| **Auto-submit** | Sending strong matches (score 80 or more) without waiting for your OK. Offered at a trust count of 20, and only on when you turn it on. |
+| **Auto-submit** | Sending strong matches (score 80 or more) without waiting for your OK. Suggested at a trust count of 20 (or turn it on sooner), and only on when you turn it on. |
 | **Tell SatyaApply** | A box on the tracker for rules in plain words, like "no staffing agencies". They change scoring, never your facts. |
 | **Master resume** | Your original resume. It's the only source of facts. |
 | **Outcome** | What happened after applying: confirmed, rejected, assessment, interview, offer, or ghosted (no reply) |

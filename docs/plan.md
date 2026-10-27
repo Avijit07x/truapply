@@ -60,6 +60,8 @@ What "good enough" means. Every number is measured, not guessed.
 | `satyaapply tailor JOB.txt --company … --title …` | Previews your resume tailored to one job description, with every check and the changed lines |
 | `satyaapply run` | One full pass: find, score, tailor, apply, check the inbox, write the summary. `--dry-run`, `--site`, `--limit`, `--show` |
 | `satyaapply tracker` | Opens the local tracker page |
+| `satyaapply finish` | Opens every job waiting for you in one browser, a tab each, filled in and stopped before Submit; you do any human check and press Submit |
+| `satyaapply add LINK` | Adds a company from a Greenhouse, Lever or Ashby job or careers link and checks it now and on every run |
 | `satyaapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd; prints a cron line on Linux) |
 | `satyaapply email` | Sets up reply tracking (also offered during setup) |
 | `satyaapply boards --new` | Prints the career boards you found that aren't in the shared list yet, ready to contribute |
@@ -151,10 +153,10 @@ These docs.
 - [x] Approve → submitted on the next run (with `--send`, or the Run page's send box); dismiss → never applied
 - [x] Dismiss 3 jobs as "too senior" → a suggestion to add that title word to "skip titles" appears, and nothing changes until you accept it
 - [x] A rule typed in "Tell SatyaApply" ("no staffing agencies") changes the next scores, appears on "What it learned", and can be deleted there
-- [ ] A tailoring note ("don't change my headline") is followed in the next 5 tailored resumes
-- [x] The auto-submit offer appears exactly after 20 clean approvals in a row; an edit or a 👎 resets the count
+- [x] A tailoring note ("don't change my headline") is followed in the next 5 tailored resumes
+- [x] The auto-submit suggestion appears exactly after 20 clean approvals in a row; an edit or a 👎 resets the count; **Turn on now** switches it on sooner
 - [x] Two 👎 in the last 10 auto-submitted → auto-submit turns off and a notification is sent
-- [ ] The change view shows exactly the changed lines for 5 tailored resumes
+- [x] The change view shows exactly the changed lines for 5 tailored resumes
 - [x] A POST from another website is rejected (curl test with a fake `Origin`)
 - [x] Checked in a real browser, with a screenshot
 
@@ -186,11 +188,12 @@ These docs.
 
 **Must pass**
 - [ ] After `schedule`, a run starts on its own and writes the log
-- [ ] A second run started during a first exits with "already running"
-- [ ] A run killed right after clicking Submit → the next run marks the job `unconfirmed` and does **not** submit again
-- [ ] The daily limit and the LinkedIn limit stop applying at exactly the limit
-- [ ] The summary notification shows once a day; an interview alert shows right away
-- [ ] `doctor` names each broken piece and its fix (tested by breaking each one)
+- [x] A second run started during a first exits with "already running"
+- [x] A run killed right after clicking Submit → the next run marks the job `unconfirmed` and does **not** submit again
+- [x] The daily limit and the LinkedIn limit stop applying at exactly the limit
+- [x] The summary notification shows once a day
+- [ ] An interview alert shows right away (needs the inbox, phase 6)
+- [x] `doctor` names each broken piece and its fix (tested by breaking each one)
 
 ### Phase 5 · Logged-in sites
 

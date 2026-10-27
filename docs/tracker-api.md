@@ -54,6 +54,12 @@ type Summary = {
   trust: Trust; run: RunState; suggestions: number;
 };
 
+type Sort = "updated" | "score" | "title" | "company" | "location";
+type JobList = {
+  jobs: JobRow[]; total: number; page: number; pageSize: number;
+  dismissable: Status[]; dismissReasons: string[];
+};
+
 type Column = { status: Status; total: number; jobs: JobRow[] };
 
 type Rule = { id: number; text: string };
@@ -62,16 +68,28 @@ type Suggestion = { id: number; word: string };
 type Learned = { rules: Rule[]; notes: Rule[]; answers: SavedAnswer[]; suggestions: Suggestion[] };
 
 type SettingsValues = {
-  titleKeywords: string[]; titleExclude: string[]; skipCompanies: string[];
+  name: string; email: string; phone: string; city: string; country: string; links: string[];
+  currentCompany: string; yearsExperience: number;
+  roles: string[]; titleKeywords: string[]; titleExclude: string[]; skipCompanies: string[];
   relocateCities: string[]; maxJobAgeDays: number; minScore: number;
-  expectedMin: number; expectedMax: number; noticePeriod: string; dailyCap: number | null;
   onsiteCity: boolean; remoteCountry: boolean; relocate: boolean; remoteAbroad: boolean;
+  currency: string; expectedMin: number; expectedMax: number; currentSalary: number | null;
+  noticePeriod: string; citizenship: string; workWithoutVisa: string[]; needsSponsorship: boolean;
+  dateOfBirth: string; gender: string; disability: string; veteran: string; ethnicity: string;
+  extraFacts: string; unknownQuestions: "skip" | "guess"; coverLetter: "required" | "always" | "never";
+  jobsPerRun: number; scoresPerRun: number; dailyCap: number | null; linkedinCap: number;
+  aiCallsPerDay: number; runEveryMinutes: number; summaryHour: number;
+  linkedinReading: boolean; linkedinReadsPerDay: number;
 };
-type SettingsFixed = {
-  city: string; country: string; currency: string; strongScore: number; linkedinCap: number;
-  maxItems: number; maxText: number; maxJobAgeDays: number; maxDailyCap: number;
+type SettingsLimits = {
+  maxItems: number; maxText: number; maxLongText: number;
+  numbers: Record<string, { min: number; max: number }>;
 };
-type SettingsView = { values: SettingsValues; fixed: SettingsFixed };
+type Automatic = { supported: boolean; on: boolean; everyMinutes: number | null };
+type SettingsView = {
+  values: SettingsValues; limits: SettingsLimits; automatic: Automatic;
+  resume: { format: "latex" | "structured" }; extension: { folder: string; built: boolean };
+};
 ```
 
 `actions` lists only what the job's status allows, so the app shows only those buttons. `revert` appears only when the job has a tailored resume. `changes` is `null` when the job wasn't tailored.
@@ -83,12 +101,22 @@ type SettingsView = { values: SettingsValues; fixed: SettingsFixed };
 | Method and path | Body | Answer |
 |---|---|---|
 | `GET /api/summary` | | `Summary` |
-| `GET /api/jobs` | | `{ jobs: JobRow[], total }`: newest first, at most 500. `total` counts every match. |
+| `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped jobs are left out unless you ask for a status or group. `total` counts every match. |
+| `GET /api/jobs?show=all` | | the same, skipped jobs included. Skipped also holds software jobs outside your titles, places or age (`note`: "not your titles or places", no description); they go back to `new` once they fit. |
 | `GET /api/jobs?status=<Status>` | | the same, for one status |
-| `GET /api/jobs?group=<Group>` | | the same, for one workflow box. An unknown status or group is `400`. |
+| `GET /api/jobs?group=<Group>` | | the same, for one workflow box |
 | `GET /api/workflow` | | `{ groups: Record<Group, number> }`: the count in each workflow box |
-| `GET /api/board` | | `{ columns: Column[], dismissReasons }`: needs_input, finish, ready, approved, applied, scored, the newest 8 jobs in each |
+| `GET /api/board` | | `{ columns: Column[], dismissReasons }`: scored, needs_input, finish, ready, approved, applied (the order jobs move in), the newest 8 jobs in each |
 | `GET /api/jobs/<id>` | | `JobDetail` |
+
+`GET /api/jobs` also takes, in any mix:
+
+- `q`: words in the title or company. `company` and `location`: words in that field. Each is at most 100 characters; `%` and `_` are plain text.
+- `minScore`: 1 to 100, only jobs scored at least that.
+- `sort`: one of `Sort` (default `updated`), and `order`: `asc` or `desc` (default newest or highest first, A to Z for text). Jobs with no score sort last either way.
+- `page`: 1 or more. A page past the end returns the last page, and `page` in the answer says which.
+
+An unknown status, group, sort, order, page or score is `400`. `dismissable` lists the statuses a job can be dismissed from, so the app only offers a checkbox on those rows.
 
 A workflow box's count and its job list come from the same SQL condition (`store/groups.py`), so they always match.
 
@@ -106,8 +134,18 @@ Each one answers with the updated `JobDetail`, and is refused with `400` if the 
 | `POST /api/jobs/<id>/retry` | `{}` | `needs_input` → `scored`, when its questions were answered on another job |
 | `POST /api/jobs/<id>/finished` | `{}` | `finish` → `applied`, after you sent it yourself |
 | `POST /api/jobs/<id>/revert` | `{}` | This job uses your original resume. The app then asks for a tailoring note. |
+| `POST /api/jobs/<id>/handoff` | `{}` | For `finish` and `ready`. Opens the job as a tab in the filled-in browser (starting `satyaapply finish` in the background if it isn't open), filled in and stopped before Submit, and brings its tab to the front. Answers with `JobDetail`. When the site confirms, the job becomes `applied`. |
+| `POST /api/jobs/<id>/score` | `{}` | `JobDetail`. Starts a score-only run for a new or skipped job; a job saved without its description has it read from its job board first. If a run is going, it waits its turn. |
+| `POST /api/jobs/score` | `{ ids }` | `{ scoring, skipped }`. The same for several jobs; `JobList.scoring` lists the ids being scored or waiting. |
+| `POST /api/jobs/dismiss` | `{ ids: number[], reason }`, 1 to 200 ids, `reason` one of `dismissReasons` | Dismisses many at once, the same way as one by one, and answers `{ dismissed, skipped }`. Jobs that moved on to a status you can't dismiss from are skipped. |
 
 The board's drag and drop uses `approve` and `dismiss`, so a drag does exactly what the job page buttons do.
+
+### Companies
+
+| Method and path | Body | Answer |
+|---|---|---|
+| `POST /api/boards/link` | `{ link }`, a Greenhouse, Lever or Ashby job or careers link | `{ company, open, kept, added, gone }`. The company's board is saved and checked now and on every run. The linked job is kept even if your filters would skip it. Any other link is `400`. |
 
 ### What it learned
 
@@ -124,17 +162,19 @@ Each one answers with the updated `Learned`.
 | `POST /api/suggestions/<id>/accept` | `{}` | Adds the word to the titles to skip in your profile |
 | `POST /api/suggestions/<id>/dismiss` | `{}` | Drops the suggestion. Nothing changes. |
 
-### Auto-submit, runs and settings
+### Runs and settings
 
 | Method and path | Body | Answer |
 |---|---|---|
-| `POST /api/auto-submit` | `{ on: boolean }` | `Trust`. Turning it on before `offerAt` clean approvals is `400`. |
 | `GET /api/runs` | | `RunState` |
-| `POST /api/runs/start` | `{ limit, search, send }` | `RunState`. `limit` is kept between 1 and 20. `send: false` is a dry run. `400` if one is already running. |
+| `POST /api/runs/start` | `{ limit, search }` | `RunState`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
 | `POST /api/runs/stop` | `{}` | `RunState` |
 | `GET /api/runs/log/<name>` | | `RunLog & { lines: string[] }`, the last 200 lines |
 | `GET /api/settings` | | `SettingsView` |
-| `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. |
+| `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
+| `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |
+| `POST /api/extension/linkedin-plan` | `{}` | `{ read, searches, left }` for the extension: LinkedIn search links (your roles, past 24 h, Easy Apply, your country and remote anywhere) and how many jobs are left for today. `read` is false until reading is on. |
+| `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS only. |
 
 ## Files and pages
 

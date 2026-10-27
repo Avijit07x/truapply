@@ -28,6 +28,7 @@ satyaapply/
   cli.py                 command-line entry
   doctor.py              health checks behind `satyaapply doctor`
   run/                   one run: discovery.py · scoring.py · applying.py · submitting.py · context.py
+                         · lock.py (one run at a time)
   core/
     models.py            Job, Status, Source, duplicate keys
     documents.py         ResumeData (built-in design), ResumeDocument, ResumeFormat
@@ -35,6 +36,7 @@ satyaapply/
     codec.py             dataclass ⇄ JSON and JSON Schema, with exact error paths
     errors.py            SatyaApplyError and its subclasses, each with a hint
     paths.py             the ~/.satyaapply layout
+    schedule.py          the launchd job (macOS) or the cron line (Linux) for background runs
     files.py             atomic, private (0600) file writes
     numbers.py           the number check shared by resumes and form answers
     logs.py              logging setup
@@ -98,7 +100,9 @@ satyaapply/
     trust.py · runs.py · settings.py   auto-submit, runs from the page, settings
     static.py            serves the built app (static/, made by `npm run build`, not in git)
     plain.py             readable resume changes, with LaTeX commands stripped
-  inbox/ · report/       (phases 4, 6)
+  report/
+    summary.py           the daily summary file and notification
+  inbox/                 (phase 6)
   onboarding/
     wizard.py            the setup flow
     steps.py             each group of setup questions
@@ -145,11 +149,15 @@ Everything personal lives in `~/.satyaapply/`, or wherever `SATYAAPPLY_HOME` poi
   resume/master.pdf     built once per version of the master; used whenever tailoring fails
   previews/<job>/       resumes made with `satyaapply tailor`
   satyaapply.db           jobs, answers, feedback, rules, emails, health, settings
-  browser/              Chrome profile holding the site logins
+  browser/              Chrome profile holding the site logins (headless runs)
+  finish-browser/       profile of the filled-in browser, where you submit
+  finish.lock           held while the filled-in browser is open
   resumes/<job id>/     tailored source + <Your_Name>_Resume.pdf sent to that job
   shots/<job id>.png    screenshot on failure, block, or dry-run finish
   summaries/<date>.md   daily summaries
-  run.log               output from background runs (no personal data)
+  runs/<time>.log       the output of each run started by the schedule or the tracker
+  run.log               anything a scheduled run prints before its own log opens
+  run.lock              held while a run is going
 ```
 
 ---
@@ -304,7 +312,7 @@ stateDiagram-v2
 
 `submitting` is written **before** Submit is clicked. If the process dies, the next run finds the job still in `submitting` at its start and marks it `unconfirmed`. It never submits it again (see [risks.md](risks.md)).
 
-`finish` means the site wants a human check (a CAPTCHA or "verify you're human"). SatyaApply never solves it: whatever it filled in is saved, and you finish the job yourself (see [Finish these](#finish-these)). A human check after Submit always leads to `finish`, never to `unconfirmed` or `failed`.
+`finish` means the site wants a human check (a CAPTCHA, "verify you're human", or a code it emailed you). SatyaApply never solves it: whatever it filled in is saved, and you finish the job yourself (see [Finish these](#finish-these)). A human check after Submit always leads to `finish`, never to `unconfirmed` or `failed`.
 
 Besides `ready` and `finish`, you can also dismiss a job that is `scored`, `needs_input`, `failed`, `unconfirmed` or `external`. A dismissed job is never applied to.
 
@@ -472,17 +480,20 @@ flowchart TD
   truth -- "no: redo once, then drop" --> decide
   truth -- yes --> decide{"Blocker or<br/>unknown legal question?"}
   decide -- yes --> flag["needs_input + question saved"]
-  decide -- no --> fill["Fill: text, dropdown, radio, checkbox,<br/>file, search-as-you-type"]
+  decide -- no --> fill["Fill: text, dropdown (its choices read first), radio,<br/>checkbox, file (waits for the upload), search-as-you-type"]
   fill --> again{"New fields appeared,<br/>or a value was cleared?"}
   again -- "yes (up to 3 rounds)" --> read
   again -- no --> btn{"Submit button?"}
-  btn -- "yes, dry run or<br/>waiting for your OK" --> ready["Screenshot, stop: ready"]
-  btn -- "yes, approved or<br/>auto-submit" --> submit["status = submitting, click Submit"]
-  submit --> ok{"Confirmation text?"}
+  btn -- yes --> final{"Final check: required fields filled,<br/>files attached, no consent box for you,<br/>no puzzle showing?"}
+  final -- "a required field is empty" --> flag
+  final -- "dry run or waiting for your OK" --> ready["Screenshot, stop: ready<br/>(consent boxes named in the note)"]
+  final -- "consent box or puzzle" --> fin
+  final -- "all clear, approved or auto-submit" --> submit["status = submitting, click Submit"]
+  submit --> ok{"Confirmation text?<br/>(checked for up to 20 s)"}
   ok -- yes --> applied["applied"]
   ok -- "errors shown" --> read
   ok -- "human check" --> fin["finish, answers saved"]
-  ok -- nothing --> unconf["unconfirmed"]
+  ok -- "nothing in 20 s" --> unconf["unconfirmed"]
   btn -- no --> next["Click Next / Continue / Review"] --> read
 ```
 
@@ -517,17 +528,20 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 ## Background runs
 
-- `satyaapply schedule` writes a launchd job (macOS) that runs every 3 hours and catches up after the Mac wakes up. On Linux it prints a cron line.
-- One run at a time (an `fcntl` lock, released automatically if the process dies).
-- Limits: a daily total, LinkedIn ≤ 10, and the daily Claude call budget.
+- `satyaapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.satyaapply.run.plist`) that runs `satyaapply run --scheduled` every `settings.run_every_minutes` (180, at least 15) minutes, and catches up after the Mac wakes up. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `satyaapply unschedule` removes it.
+- A scheduled run writes its output to `runs/<time>.log`, so it shows on the tracker's Run page next to runs started there.
+- One run at a time: `run/lock.py` holds an `fcntl` lock on `run.lock` for the whole run. A second run, from the schedule, the tracker or the terminal, stops with "Another run is already running." The lock is released automatically if the process dies.
+- Crash recovery: a job left in `submitting` by a run that died is marked `unconfirmed` at the start of the next run, and never sent again.
+- Limits: a daily total (`daily_cap`), LinkedIn ≤ `settings.linkedin_cap` (10) a day, counted separately, and the daily Claude call budget (`settings.ai_calls_per_day`, 300). Every Claude call is charged in `ai/client.py` before it starts. When the budget is spent the run stops cleanly and picks up again tomorrow. Calls are counted per local day in `meta` (`ai_calls:<date>`).
+- The daily summary: the first run after `settings.summary_hour` (20:00) writes `summaries/<date>.md` and shows one notification with what was applied and what waits for you. It's sent once a day (`meta.last_summary`).
 - A random 30–90 s pause between applications, and a short pause between page actions.
-- A site that fails 3 times in a row, or shows a block page, is paused for 24 h (`site_health`).
+- A site that fails 3 times in a row, or shows a block page, is paused for 24 h (`site_health`, phase 5).
 
 ## Tracker page (`tracker/`)
 
 - `satyaapply tracker` serves `http://127.0.0.1:8765` (or a free port if 8765 is taken). It's only reachable from your own machine.
 - The Python side is a JSON API on `http.server`, described in [tracker-api.md](tracker-api.md). `server.py` does the checks, `views.py` and `routes.py` send each address to its handler, and each feature has its own module of routes.
-- The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
+- The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. The All jobs grid uses TanStack Table for its columns, sorting and row selection, while paging, sorting, search and filters run on the server and live in the address, so Back and reload keep your place. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
 - The app follows your system's light or dark mode, or the one you pick at the bottom of the sidebar.
 
 ### Pages
@@ -561,12 +575,20 @@ A button pressed on a stale page (the job's status changed after the page loaded
 
 ### Finish these
 
-A job lands in `finish` when the site wants a human check (a CAPTCHA or "verify you're human"), whether it shows up while filling or after Submit. SatyaApply never solves it. The job page has what you need: the link to the form, the tailored resume PDF, and every answer, ready to paste. Open the form in your own browser, paste the answers, submit, then press **I submitted it** (→ `applied`). Or press **Skip it** (→ `dismissed`).
+A job lands in `finish` when the site wants a human check (a CAPTCHA, "verify you're human", or a code it emailed you), whether it shows up while filling or after Submit. SatyaApply never solves it, and it never presses Submit for you here.
+
+- **The filled-in browser** (`satyaapply finish`, `run/handoff.py`) is one visible window with a tab for every job waiting for you: `finish` jobs and filled `ready` jobs. Each tab is filled from the saved answers with no AI call (the same filling code as a run), gets the tailored resume, and stops before Submit. You do any check and press Submit. When a tab shows the site's confirmation (and its Submit button is gone) that job becomes `applied` with "submitted by you in the filled-in window". It checks for new waiting jobs every 3 seconds and adds them as tabs, closes a tab whose job moved on (approved, dismissed, applied), and doesn't reopen a tab you closed until you ask for it again. Closing the window ends it; nothing changes.
+- It uses its own browser profile and `finish.lock`, so it runs alongside runs and there's only ever one. It opens by itself after a run that leaves jobs waiting (`core/window.py`), and from **Open it filled in** on a job (`POST /api/jobs/<id>/handoff`), which also brings that job's tab to the front.
+- The job page still shows every answer with a copy button, and **I submitted it** (→ `applied`) for when you sent it some other way. **Dismiss** → `dismissed`.
+
+### Adding a company by link
+
+Paste a Greenhouse, Lever or Ashby job or careers link (the **Add a job link** button on All jobs, `POST /api/boards/link`, or `satyaapply add <link>`). Its board is saved with origin `link`, checked right away and on every run (`sources/intake.py`, the same intake the daily run uses). The job you pasted is kept even if your title or place filters would skip it; its other jobs go through the usual filters.
 
 ### Learning and trust
 
 - **Tell SatyaApply** rules (typed on the home page or What it learned) and tailoring notes (written on a job page or What it learned) are stored in the `rules` table and used as described in [AI calls](#ai-calls). Suggestions are stored there too, as `suggested`, and change nothing until you accept them. See [outcomes.md](outcomes.md#1-learning-from-you).
-- **The trust count** is your clean approvals in a row (approvals with no edits). An edit or a 👎 resets it. At 20, the home page offers auto-submit; it's never switched on by itself.
+- **The trust count** is your clean approvals in a row (approvals with no edits). An edit or a 👎 resets it. At 20, the home page suggests turning auto-submit on; **Turn on now** switches it on sooner. It's never switched on by itself.
 - **With auto-submit on,** a run sends `scored` jobs with a score of 80 or more without waiting, and marks them in `jobs.auto_submitted`. If 2 of the last 10 auto-submitted jobs get a 👎, auto-submit turns off and a desktop notification is sent (`osascript` on macOS, `notify-send` on Linux). See [safety.md](safety.md#3-trust-before-auto-submit).
 
 ### Security
