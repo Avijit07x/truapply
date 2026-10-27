@@ -138,6 +138,42 @@ export function JobSearch(props: GroupProps) {
   );
 }
 
+export function Wellfound(props: GroupProps) {
+  const { tags } = fieldsFor(props);
+  const { draft, set } = props;
+  return (
+    <Group
+      title="Wellfound"
+      note="Wellfound jobs get their own tab. They aren't scored and your resume isn't tailored for them; you apply on Wellfound yourself. Jobs that need more experience than you have, or skills you don't list, are left out."
+    >
+      <Checkbox
+        label="List Wellfound jobs on every run"
+        checked={draft.wellfound}
+        onChange={set("wellfound")}
+      />
+      {draft.wellfound && (
+        <>
+          {tags(
+            "wellfoundRoles",
+            "Wellfound roles to read",
+            "Wellfound's own role pages, like Frontend Engineer or Full Stack Engineer. Empty uses Roles you want.",
+          )}
+          {tags(
+            "wellfoundTitles",
+            "Pull jobs whose title has",
+            "Like frontend, full stack or MERN. Empty uses your roles and title keywords.",
+          )}
+          {tags(
+            "wellfoundSkip",
+            "Skip jobs whose title has",
+            "Like java, php or python. Titles to skip above always apply too.",
+          )}
+        </>
+      )}
+    </Group>
+  );
+}
+
 export function WorkPlaces({ draft, set, limits }: GroupProps) {
   const { tags } = fieldsFor({ draft, set, limits });
   const city = draft.city || "your city";
@@ -297,26 +333,6 @@ export function RunsAndLimits(props: GroupProps) {
         {number("linkedinCap", "LinkedIn applications per day")}
       </div>
       <div className={styles.pair}>{number("aiCallsPerDay", "Claude calls per day")}</div>
-    </Group>
-  );
-}
-
-export function LinkedInReading(props: GroupProps) {
-  const { number } = fieldsFor(props);
-  const { draft, set } = props;
-  return (
-    <Group
-      title="LinkedIn"
-      note="While Chrome is open, it reads new LinkedIn jobs on its own every few hours: your roles, past 24 hours, Easy Apply, in your country and remote anywhere. It never applies on LinkedIn."
-    >
-      <Checkbox
-        label="Read new LinkedIn jobs on its own"
-        checked={draft.linkedinReading}
-        onChange={set("linkedinReading")}
-      />
-      <div className={styles.pair}>
-        {number("linkedinReadsPerDay", "Most LinkedIn jobs read a day")}
-      </div>
     </Group>
   );
 }

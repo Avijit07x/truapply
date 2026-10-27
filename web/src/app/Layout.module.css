@@ -73,6 +73,21 @@
   color: var(--text);
 }
 
+.badge {
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .navLink[aria-current="page"] {
   background: color-mix(in srgb, var(--text) 8%, transparent);
   color: var(--text);

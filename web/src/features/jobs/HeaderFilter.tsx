@@ -2,7 +2,7 @@ import { Popover } from "@base-ui/react/popover";
 import { useState } from "react";
 import type { JobQuery, Summary } from "../../api/types";
 import { jobsHref } from "../../domain/filters";
-import { STATUS, STATUSES } from "../../domain/status";
+import { STATUS, STATUSES, activeCount } from "../../domain/status";
 import { cx } from "../../lib/cx";
 import { navigate } from "../../lib/router";
 import { Filter } from "../../ui/icons";
@@ -88,7 +88,7 @@ function StatusChoices({ query, counts, total, go }: ChoiceProps) {
       <Choice
         on={!query.show && !query.status && !query.group}
         label="Active"
-        count={total - (counts.skipped ?? 0)}
+        count={activeCount(counts, total)}
         onPick={pick(undefined)}
       />
       {STATUSES.filter((status) => (counts[status] ?? 0) > 0).map((status) => (

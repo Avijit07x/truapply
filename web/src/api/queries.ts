@@ -15,6 +15,7 @@ import type {
 
 const RUN_POLL_MS = 1_500;
 const LIVE_POLL_MS = 4_000;
+const NEW_JOBS_POLL_MS = 60_000;
 
 const QUERY_KEYS = [
   "show",
@@ -24,6 +25,7 @@ const QUERY_KEYS = [
   "company",
   "location",
   "minScore",
+  "source",
   "sort",
   "order",
   "page",
@@ -42,6 +44,16 @@ export function jobSearch(query: JobQuery): string {
 }
 
 export const queries = {
+  newJobs: (seen: Record<string, string>) =>
+    queryOptions({
+      queryKey: ["new-jobs", seen],
+      queryFn: ({ signal }) =>
+        get<Record<string, number>>(
+          `/api/new-jobs?${new URLSearchParams(seen).toString()}`,
+          signal,
+        ),
+      refetchInterval: NEW_JOBS_POLL_MS,
+    }),
   summary: () =>
     queryOptions({
       queryKey: ["summary"],

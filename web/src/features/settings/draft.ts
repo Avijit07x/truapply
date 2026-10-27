@@ -12,7 +12,6 @@ const NUMBERS = [
   "aiCallsPerDay",
   "runEveryMinutes",
   "summaryHour",
-  "linkedinReadsPerDay",
 ] as const;
 const OPTIONAL_NUMBERS = ["currentSalary", "dailyCap"] as const;
 

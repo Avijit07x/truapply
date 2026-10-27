@@ -20,6 +20,7 @@ export type JobRow = {
   location: string;
   score: number | null;
   status: Status;
+  source: string;
   updatedAt: string;
 };
 
@@ -55,6 +56,7 @@ export type JobQuery = {
   company?: string;
   location?: string;
   minScore?: number;
+  source?: string;
 };
 export type JobList = {
   jobs: JobRow[];
@@ -87,9 +89,15 @@ export type RunState = {
 export type RunLogLines = RunLog & { lines: string[] };
 export type RunChoice = { limit: number; search: boolean };
 
+export type SiteSummary = {
+  source: string;
+  total: number;
+  counts: Partial<Record<Status, number>>;
+};
 export type Summary = {
   total: number;
   counts: Partial<Record<Status, number>>;
+  sites: SiteSummary[];
   run: RunState;
   suggestions: number;
 };
@@ -120,6 +128,10 @@ export type SettingsValues = {
   skipCompanies: string[];
   relocateCities: string[];
   maxJobAgeDays: number;
+  wellfound: boolean;
+  wellfoundRoles: string[];
+  wellfoundTitles: string[];
+  wellfoundSkip: string[];
   minScore: number;
   onsiteCity: boolean;
   remoteCountry: boolean;
@@ -148,8 +160,6 @@ export type SettingsValues = {
   aiCallsPerDay: number;
   runEveryMinutes: number;
   summaryHour: number;
-  linkedinReading: boolean;
-  linkedinReadsPerDay: number;
 };
 export type NumberLimit = { min: number; max: number };
 export type SettingsLimits = {

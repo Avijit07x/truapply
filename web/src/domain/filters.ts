@@ -1,5 +1,6 @@
 import { jobSearch } from "../api/queries";
 import type { JobQuery, Order, Sort } from "../api/types";
+import { sitePage } from "../lib/pages";
 import { isGroup } from "./groups";
 import { isStatus } from "./status";
 
@@ -49,6 +50,6 @@ export function jobQuery(params: URLSearchParams): JobQuery {
   };
 }
 
-export function jobsHref(query: JobQuery): string {
-  return `/jobs${jobSearch(query)}`;
+export function jobsHref({ source, ...query }: JobQuery): string {
+  return `${source ? sitePage(source) : "/jobs"}${jobSearch(query)}`;
 }

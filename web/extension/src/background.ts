@@ -1,5 +1,4 @@
 import type { Failure, Request } from "./messages";
-import { type Ask, isReadingTab, pageRead, scheduleReading } from "./reading";
 
 const DEFAULT_PORT = 8765;
 const OFFLINE = "offline";
@@ -32,12 +31,8 @@ async function resume(jobId: number): Promise<unknown> {
   return { data: btoa(binary) };
 }
 
-function handle(request: Request, tabId: number | undefined): Promise<unknown> {
+function handle(request: Request): Promise<unknown> {
   switch (request.type) {
-    case "readingTab":
-      return isReadingTab(tabId).then((reading) => ({ reading }));
-    case "readDone":
-      return pageRead(tabId, request.blocked).then(() => ({}));
     case "job":
       return post("/api/extension/job", { url: request.url });
     case "answers":
@@ -51,8 +46,6 @@ function handle(request: Request, tabId: number | undefined): Promise<unknown> {
         posting: request.posting,
         text: request.text,
       });
-    case "addMany":
-      return post("/api/extension/add-many", { jobs: request.jobs });
     case "resume":
       return resume(request.jobId);
     case "applied":
@@ -60,14 +53,12 @@ function handle(request: Request, tabId: number | undefined): Promise<unknown> {
   }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  handle(message as Request, sender.tab?.id).then(reply, () => {
+chrome.runtime.onMessage.addListener((message, _sender, reply) => {
+  handle(message as Request).then(reply, () => {
     reply({ error: OFFLINE } satisfies Failure);
   });
   return true;
 });
-
-scheduleReading((path) => post(path, {}) as ReturnType<Ask>);
 
 chrome.action.onClicked.addListener((tab) => {
   if (tab.id === undefined) return;

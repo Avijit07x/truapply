@@ -21,12 +21,12 @@ import {
   Group,
   type GroupProps,
   JobSearch,
-  LinkedInReading,
   MoreFacts,
   PayAndNotice,
   PersonalDetails,
   RunsAndLimits,
   TimeFormat,
+  Wellfound,
   WorkPlaces,
   WorkRights,
 } from "./SettingsGroups";
@@ -79,6 +79,7 @@ const TABS: readonly Tab[] = [
         <JobSearch {...props} />
         <WorkPlaces {...props} />
         <PayAndNotice {...props} />
+        <Wellfound {...props} />
       </>
     ),
   },
@@ -100,7 +101,6 @@ const TABS: readonly Tab[] = [
     show: ({ view, ...props }) => (
       <>
         <AutomaticRuns automatic={view.automatic} {...props} />
-        <LinkedInReading {...props} />
         <TimeFormat />
       </>
     ),

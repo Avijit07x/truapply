@@ -54,21 +54,18 @@
 }
 
 .tableWrap {
-  --head: 35px;
-
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: linear-gradient(
-    var(--subtle) var(--head),
-    var(--line) var(--head) calc(var(--head) + 1px),
-    var(--surface) calc(var(--head) + 1px)
-  );
-  scrollbar-color: var(--line-strong) transparent;
-  scrollbar-width: thin;
+  background: var(--surface);
+  scrollbar-width: none;
   transition: opacity 160ms ease;
+}
+
+.tableWrap::-webkit-scrollbar {
+  display: none;
 }
 
 .pending {
@@ -158,11 +155,11 @@
 }
 
 .scoreColumn {
-  width: 112px;
+  width: 104px;
 }
 
 .statusColumn {
-  width: 248px;
+  width: 196px;
 }
 
 .whenColumn {

@@ -14,19 +14,6 @@ declare namespace chrome {
   }
   namespace tabs {
     type Tab = { id?: number; url?: string };
-    function create(properties: { url: string; active: boolean }): Promise<Tab>;
-    function remove(tabId: number): Promise<void>;
-    function update(tabId: number, properties: { url: string }): Promise<Tab>;
-  }
-  namespace alarms {
-    type Alarm = { name: string };
-    function create(
-      name: string,
-      info: { when?: number; delayInMinutes?: number; periodInMinutes?: number },
-    ): Promise<void>;
-    function get(name: string): Promise<Alarm | undefined>;
-    function clear(name: string): Promise<boolean>;
-    const onAlarm: { addListener(listener: (alarm: Alarm) => void): void };
   }
   namespace action {
     const onClicked: { addListener(listener: (tab: tabs.Tab) => void): void };

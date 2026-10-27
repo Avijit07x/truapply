@@ -71,6 +71,13 @@ const ROUTES: readonly Route[] = [
       queryClient.query(queries.jobs(jobQuery(url.searchParams))),
     ],
   }),
+  page(/^\/sites\/([a-z_]+)$/, () => import("../features/jobs/JobsPage"), {
+    layout: "fit",
+    warm: (params, url) => [
+      queryClient.query(queries.summary()),
+      queryClient.query(queries.jobs({ ...jobQuery(url.searchParams), source: params[0] })),
+    ],
+  }),
   page(/^\/jobs\/(\d+)$/, () => import("../features/job/JobPage"), {
     warm: (params) => [queryClient.query(queries.job(Number(params[0])))],
   }),

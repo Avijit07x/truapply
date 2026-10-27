@@ -59,6 +59,10 @@ function RowCheck({ row }: { row: Row<Features, JobRow> }) {
 }
 
 const helper = createColumnHelper<Features, JobRow>();
+const scoreColumn = helper.accessor("score", {
+  sortDescFirst: true,
+  cell: (info) => <ScoreCell job={info.row.original} />,
+});
 const columns = helper.columns([
   helper.display({ id: "select", cell: (info) => <RowCheck row={info.row} /> }),
   helper.accessor("title", {
@@ -73,10 +77,7 @@ const columns = helper.columns([
   }),
   helper.accessor("company", {}),
   helper.accessor("location", {}),
-  helper.accessor("score", {
-    sortDescFirst: true,
-    cell: (info) => <ScoreCell job={info.row.original} />,
-  }),
+  scoreColumn,
   helper.accessor("status", {
     enableSorting: false,
     cell: (info) => <StatusDot status={info.getValue()} labelClassName={styles.statusLabel} />,
@@ -91,6 +92,7 @@ const columns = helper.columns([
     ),
   }),
 ]);
+const siteColumns = columns.filter((column) => column !== scoreColumn);
 
 function sortedHref(query: JobQuery, sort: Sort, desc: boolean): string {
   const order = desc ? "desc" : "asc";
@@ -214,9 +216,10 @@ export function JobGrid({ query, list, counts, total, pending }: JobGridProps) {
     () => [{ id: current, desc: order === "desc" }],
     [current, order],
   );
+  const shownColumns = query.source ? siteColumns : columns;
   const table = useTable({
     features,
-    columns,
+    columns: shownColumns,
     data: list.jobs,
     getRowId: (job) => String(job.id),
     manualSorting: true,
@@ -261,7 +264,7 @@ export function JobGrid({ query, list, counts, total, pending }: JobGridProps) {
           <tbody>
             {list.total === 0 && (
               <tr>
-                <td colSpan={columns.length} className={styles.noRows}>
+                <td colSpan={shownColumns.length} className={styles.noRows}>
                   {query.q ? `No jobs match “${query.q}”.` : "No jobs match these filters."}
                 </td>
               </tr>

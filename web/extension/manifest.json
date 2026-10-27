@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Fills job applications from your SatyaApply app. You press Submit.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwmCG+cBgx8ZvTueKJMqy0352TaWLig+2zVlDcXGF+ndqOwu2lj+bHwa1hwauEb2i8DW+TFhuL0WxVfJ3U2vqJU52kNCIluGcC8oOsb9/dv2OBPoqYpnaTFUbYrd2KQZh/ebgshfbzME8HPBneHJYioCA4Yz3MZoAyE/IPbwUmNDmsg9prcrw/VWt4ItAtVXEezoCV9ppAZlzjzgTcaXmiX/iaFYE/0jgF+PwU80y1y4uRR43+PP/qXQd63ALcxr5hTAbgoj22A24droCusNe+F+MCxqaId+SkYYNL6br6sFwiuORO/jXKvEUyT67XJHk1TVleT0THB2EMQjWJZFjMwIDAQAB",
-  "permissions": ["storage", "activeTab", "scripting", "alarms"],
+  "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["http://127.0.0.1/*"],
   "background": {
     "service_worker": "background.js"

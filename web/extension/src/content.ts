@@ -1,19 +1,7 @@
 import { FIELD_ATTR, controlsOf, readFields } from "./fields";
 import { fillField, readChoices, recommit, sleep } from "./fill";
 import { failed } from "./messages";
-import { isLinkedInSearch, jobCards, readListings } from "./linkedin";
-import type {
-  Added,
-  AddedMany,
-  Answers,
-  Field,
-  Job,
-  ReadingTab,
-  Reply,
-  Request,
-  Resume,
-  SentItem,
-} from "./messages";
+import type { Added, Answers, Field, Job, Reply, Request, Resume, SentItem } from "./messages";
 import { readPage } from "./posting";
 import { openPanel, stayOnPage } from "./panel";
 import type { Panel } from "./panel";
@@ -29,7 +17,6 @@ const QUIET_MS = 120;
 const STEP_MS = 40;
 const UPLOAD_WAIT_MS = 10_000;
 const UPLOAD_SETTLE_MS = 1500;
-const CARDS_WAIT_MS = 10_000;
 const STEADY_READS = 2;
 const SETTLE_MS = 800;
 const WATCH_MS = 1500;
@@ -398,60 +385,10 @@ async function show(job: Job, panel: Panel): Promise<void> {
   }
 }
 
-const jobs = (count: number) => (count === 1 ? "1 job" : `${String(count)} jobs`);
-
-async function addListings(panel: Panel): Promise<boolean> {
-  mark("adding");
-  panel.wait("Reading each job's description …");
-  const found = await readListings();
-  const reply = await ask<AddedMany>({ type: "addMany", jobs: found });
-  if (failed(reply)) {
-    mark("broken", { error: reply.error });
-    panel.say(`Couldn't add them: ${reply.error}`);
-    return false;
-  }
-  mark("shown", reply);
-  const known = reply.known ? ` ${jobs(reply.known)} you already had.` : "";
-  panel.say(
-    `Added ${String(reply.added)} new ${reply.added === 1 ? "job" : "jobs"}.${known} They're scored in your tracker now.`,
-  );
-  return true;
-}
-
-async function readOnItsOwn(panel: Panel): Promise<void> {
-  if (!jobCards().length) {
-    panel.say("No jobs showed up on this page, so automatic reading stops for now.");
-    await ask({ type: "readDone", blocked: true });
-    return;
-  }
-  const added = await addListings(panel);
-  await ask({ type: "readDone", blocked: !added });
-}
-
-async function linkedInSearch(): Promise<void> {
-  for (let waited = 0; !jobCards().length && waited < CARDS_WAIT_MS; waited += POLL_MS) {
-    await sleep(POLL_MS);
-  }
-  const count = jobCards().length;
-  mark("unknown");
-  const panel = openPanel(null);
-  const tab = await ask<ReadingTab>({ type: "readingTab" });
-  if (!failed(tab) && tab.reading) {
-    await readOnItsOwn(panel);
-    return;
-  }
-  panel.say(`${jobs(count)} on this page.`);
-  if (count) panel.offer(`Add ${jobs(count)} to SatyaApply`, () => void addListings(panel));
-}
-
 async function main(): Promise<void> {
   if (document.documentElement.dataset.satyaapply) return;
   mark("loading");
   stayOnPage(restore);
-  if (isLinkedInSearch()) {
-    await linkedInSearch();
-    return;
-  }
   for (const name of ["input", "change", "pointerdown"]) {
     document.addEventListener(name, noteTouch, true);
   }

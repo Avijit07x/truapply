@@ -17,3 +17,6 @@ export const STATUSES = Object.keys(STATUS) as Status[];
 export function isStatus(value: string | null): value is Status {
   return value !== null && value in STATUS;
 }
+
+export const activeCount = (counts: Partial<Record<Status, number>>, total: number) =>
+  total - (counts.skipped ?? 0) - (counts.closed ?? 0);

@@ -1,7 +1,7 @@
 import type { JobQuery, Status } from "../../api/types";
 import { jobsHref } from "../../domain/filters";
 import { GROUP_LABEL } from "../../domain/groups";
-import { STATUS, STATUSES } from "../../domain/status";
+import { STATUS, STATUSES, activeCount } from "../../domain/status";
 import { Link } from "../../lib/router";
 import { Close } from "../../ui/icons";
 import styles from "./Jobs.module.css";
@@ -15,7 +15,7 @@ type FilterChipsProps = {
 };
 
 function chips({ query, counts, total }: FilterChipsProps): Chip[] {
-  const kept: JobQuery = { q: query.q, sort: query.sort, order: query.order };
+  const kept: JobQuery = { q: query.q, sort: query.sort, order: query.order, source: query.source };
   const all = {
     to: jobsHref({ ...kept, show: "all" }),
     label: "All",
@@ -25,7 +25,7 @@ function chips({ query, counts, total }: FilterChipsProps): Chip[] {
   const active = {
     to: jobsHref(kept),
     label: "Active",
-    count: total - (counts.skipped ?? 0),
+    count: activeCount(counts, total),
     on: !query.show && !query.status && !query.group,
   };
   const statuses = STATUSES.filter(
