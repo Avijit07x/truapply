@@ -6,10 +6,16 @@ from datetime import datetime
 from pathlib import Path
 
 from satyaapply.core.forms import Sent
-from satyaapply.core.models import Job, Status
+from satyaapply.core.models import LISTED_SOURCES, Job, Source, Status
 from satyaapply.store.jobs import from_row
 
-SELECT_COUNTS = "select status, count(*) from jobs group by status"
+LISTED = json.dumps(LISTED_SOURCES)
+NOT_LISTED = "source not in (select value from json_each(?))"
+SELECT_COUNTS = f"select status, count(*) from jobs where {NOT_LISTED} group by status"  # noqa: S608
+UNSEEN = "found_at > ? and status not in (?, ?)"
+SELECT_NEW = f"select count(*) from jobs where {UNSEEN} and {NOT_LISTED}"  # noqa: S608
+SELECT_NEW_ON = f"select count(*) from jobs where {UNSEEN} and source = ?"  # noqa: S608
+SELECT_COUNTS_ON = "select status, count(*) from jobs where source = ? group by status"
 SELECT_ONE = "select * from jobs where id = ?"
 SELECT_STAMPS = """
 select id, status_at from jobs where status in (select value from json_each(?))
@@ -29,7 +35,7 @@ SELECT_LATEST_EACH = """
 select * from (
     select *, row_number() over (
         partition by status order by status_at desc, id desc
-    ) as place from jobs
+    ) as place from jobs where source not in (select value from json_each(?))
 ) where place <= ? order by status_at desc, id desc
 """
 
@@ -67,8 +73,20 @@ def to_record(row: sqlite3.Row) -> JobRecord:
     )
 
 
-def counts(db: sqlite3.Connection) -> dict[Status, int]:
-    return {Status(status): total for status, total in db.execute(SELECT_COUNTS)}
+def counts(db: sqlite3.Connection, source: Source | None = None) -> dict[Status, int]:
+    rows = (
+        db.execute(SELECT_COUNTS, (LISTED,))
+        if source is None
+        else db.execute(SELECT_COUNTS_ON, (source,))
+    )
+    return {Status(status): total for status, total in rows}
+
+
+def found_after(db: sqlite3.Connection, since: datetime, source: Source | None = None) -> int:
+    values = (since.isoformat(), Status.SKIPPED, Status.CLOSED)
+    query, last = (SELECT_NEW, LISTED) if source is None else (SELECT_NEW_ON, source)
+    count: int = db.execute(query, (*values, last)).fetchone()[0]
+    return count
 
 
 def find(db: sqlite3.Connection, job_id: int) -> JobRecord | None:
@@ -94,7 +112,7 @@ def stamps(db: sqlite3.Connection, statuses: Iterable[Status]) -> dict[int, str]
 
 def latest_each(db: sqlite3.Connection, limit: int) -> dict[Status, list[JobRecord]]:
     found: dict[Status, list[JobRecord]] = {}
-    for row in db.execute(SELECT_LATEST_EACH, (limit,)):
+    for row in db.execute(SELECT_LATEST_EACH, (LISTED, limit)):
         record = to_record(row)
         found.setdefault(record.job.status, []).append(record)
     return found

@@ -65,6 +65,9 @@ class Source(StrEnum):
     MANUAL = "manual"
 
 
+LISTED_SOURCES = (Source.WELLFOUND,)
+
+
 def normalize(text: str) -> str:
     return " ".join(NON_WORD.sub(" ", text.lower()).split())
 

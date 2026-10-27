@@ -10,7 +10,6 @@ from satyaapply.tracker import (
     automatic,
     extension,
     learning,
-    linkedin_reading,
     linking,
     listing,
     resume_upload,
@@ -35,7 +34,6 @@ FEATURES = (
     settings,
     automatic,
     resume_upload,
-    linkedin_reading,
     extension,
 )
 GET_ROUTES: tuple[Route, ...] = tuple(item for module in FEATURES for item in module.GET)

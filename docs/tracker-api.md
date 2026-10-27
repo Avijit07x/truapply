@@ -27,7 +27,7 @@ type Group = "found" | "waiting_score" | "duplicate" | "no_ai" | "not_a_fit" | "
 
 type JobRow = {
   id: number; title: string; company: string; location: string;
-  score: number | null; status: Status; updatedAt: string;
+  score: number | null; status: Status; source: string; updatedAt: string;
 };
 
 type Sent = { question: string; answer: string; editable: boolean };
@@ -51,6 +51,7 @@ type RunState = {
 };
 type Summary = {
   total: number; counts: Partial<Record<Status, number>>;
+  sites: { source: string; total: number; counts: Partial<Record<Status, number>> }[];
   trust: Trust; run: RunState; suggestions: number;
 };
 
@@ -71,7 +72,8 @@ type SettingsValues = {
   name: string; email: string; phone: string; city: string; country: string; links: string[];
   currentCompany: string; yearsExperience: number;
   roles: string[]; titleKeywords: string[]; titleExclude: string[]; skipCompanies: string[];
-  relocateCities: string[]; maxJobAgeDays: number; minScore: number;
+  relocateCities: string[]; maxJobAgeDays: number; wellfound: boolean;
+  wellfoundRoles: string[]; wellfoundTitles: string[]; wellfoundSkip: string[]; minScore: number;
   onsiteCity: boolean; remoteCountry: boolean; relocate: boolean; remoteAbroad: boolean;
   currency: string; expectedMin: number; expectedMax: number; currentSalary: number | null;
   noticePeriod: string; citizenship: string; workWithoutVisa: string[]; needsSponsorship: boolean;
@@ -79,7 +81,6 @@ type SettingsValues = {
   extraFacts: string; unknownQuestions: "skip" | "guess"; coverLetter: "required" | "always" | "never";
   jobsPerRun: number; scoresPerRun: number; dailyCap: number | null; linkedinCap: number;
   aiCallsPerDay: number; runEveryMinutes: number; summaryHour: number;
-  linkedinReading: boolean; linkedinReadsPerDay: number;
 };
 type SettingsLimits = {
   maxItems: number; maxText: number; maxLongText: number;
@@ -101,7 +102,8 @@ type SettingsView = {
 | Method and path | Body | Answer |
 |---|---|---|
 | `GET /api/summary` | | `Summary` |
-| `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped jobs are left out unless you ask for a status or group. `total` counts every match. |
+| `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped and closed jobs are left out unless you ask for a status, a group or `show=all`. `total` counts every match. |
+| `GET /api/new-jobs` | `?jobs=<ISO>&wellfound=<ISO>` | `{ jobs?: number, wellfound?: number }`: for each tab you name, the jobs found after that time that aren't skipped or closed (`jobs` is Career jobs). The sidebar sends when you last opened each tab, kept in this browser, and shows the counts as badges. |
 | `GET /api/jobs?show=all` | | the same, skipped jobs included. Skipped also holds software jobs outside your titles, places or age (`note`: "not your titles or places", no description); they go back to `new` once they fit. |
 | `GET /api/jobs?status=<Status>` | | the same, for one status |
 | `GET /api/jobs?group=<Group>` | | the same, for one workflow box |
@@ -113,6 +115,7 @@ type SettingsView = {
 
 - `q`: words in the title or company. `company` and `location`: words in that field. Each is at most 100 characters; `%` and `_` are plain text.
 - `minScore`: 1 to 100, only jobs scored at least that.
+- `source`: one site (`career_pages`, `linkedin`, `naukri`, `indeed`, `wellfound`, `manual`). Without it, listed-only sites (Wellfound) are left out, here and in `counts`, the board and the workflow map. `sites` in `Summary` gives each listed-only site that's switched on its own counts, for its own tab.
 - `sort`: one of `Sort` (default `updated`), and `order`: `asc` or `desc` (default newest or highest first, A to Z for text). Jobs with no score sort last either way.
 - `page`: 1 or more. A page past the end returns the last page, and `page` in the answer says which.
 
@@ -173,7 +176,6 @@ Each one answers with the updated `Learned`.
 | `GET /api/settings` | | `SettingsView` |
 | `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
 | `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |
-| `POST /api/extension/linkedin-plan` | `{}` | `{ read, searches, left }` for the extension: LinkedIn search links (your roles, past 24 h, Easy Apply, your country and remote anywhere) and how many jobs are left for today. `read` is false until reading is on. |
 | `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS only. |
 
 ## Files and pages

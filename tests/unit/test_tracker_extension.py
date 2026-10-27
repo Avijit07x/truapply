@@ -18,8 +18,8 @@ from satyaapply.store.answers import AnswerSource, SavedAnswer
 from satyaapply.store.db import connect
 from satyaapply.store.feedback import FeedbackKind
 from satyaapply.store.jobs import AttemptRecord
-from satyaapply.tracker import extension, runs
-from satyaapply.tracker.extension import EXTENSION_ID, EXTENSION_ORIGIN, NO_JOB, PAGE_RUN_LIMIT
+from satyaapply.tracker import extension
+from satyaapply.tracker.extension import EXTENSION_ID, EXTENSION_ORIGIN, NO_JOB
 from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import JSON_TYPE, Reply, fetch, get, running
@@ -397,28 +397,3 @@ def test_a_page_with_no_job_on_it_is_refused(paths: Paths, monkeypatch: pytest.M
     with running(paths) as server:
         status, body = call(server, "/api/extension/add", {"url": LINKEDIN, "text": "a blog post"})
     assert (status, body["error"]) == (400, NO_JOB)
-
-
-def listing(job_id: str, title: str, description: str = "") -> dict[str, object]:
-    posting = POSTING | {"title": title, "description": description}
-    return {"url": f"https://www.linkedin.com/jobs/view/{job_id}/", "posting": posting}
-
-
-def test_a_page_of_linkedin_jobs_is_added_at_once_and_scored_in_one_run(
-    paths: Paths, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    started: list[runs.Choice] = []
-    monkeypatch.setattr(runs, "start", lambda _paths, choice: started.append(choice))
-    found = [listing("4483608650", "Full Stack Engineer", "React"), listing("4484015176", "UI Dev")]
-    with running(paths) as server:
-        _, first = call(server, "/api/extension/add-many", {"jobs": found})
-        _, again = call(server, "/api/extension/add-many", {"jobs": [*found, {"url": "x"}]})
-    assert first == {"added": 2, "known": 0}
-    assert again == {"added": 0, "known": 2}
-    assert started == [runs.Choice(PAGE_RUN_LIMIT, search=False, find=False)]
-    with closing(connect(paths.database)) as db:
-        added = [records.find(db, job_id) for job_id in (3, 4)]
-    assert [(r.job.source, r.job.external_id) for r in added if r] == [
-        (Source.LINKEDIN, "4483608650"),
-        (Source.LINKEDIN, "4484015176"),
-    ]

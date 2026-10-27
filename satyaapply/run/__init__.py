@@ -15,6 +15,7 @@ from satyaapply.run.lock import run_lock
 from satyaapply.run.rescoring import with_descriptions
 from satyaapply.run.scoring import Scoring, score_pending, score_these
 from satyaapply.run.tailoring import Prepared, prepare, prepare_one, tailor_all
+from satyaapply.sources import wellfound
 from satyaapply.store import jobs, rules, usage
 from satyaapply.store.db import connect
 
@@ -73,6 +74,13 @@ def _steps(db: sqlite3.Connection, context: RunContext, options: RunOptions) -> 
         say("Checking company career pages …")
         found = discover(db, context.profile, context.clock(), options.search)
         say(f"  {found.found:,} open jobs · {found.added} new ones fit your titles and places")
+        if context.profile.settings.wellfound:
+            say("Checking Wellfound …")
+            checked = wellfound.check(db, context.profile, context.resume_text, context.clock())
+            say(f"  {checked.listed} new Wellfound jobs fit you · listed for you to apply")
+            if checked.waiting_until:
+                again = checked.waiting_until.astimezone().strftime("%H:%M")
+                say(f"  Wellfound asked to slow down · next check after {again}")
     settings = context.profile.settings
     scored = score_pending(db, context, options.score_limit or settings.scores_per_run)
     prepared = prepare(db, context, options.limit or settings.jobs_per_run)

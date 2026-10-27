@@ -113,9 +113,9 @@ Each step ends with checks that must pass.
 
 About **3 days** in total.
 
-## Reading LinkedIn on its own
+## LinkedIn
 
-Off until you tick **Settings → Automation → Read new LinkedIn jobs on its own**. While Chrome is open, every 4 hours the background worker asks the app for a plan (`/api/extension/linkedin-plan`), then opens each search in a background tab, one at a time, half a minute apart. The page reads its job cards like **Add N jobs** does, saves them, and tells the worker it's done; the worker closes the tab. A page with no job cards (a sign-in or check page) stops the round. Each round's outcome is kept in `chrome.storage.local` under `linkedinLastRound`. It never applies on LinkedIn; filling Easy Apply comes later, built against saved pages.
+On a LinkedIn job page you open yourself, the panel can add that one job to SatyaApply. Nothing more: it never reads search pages on its own and never applies on LinkedIn, because LinkedIn's rules ban automation and could restrict your account.
 
 ## Testing
 

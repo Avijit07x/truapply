@@ -173,7 +173,7 @@ These docs.
 
 **Must pass**
 - [x] Every page of the current tracker works in the React app, with the same safety checks (Host, Origin, JSON-only POST, strict CSP with only the tracker's own scripts)
-- [x] The workflow map's counts match the All jobs page for every box, and each box links to exactly those jobs
+- [x] The workflow map's counts match the Career jobs page for every box, and each box links to exactly those jobs
 - [x] Dragging a job to Approved or Dismissed on the board does the same as the job page buttons
 - [ ] Checked in a real browser, light and dark, at phone width, with screenshots
 

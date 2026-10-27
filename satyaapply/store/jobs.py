@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +16,12 @@ insert or ignore into jobs (
     posted_at, found_at, status, status_at
 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
+INSERT_WITH_NOTE = """
+insert or ignore into jobs (
+    key, dupe, source, url, apply_url, company, title, location, description,
+    posted_at, found_at, status, status_at, note
+) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
 INSERT_OUTSIDE_SEARCH = """
 insert or ignore into jobs (
     key, dupe, source, url, apply_url, company, title, location, description,
@@ -27,6 +33,9 @@ update jobs set status = 'new', status_at = ?, note = null, description = ?
 where key = ? and status = 'skipped' and note = ?
 """
 SELECT_JOB = "select * from jobs where id = ?"
+UNLIST = """
+update jobs set status = ?, status_at = ?, note = ? where key = ? and status = ? and note = ?
+"""
 SELECT_TO_SCORE = """
 select * from jobs where status = 'new'
 order by posted_at is null, posted_at desc, found_at desc limit ?
@@ -46,7 +55,9 @@ update jobs set status = ?, status_at = ?, note = ?, sent = ?, resume_pdf = ?,
 where id = ?
 """
 SELECT_ACTIVE_TWIN = "select 1 from jobs where dupe = ? and key != ? and status in (?, ?) limit 1"
-COUNT_PREPARED = "select count(*) from jobs where status in (?, ?) and status_at >= ?"
+COUNT_PREPARED = (
+    "select count(*) from jobs where status in (?, ?) and status_at >= ? and source != ?"
+)
 COUNT_PREPARED_ON = COUNT_PREPARED + " and source = ?"
 COUNT_APPLIED = "select count(*) from jobs where status = ? and applied_at >= ?"
 COUNT_FOUND_ON = "select count(*) from jobs where source = ? and found_at >= ?"
@@ -116,6 +127,23 @@ def add_many(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
     with db:
         before = db.total_changes
         db.executemany(INSERT_JOB, (_row(job, now) for job in jobs))
+        return db.total_changes - before
+
+
+def add_ready(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime, note: str) -> int:
+    with db:
+        before = db.total_changes
+        ready = (replace(job, status=Status.READY) for job in jobs)
+        db.executemany(INSERT_WITH_NOTE, ((*_row(job, now), note) for job in ready))
+        return db.total_changes - before
+
+
+def unlist(db: sqlite3.Connection, keys: Iterable[str], listed: str, change: StatusChange) -> int:
+    stamp = change.at.isoformat()
+    rows = ((change.status, stamp, change.note, key, Status.READY, listed) for key in keys)
+    with db:
+        before = db.total_changes
+        db.executemany(UNLIST, rows)
         return db.total_changes - before
 
 
@@ -193,7 +221,7 @@ def is_duplicate(db: sqlite3.Connection, job: Job) -> bool:
 
 
 def prepared_since(db: sqlite3.Connection, since: datetime, source: Source | None = None) -> int:
-    values: tuple[object, ...] = (*ACTIVE_STATUSES, since.isoformat())
+    values: tuple[object, ...] = (*ACTIVE_STATUSES, since.isoformat(), Source.WELLFOUND)
     query = COUNT_PREPARED if source is None else COUNT_PREPARED_ON
     count: int = db.execute(query, values if source is None else (*values, source)).fetchone()[0]
     return count

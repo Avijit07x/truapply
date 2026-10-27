@@ -1,7 +1,8 @@
+import json
 import sqlite3
 from enum import StrEnum
 
-from satyaapply.core.models import Status
+from satyaapply.core.models import LISTED_SOURCES, Status
 from satyaapply.core.notes import AI_RULE_NOTE, DEALBREAKER_PREFIX, DUPLICATE_NOTE, LOW_SCORE_PREFIX
 
 
@@ -24,7 +25,9 @@ PARAMS: dict[str, str] = {status.value: status.value for status in Status} | {
     "no_ai_note": AI_RULE_NOTE,
     "dealbreaker_note": f"{DEALBREAKER_PREFIX}%",
     "low_score_note": f"{LOW_SCORE_PREFIX}%",
+    "listed": json.dumps(LISTED_SOURCES),
 }
+CAREER = "source not in (select value from json_each(:listed))"
 FIT = "(coalesce(note, '') like :dealbreaker_note or coalesce(note, '') like :low_score_note)"
 KNOWN_SKIP = f"(coalesce(note, '') in (:duplicate_note, :no_ai_note) or {FIT})"
 CONDITIONS: dict[Group, str] = {
@@ -44,7 +47,7 @@ TALLIES = ", ".join(
     f"coalesce(sum(case when {where} then 1 else 0 end), 0) as {group}"
     for group, where in CONDITIONS.items()
 )
-SELECT_COUNTS = f"select {TALLIES} from jobs"  # noqa: S608
+SELECT_COUNTS = f"select {TALLIES} from jobs where {CAREER}"  # noqa: S608
 
 
 def counts(db: sqlite3.Connection) -> dict[Group, int]:

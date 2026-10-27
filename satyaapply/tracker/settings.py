@@ -9,7 +9,6 @@ from satyaapply.core.profile import (
     LAST_HOUR,
     MAX_EVERY_MINUTES,
     MAX_JOBS_PER_RUN,
-    MAX_LINKEDIN_READS,
     MAX_SCORE,
     MAX_SCORES_PER_RUN,
     MIN_EVERY_MINUTES,
@@ -59,7 +58,6 @@ EVERY_MINUTES = Number(
     "runEveryMinutes", "Minutes between automatic runs", MIN_EVERY_MINUTES, MAX_EVERY_MINUTES
 )
 SUMMARY_HOUR = Number("summaryHour", "Daily summary hour", 0, LAST_HOUR)
-LINKEDIN_READS = Number("linkedinReadsPerDay", "LinkedIn jobs read a day", 1, MAX_LINKEDIN_READS)
 LIMITED = (
     JOB_AGE,
     MIN_SCORE,
@@ -71,7 +69,6 @@ LIMITED = (
     EVERY_MINUTES,
     SUMMARY_HOUR,
     YEARS,
-    LINKEDIN_READS,
 )
 DIVERSITY = ("gender", "disability", "veteran", "ethnicity")
 
@@ -98,6 +95,10 @@ def _values(profile: Profile) -> dict[str, object]:
         "skipCompanies": list(profile.skip_companies),
         "relocateCities": list(places.relocate_cities),
         "maxJobAgeDays": chosen.max_job_age_days,
+        "wellfound": chosen.wellfound,
+        "wellfoundRoles": list(chosen.wellfound_roles),
+        "wellfoundTitles": list(chosen.wellfound_titles),
+        "wellfoundSkip": list(chosen.wellfound_skip),
         "minScore": chosen.min_score,
         "onsiteCity": places.onsite_city,
         "remoteCountry": places.remote_country,
@@ -123,8 +124,6 @@ def _values(profile: Profile) -> dict[str, object]:
         "aiCallsPerDay": chosen.ai_calls_per_day,
         "runEveryMinutes": chosen.run_every_minutes,
         "summaryHour": chosen.summary_hour,
-        "linkedinReading": chosen.linkedin_reading,
-        "linkedinReadsPerDay": chosen.linkedin_reads_per_day,
     }
 
 
@@ -142,14 +141,16 @@ def _settings(profile: Profile, read: Reader) -> Settings:
         profile.settings,
         min_score=read.number(MIN_SCORE),
         max_job_age_days=read.number(JOB_AGE),
+        wellfound=read.flag("wellfound", "Check Wellfound"),
+        wellfound_roles=read.items("wellfoundRoles", "Wellfound roles to read"),
+        wellfound_titles=read.items("wellfoundTitles", "Wellfound titles to pull"),
+        wellfound_skip=read.items("wellfoundSkip", "Wellfound titles to skip"),
         jobs_per_run=read.number(JOBS_PER_RUN),
         scores_per_run=read.number(SCORES_PER_RUN),
         linkedin_cap=read.number(LINKEDIN_CAP),
         ai_calls_per_day=read.number(AI_CALLS),
         run_every_minutes=read.number(EVERY_MINUTES),
         summary_hour=read.number(SUMMARY_HOUR),
-        linkedin_reading=read.flag("linkedinReading", "Read LinkedIn jobs on its own"),
-        linkedin_reads_per_day=read.number(LINKEDIN_READS),
     )
 
 

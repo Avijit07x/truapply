@@ -22,7 +22,8 @@ from playwright.sync_api import (
 )
 
 from satyaapply.core import schedule
-from satyaapply.core.models import Status
+from satyaapply.core.models import Source, Status
+from satyaapply.core.notes import WELLFOUND_NOTE
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import load, save
 from satyaapply.store import feedback, jobs, records, rules
@@ -52,7 +53,7 @@ PAGES = (
     ),
     ("/board", "Board"),
     ("/workflow", "Workflow"),
-    ("/jobs", "All jobs"),
+    ("/jobs", "Career jobs"),
     ("/jobs?group=ready", "Ready for you to apply"),
     ("/jobs/9", "Frontend Engineer"),
     ("/runs", "Run"),
@@ -300,10 +301,10 @@ def test_the_back_link_returns_to_where_you_opened_the_job(browser: Browser, hom
         expect(page).to_have_url(server.url + "/")
         page.goto(server.url + "/jobs?group=ready")
         page.locator('main a[href="/jobs/9"]').first.click()
-        page.locator("main").get_by_role("link", name="All jobs", exact=True).click()
+        page.locator("main").get_by_role("link", name="Career jobs", exact=True).click()
         expect(page).to_have_url(server.url + "/jobs?group=ready")
         page.goto(server.url + "/jobs/9")
-        page.locator("main").get_by_role("link", name="All jobs", exact=True).click()
+        page.locator("main").get_by_role("link", name="Career jobs", exact=True).click()
         expect(page).to_have_url(server.url + "/jobs")
         assert errors == []
 
@@ -420,6 +421,10 @@ def test_row_checkboxes_scroll_under_the_table_header(browser: Browser, home: Pa
             [x, y],
         )
         assert on_top == "THEAD"
+        scroller = page.locator("tbody").locator("xpath=ancestor::div[1]")
+        assert scroller.evaluate("el => el.scrollTop") > 0
+        assert scroller.evaluate("el => el.offsetWidth - el.clientWidth - 2") == 0
+        assert scroller.evaluate("el => getComputedStyle(el).scrollbarWidth") == "none"
         assert errors == []
 
 
@@ -484,4 +489,57 @@ def test_the_clock_setting_changes_every_time_shown(browser: Browser, home: Path
         page.get_by_role("option", name="12-hour (5:18 pm)").click()
         page.goto(server.url + "/runs")
         expect(page.get_by_role("region", name="Recent runs")).to_contain_text("05:18")
+        assert errors == []
+
+
+def test_an_empty_site_table_spans_exactly_its_own_columns(browser: Browser, home: Paths) -> None:
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/sites/wellfound")
+        empty = page.locator("tbody td[colspan]")
+        empty.wait_for()
+        headers = page.locator("thead th")
+        assert empty.get_attribute("colspan") == str(headers.count())
+        assert page.get_by_role("columnheader", name="Score").count() == 0
+        page.wait_for_load_state("networkidle")
+        assert errors == []
+
+
+def test_a_wellfound_job_goes_back_to_the_wellfound_tab(browser: Browser, home: Paths) -> None:
+    with closing(connect(home.database)) as db:
+        jobs.add_ready(db, [samples.job(Source.WELLFOUND, "9")], NOW, WELLFOUND_NOTE)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/sites/wellfound")
+        page.locator('main a[href="/jobs/1"]').first.click()
+        page.locator("main").get_by_role("link", name="Wellfound jobs", exact=True).click()
+        expect(page).to_have_url(server.url + "/sites/wellfound")
+        page.goto(server.url + "/jobs/1")
+        page.locator("main").get_by_role("link", name="Wellfound jobs", exact=True).click()
+        expect(page).to_have_url(server.url + "/sites/wellfound")
+        page.wait_for_load_state("networkidle")
+        assert errors == []
+
+
+def test_the_sidebar_counts_new_jobs_per_tab_until_you_open_it(
+    browser: Browser, home: Paths
+) -> None:
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/board")
+        nav = page.get_by_role("navigation", name="Main")
+        nav.get_by_role("link", name="Wellfound").wait_for()
+        page.wait_for_load_state("networkidle")
+        found = datetime.now(UTC)
+        with closing(connect(home.database)) as db:
+            jobs.add_many(db, [samples.job(external_id=f"n{n}") for n in range(2)], found)
+            listed = [samples.job(Source.WELLFOUND, str(n)) for n in range(3)]
+            jobs.add_ready(db, listed, found, WELLFOUND_NOTE)
+        page.reload()
+        expect(nav.get_by_label("2 new")).to_be_visible()
+        expect(nav.get_by_label("3 new")).to_be_visible()
+        nav.get_by_role("link", name="Wellfound").click()
+        expect(page).to_have_url(server.url + "/sites/wellfound")
+        expect(nav.get_by_label("3 new")).to_have_count(0)
+        nav.get_by_role("link", name="Board").click()
+        expect(nav.get_by_label("2 new")).to_be_visible()
+        expect(nav.get_by_label("3 new")).to_have_count(0)
+        page.wait_for_load_state("networkidle")
         assert errors == []

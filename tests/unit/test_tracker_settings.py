@@ -30,6 +30,10 @@ VALID: dict[str, object] = {
     "skipCompanies": ["Acme Analytics"],
     "relocateCities": [],
     "maxJobAgeDays": 30,
+    "wellfound": True,
+    "wellfoundRoles": [],
+    "wellfoundTitles": [],
+    "wellfoundSkip": [],
     "minScore": 60,
     "onsiteCity": True,
     "remoteCountry": True,
@@ -58,8 +62,6 @@ VALID: dict[str, object] = {
     "aiCallsPerDay": 300,
     "runEveryMinutes": 180,
     "summaryHour": 20,
-    "linkedinReading": False,
-    "linkedinReadsPerDay": 150,
 }
 
 

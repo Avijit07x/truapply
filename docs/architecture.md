@@ -410,7 +410,7 @@ flowchart TD
 | LinkedIn | Search: Easy Apply, last 24 h | Easy Apply pop-up, with the tailored resume uploaded | Yes |
 | Naukri | Search: last day | Apply + follow-up chat questions. Naukri sends the resume on your Naukri profile, not the tailored one. | Yes |
 | Indeed | Search on the user's country site (`in.indeed.com` …) | Indeed Apply steps, with the tailored resume uploaded | Yes |
-| Wellfound | Your recommended jobs | Apply pop-up with a short note | Yes |
+| Wellfound | Its public role pages (`/role/l/<role>/<country>`, and `/role/r/<role>` when you'd work remote abroad) for **Wellfound roles to read** (or your roles), up to 5 pages each, 2 at a time, every run; no login. A 429 pauses Wellfound for an hour | Not applied by the app: jobs whose title has one of **Pull jobs whose title has** (or your roles and title keywords) and none of **Skip jobs whose title has**, that fit your years of experience (Wellfound's own minimum, with 1 year of stretch) and name skills on your resume, are listed as **Ready** on their own tab with no score and no tailored resume, and you apply on Wellfound yourself | No |
 
 **Shared company list** (`satyaapply/sources/companies.csv`): `ats,slug,company,tags`. It ships with the package, starts with 144 boards we verified ourselves (87 hire in India, 104 remote), and grows by pull requests. `satyaapply boards --new` prints boards you found that aren't in it yet.
 
@@ -541,7 +541,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 - `satyaapply tracker` serves `http://127.0.0.1:8765` (or a free port if 8765 is taken). It's only reachable from your own machine.
 - The Python side is a JSON API on `http.server`, described in [tracker-api.md](tracker-api.md). `server.py` does the checks, `views.py` and `routes.py` send each address to its handler, and each feature has its own module of routes.
-- The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. The All jobs grid uses TanStack Table for its columns, sorting and row selection, while paging, sorting, search and filters run on the server and live in the address, so Back and reload keep your place. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
+- The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. The Career jobs grid uses TanStack Table for its columns, sorting and row selection, while paging, sorting, search and filters run on the server and live in the address, so Back and reload keep your place. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
 - The app follows your system's light or dark mode, or the one you pick at the bottom of the sidebar.
 
 ### Pages
@@ -551,7 +551,8 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 | **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Run now, the trust panel, the jobs waiting on you, and the **Tell SatyaApply** box. |
 | **Board** | `/board` | Columns by status. Drag a job that's waiting for your OK to *Approved*, or to *Dismiss*. |
 | **Workflow** | `/workflow` | A full-screen map of how every job is handled, with live counts in each box. Click a box to see its jobs. |
-| **All jobs** | `/jobs` | Every job, with every status as a filter and its count (e.g. `/jobs?status=finish`, or `/jobs?group=not_a_fit` from the workflow map) |
+| **Career jobs** | `/jobs` | Every job except listed-only sites, with every status as a filter and its count (e.g. `/jobs?status=finish`, or `/jobs?group=not_a_fit` from the workflow map) |
+| **Wellfound** | `/sites/wellfound` | Only while **Also list Wellfound jobs** is on: the same table for Wellfound jobs, without scores |
 | **Job** | `/jobs/<id>` | Status, score and "why this score", links to the job post and the form, the controls below, what was filled in, the resume PDF, a readable **What changed** view (LaTeX commands stripped, so you read words, not markup), the screenshot and the job text |
 | **Run** | `/runs` | Start a run (how many jobs, search first, really send), a live log with Stop, the last run and recent run logs |
 | **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI, with a search box) and suggestions. Each can be edited or deleted. |
@@ -583,7 +584,7 @@ A job lands in `finish` when the site wants a human check (a CAPTCHA, "verify yo
 
 ### Adding a company by link
 
-Paste a Greenhouse, Lever or Ashby job or careers link (the **Add a job link** button on All jobs, `POST /api/boards/link`, or `satyaapply add <link>`). Its board is saved with origin `link`, checked right away and on every run (`sources/intake.py`, the same intake the daily run uses). The job you pasted is kept even if your title or place filters would skip it; its other jobs go through the usual filters.
+Paste a Greenhouse, Lever or Ashby job or careers link (the **Add a job link** button on Career jobs, `POST /api/boards/link`, or `satyaapply add <link>`). Its board is saved with origin `link`, checked right away and on every run (`sources/intake.py`, the same intake the daily run uses). The job you pasted is kept even if your title or place filters would skip it; its other jobs go through the usual filters.
 
 ### Learning and trust
 

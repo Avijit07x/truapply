@@ -37,8 +37,6 @@ MOST_FIELDS = 200
 MOST_TEXT = 5000
 APPLIED_NOTE = "submitted by you in your Chrome"
 NO_JOB = "Couldn't find a job on this page."
-PAGE_RUN_LIMIT = 10
-MOST_PAGE_JOBS = 100
 WEB_PAGE = "http"
 MOST_DESCRIPTION = 60_000
 MOST_PAGE_TEXT = 30_000
@@ -214,32 +212,10 @@ def _applied(db: sqlite3.Connection, _paths: Paths, match: re.Match[str], body: 
     return ok({"applied": True})
 
 
-def _listed(item: object) -> Job | None:
-    given = item if isinstance(item, dict) else {}
-    url = text(given, "url", URL_LIMIT)
-    raw = given.get("posting")
-    if not url.startswith(WEB_PAGE) or not isinstance(raw, dict):
-        return None
-    posting = Posting(*(text(raw, name, MOST_DESCRIPTION) for name in POSTING_FIELDS))
-    return _from_page(url, posting) if posting.title and posting.company else None
-
-
-def _add_many(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
-    raw = body.get("jobs")
-    listed = [
-        job for job in map(_listed, raw[:MOST_PAGE_JOBS] if isinstance(raw, list) else []) if job
-    ]
-    added = jobs.add_many(db, listed, utc_now())
-    if added:
-        runs.start(paths, runs.Choice(PAGE_RUN_LIMIT, search=False, find=False))
-    return ok({"added": added, "known": len(listed) - added})
-
-
 GET: tuple[Route, ...] = ()
 POST: tuple[Route, ...] = (
     route(r"/extension/job", _job),
     route(r"/extension/add", _add),
-    route(r"/extension/add-many", _add_many),
     route(r"/extension/jobs/(\d+)/answers", _answers),
     route(r"/extension/jobs/(\d+)/applied", _applied),
 )

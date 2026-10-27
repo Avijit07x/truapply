@@ -12,12 +12,19 @@ from satyaapply.core.paths import Paths
 
 PROFILE_VERSION = 1
 RETIRED_KEYS = frozenset({"submit_mode", "auto_submit", "sites"})
-RETIRED_SETTINGS = frozenset({"strong_score", "trust_after", "ghosted_after_days"})
+RETIRED_SETTINGS = frozenset(
+    {
+        "strong_score",
+        "trust_after",
+        "ghosted_after_days",
+        "linkedin_reading",
+        "linkedin_reads_per_day",
+    }
+)
 MAX_SCORE = 100
 LAST_HOUR = 23
 MAX_JOBS_PER_RUN = 50
 MAX_SCORES_PER_RUN = 200
-MAX_LINKEDIN_READS = 500
 MIN_EVERY_MINUTES = 15
 MAX_EVERY_MINUTES = 1440
 MINUTES_PER_HOUR = 60
@@ -73,10 +80,12 @@ class Settings:
     summary_hour: int = 20
     ai_calls_per_day: int = 300
     max_job_age_days: int = 30
+    wellfound: bool = True
+    wellfound_roles: tuple[str, ...] = ()
+    wellfound_titles: tuple[str, ...] = ()
+    wellfound_skip: tuple[str, ...] = ()
     jobs_per_run: int = 5
     scores_per_run: int = 40
-    linkedin_reading: bool = False
-    linkedin_reads_per_day: int = 150
 
 
 @dataclass(frozen=True)
@@ -116,8 +125,6 @@ def _settings_problems(settings: Settings) -> list[str]:
         problems.append("settings.min_score must be 0-100")
     if not 1 <= settings.jobs_per_run <= MAX_JOBS_PER_RUN:
         problems.append(f"settings.jobs_per_run must be 1-{MAX_JOBS_PER_RUN}")
-    if not 1 <= settings.linkedin_reads_per_day <= MAX_LINKEDIN_READS:
-        problems.append(f"settings.linkedin_reads_per_day must be 1-{MAX_LINKEDIN_READS}")
     if not 1 <= settings.scores_per_run <= MAX_SCORES_PER_RUN:
         problems.append(f"settings.scores_per_run must be 1-{MAX_SCORES_PER_RUN}")
     if settings.linkedin_cap < 0:

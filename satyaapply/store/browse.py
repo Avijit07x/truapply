@@ -3,17 +3,18 @@ import sqlite3
 from dataclasses import dataclass
 from enum import StrEnum
 
-from satyaapply.core.models import Status
-from satyaapply.store.groups import CONDITIONS, PARAMS, Group
+from satyaapply.core.models import Source, Status
+from satyaapply.store.groups import CAREER, CONDITIONS, PARAMS, Group
 from satyaapply.store.records import JobRecord, to_record
 
 PAGE_SIZE = 50
-ACTIVE = "status != :skipped"
+ACTIVE = "status not in (:skipped, :closed)"
 EVERY_JOB = "1 = 1"
 MATCHES = "title like :search escape '\\' or company like :search escape '\\'"
 COMPANY = "company like :company escape '\\'"
 LOCATION = "location like :location escape '\\'"
 SCORED_AT_LEAST = "score >= :min_score"
+FROM_SITE = "source = :source"
 
 
 class Sort(StrEnum):
@@ -46,6 +47,7 @@ class Browse:
     location: str = ""
     min_score: int | None = None
     everything: bool = False
+    source: Source | None = None
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,8 @@ def _where(browse: Browse) -> str:
         (browse.company, COMPANY),
         (browse.location, LOCATION),
         (browse.min_score is not None, SCORED_AT_LEAST),
+        (browse.source is None, CAREER),
+        (browse.source is not None, FROM_SITE),
     )
     parts = [_chosen(browse), *(part for wanted, part in narrowing if wanted)]
     return " and ".join(f"({part})" for part in parts)
@@ -93,6 +97,7 @@ def page(db: sqlite3.Connection, browse: Browse) -> Page:
         "company": _like(browse.company),
         "location": _like(browse.location),
         "min_score": browse.min_score,
+        "source": browse.source,
     }
     total = int(db.execute(f"select count(*) from jobs where {where}", params).fetchone()[0])  # noqa: S608
     shown = min(browse.page, max(1, math.ceil(total / PAGE_SIZE)))

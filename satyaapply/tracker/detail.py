@@ -70,6 +70,7 @@ def job_row(record: JobRecord) -> dict[str, object]:
         "location": job.location,
         "score": job.score,
         "status": job.status.value,
+        "source": job.source.value,
         "updatedAt": iso(record.updated_at),
     }
 

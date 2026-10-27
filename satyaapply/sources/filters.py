@@ -1,8 +1,10 @@
 import re
+from dataclasses import dataclass
 from datetime import datetime
 
 from satyaapply.core.models import Job, normalize, normalize_company
 from satyaapply.core.profile import Profile
+from satyaapply.sources.skills import skills_fit, skills_in
 
 REMOTE = re.compile(r"\b(remote|anywhere|distributed|work from home|wfh)\b", re.IGNORECASE)
 COUNTRY_PLACES = {
@@ -51,6 +53,7 @@ PARTS = re.compile(r"[/;|]")
 MOST_JOINED = 3
 ROLE_WORDS = frozenset({"engineer", "developer", "programmer"})
 COMMON_WORDS = frozenset({"software", "design", "ui", "web", "product", "application"})
+EXPERIENCE_STRETCH = 1
 GENERAL_TITLES = (
     "software engineer",
     "software developer",
@@ -73,6 +76,14 @@ CITY_ALIASES = {
     "chennai": ("madras",),
     "thiruvananthapuram": ("trivandrum",),
 }
+
+
+@dataclass(frozen=True)
+class ListingFit:
+    known: frozenset[str]
+    min_years: int | None
+    titles: tuple[str, ...] = ()
+    skip: tuple[str, ...] = ()
 
 
 def mentions(phrase: str, text: str) -> bool:
@@ -181,10 +192,30 @@ def company_skipped(job: Job, profile: Profile) -> bool:
     return normalize_company(job.company) in skipped
 
 
-def worth_scoring(job: Job, profile: Profile, now: datetime) -> bool:
+def _place_and_time_fit(job: Job, profile: Profile, now: datetime) -> bool:
     return (
         location_fits(job.location, profile)
-        and role_fits(job, profile)
         and is_fresh(job, now, profile.settings.max_job_age_days)
         and not company_skipped(job, profile)
     )
+
+
+def worth_scoring(job: Job, profile: Profile, now: datetime) -> bool:
+    return role_fits(job, profile) and _place_and_time_fit(job, profile, now)
+
+
+def _title_listed(job: Job, profile: Profile, fit: ListingFit) -> bool:
+    if any(says(word, job.title) for word in (*fit.skip, *profile.title_exclude)):
+        return False
+    if fit.titles:
+        return any(says(title, job.title) for title in fit.titles)
+    return role_fits(job, profile)
+
+
+def worth_listing(job: Job, profile: Profile, now: datetime, fit: ListingFit) -> bool:
+    asked = skills_in([job.title, job.description])
+    stretch = profile.years_experience + EXPERIENCE_STRETCH
+    experienced = fit.min_years is None or fit.min_years <= stretch
+    skilled = bool(asked) and skills_fit(asked, fit.known)
+    listed = _title_listed(job, profile, fit) and _place_and_time_fit(job, profile, now)
+    return listed and experienced and skilled
