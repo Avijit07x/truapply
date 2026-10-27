@@ -13,3 +13,4 @@ htmlcov/
 .playwright-mcp/
 web/node_modules/
 satyaapply/tracker/static/
+satyaapply/extension/

@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && npm run build:extension",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write src",
-    "check": "tsc --noEmit && eslint . && prettier --check src"
+    "format": "prettier --write src extension",
+    "check": "tsc --noEmit && eslint . && prettier --check src extension",
+    "build:extension": "vite build -c vite.extension.config.ts --mode content && vite build -c vite.extension.config.ts --mode background && vite build -c vite.extension.config.ts --mode network"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
     "@tanstack/react-query": "5.104.2",
+    "@tanstack/react-table": "9.3.1",
     "@xyflow/react": "12.12.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
