@@ -8,6 +8,8 @@ from satyaapply.store.db import connect
 from satyaapply.tracker import (
     actions,
     automatic,
+    autosend,
+    companies,
     extension,
     learning,
     linking,
@@ -27,6 +29,7 @@ PDF = "application/pdf"
 JOB_FILE = re.compile(r"^/jobs/(\d+)/resume\.pdf$")
 FEATURES = (
     listing,
+    companies,
     actions,
     learning,
     linking,
@@ -35,6 +38,7 @@ FEATURES = (
     automatic,
     resume_upload,
     extension,
+    autosend,
 )
 GET_ROUTES: tuple[Route, ...] = tuple(item for module in FEATURES for item in module.GET)
 POST_ROUTES: tuple[Route, ...] = tuple(item for module in FEATURES for item in module.POST)

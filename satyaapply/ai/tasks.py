@@ -87,7 +87,7 @@ def score_job(
 
 def _search(profile: Profile, hosts: str) -> tuple[str, ...]:
     request = Request(
-        job_prompts.board_search(profile, hosts), prompts.SYSTEM, Model.SONNET, WEB_SEARCH_TOOL
+        job_prompts.board_search(profile, hosts), prompts.SYSTEM, Model.HAIKU, WEB_SEARCH_TOOL
     )
     return ask(FoundPostings, request).urls
 

@@ -1,35 +1,114 @@
-import csv
-import re
-from importlib import resources
+import json
+from contextlib import closing
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
+from pathlib import Path
+from typing import Any
 
-from satyaapply.core.models import Ats
-from satyaapply.sources.discover import SHARED_LIST, shared_boards
+import pytest
 
-COLUMNS = ["ats", "slug", "company", "tags"]
-SLUG = re.compile(r"^[\w.%-]+$")
-TAGS = frozenset({"india", "remote"})
+from satyaapply.core.models import Ats, Board, Status
+from satyaapply.core.paths import Paths
+from satyaapply.core.profile import CompanySearch, Profile, save
+from satyaapply.run import discovery
+from satyaapply.run.discovery import CompanySearchNow
+from satyaapply.run.lock import run_lock
+from satyaapply.sources.intake import Intake
+from satyaapply.store import boards, jobs
+from satyaapply.store.boards import BoardOrigin
+from satyaapply.store.db import connect
+from satyaapply.tracker import companies, runs
+from satyaapply.tracker.routes import Incoming, Route, dispatch
+from tests.unit import samples
 
-
-def rows() -> list[dict[str, str]]:
-    content = resources.files("satyaapply.sources").joinpath(SHARED_LIST).read_text("utf-8")
-    reader = csv.DictReader(content.splitlines())
-    assert reader.fieldnames == COLUMNS
-    return list(reader)
-
-
-def test_the_shared_list_is_sorted_and_has_no_duplicates() -> None:
-    keys = [(row["ats"], row["slug"]) for row in rows()]
-    assert keys == sorted(keys)
-    assert len(keys) == len(set(keys))
-
-
-def test_every_row_is_valid() -> None:
-    for row in rows():
-        assert row["ats"] in {ats.value for ats in Ats}, row
-        assert SLUG.match(row["slug"]), row
-        assert row["company"].strip(), row
-        assert set(filter(None, row["tags"].split(";"))) <= TAGS, row
+NOW = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 
 
-def test_the_shared_list_has_at_least_a_hundred_boards() -> None:
-    assert len(shared_boards()) >= 100
+@pytest.fixture
+def paths(tmp_path: Path) -> Paths:
+    paths = Paths(tmp_path / "home")
+    paths.ensure()
+    resume = tmp_path / "master.tex"
+    resume.write_text("resume", encoding="utf-8")
+    save(paths, samples.profile(resume))
+    return paths
+
+
+def call(paths: Paths, table: tuple[Route, ...], path: str) -> tuple[HTTPStatus, Any]:
+    with closing(connect(paths.database)) as db:
+        response = dispatch(table, Incoming(db, paths, f"/api{path}", {}))
+    assert response is not None
+    return response.status, json.loads(response.body)
+
+
+def test_how_often_companies_are_searched_follows_your_setting(tmp_path: Path) -> None:
+    with closing(connect(tmp_path / "jobs.db")) as db:
+        assert boards.search_due(db, CompanySearch.WEEKLY, NOW)
+        assert not boards.search_due(db, CompanySearch.OFF, NOW)
+        boards.searched(db, NOW)
+        later = NOW + timedelta(days=3)
+        assert boards.search_due(db, CompanySearch.DAILY, later)
+        assert not boards.search_due(db, CompanySearch.WEEKLY, later)
+        assert boards.search_due(db, CompanySearch.WEEKLY, NOW + timedelta(days=7))
+        assert boards.next_search(db, CompanySearch.OFF) is None
+
+
+def test_searching_now_works_even_when_the_setting_is_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    searches: list[Profile] = []
+
+    def search(profile: Profile) -> tuple[str, ...]:
+        searches.append(profile)
+        return ("https://jobs.lever.co/northwind/1",)
+
+    monkeypatch.setattr(discovery, "find_posting_urls", search)
+    monkeypatch.setattr(discovery, "shared_boards", list)
+    monkeypatch.setattr(discovery, "take_in", lambda *_: Intake(0, 0, 0, 0, 0))
+    base = samples.profile(tmp_path / "master.tex")
+    off = replace(base, settings=replace(base.settings, company_search=CompanySearch.OFF))
+    with closing(connect(tmp_path / "jobs.db")) as db:
+        assert discovery.discover(db, off, NOW, CompanySearchNow.WHEN_DUE).new_boards == 0
+        assert discovery.discover(db, off, NOW, CompanySearchNow.NOW).new_boards == 1
+        assert boards.last_search(db) == NOW
+    assert len(searches) == 1
+
+
+def test_the_company_list_shows_how_each_was_found_and_its_jobs_for_you(paths: Paths) -> None:
+    northwind, globex = Board(Ats.LEVER, "northwind", "Northwind"), Board(Ats.ASHBY, "globex")
+    with closing(connect(paths.database)) as db:
+        boards.add_many(db, [northwind], BoardOrigin.SEARCH, NOW)
+        boards.add_many(db, [globex], BoardOrigin.SHARED, NOW)
+        boards.mark_checked(db, [], [globex], NOW)
+        listed = [samples.job(external_id=f"lever/northwind/{n}") for n in range(3)]
+        listed.append(samples.job(external_id="7"))
+        jobs.add_many(db, listed, NOW)
+        db.execute("update jobs set status = ? where key like '%/2'", (Status.SKIPPED,))
+        db.commit()
+    status, answer = call(paths, companies.GET, "/companies")
+    assert status == HTTPStatus.OK
+    first, second = answer["companies"]
+    assert (first["company"], first["origin"], first["jobs"], first["closed"]) == (
+        "Northwind",
+        "search",
+        2,
+        False,
+    )
+    assert first["url"] == "https://jobs.lever.co/northwind"
+    assert (second["company"], second["closed"]) == ("globex", True)
+    assert answer["search"] == {"every": "weekly", "last": None, "next": None}
+
+
+def test_finding_companies_starts_a_run_that_searches_now_unless_one_is_going(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started: list[runs.Choice] = []
+    monkeypatch.setattr(runs, "_launch", lambda _paths, choice: started.append(choice))
+    with run_lock(paths):
+        status, _ = call(paths, companies.POST, "/companies/find")
+    assert status == HTTPStatus.BAD_REQUEST
+    assert started == []
+    call(paths, companies.POST, "/companies/find")
+    assert started[0].companies
+    assert "--find-companies" in runs.command(started[0])

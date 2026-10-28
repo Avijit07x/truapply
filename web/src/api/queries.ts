@@ -5,6 +5,7 @@ import type {
   JobDetail,
   JobList,
   JobQuery,
+  Companies,
   Learned,
   RunLogLines,
   RunState,
@@ -97,6 +98,11 @@ export const queries = {
       queryFn: ({ signal }) =>
         get<RunLogLines>(`/api/runs/log/${encodeURIComponent(name)}`, signal),
       staleTime: Infinity,
+    }),
+  companies: () =>
+    queryOptions({
+      queryKey: ["companies"],
+      queryFn: ({ signal }) => get<Companies>("/api/companies", signal),
     }),
   settings: () =>
     queryOptions({
