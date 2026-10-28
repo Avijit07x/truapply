@@ -1,6 +1,8 @@
 import errno
 import json
 import logging
+import socket
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -47,6 +49,14 @@ class TrackerServer(ThreadingHTTPServer):
     @property
     def url(self) -> str:
         return f"http://{HOST}:{self.server_address[1]}"
+
+    def handle_error(
+        self, request: socket.socket | tuple[bytes, socket.socket], client_address: object
+    ) -> None:
+        if isinstance(sys.exc_info()[1], ConnectionError):
+            log.debug("browser closed the connection from %s", client_address)
+            return
+        super().handle_error(request, client_address)
 
 
 def open_server(paths: Paths, port: int | None) -> TrackerServer:

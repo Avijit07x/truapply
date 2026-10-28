@@ -1,3 +1,6 @@
+import socket
+import struct
+import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
@@ -120,6 +123,17 @@ def test_one_connection_carries_many_requests_until_a_post_is_refused(
         refused = connection.getresponse()
         refused.read()
         assert (refused.status, refused.getheader("Connection")) == (403, "close")
+
+
+def test_a_browser_dropping_an_idle_connection_prints_nothing(
+    tracker: TrackerServer, capfd: pytest.CaptureFixture[str]
+) -> None:
+    host, port = urlsplit(tracker.url).hostname or "", urlsplit(tracker.url).port or 0
+    with socket.create_connection((host, port), timeout=5) as dropped:
+        dropped.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+    assert get(tracker, "/api/summary")[0] == 200
+    time.sleep(0.2)
+    assert "Traceback" not in capfd.readouterr().err
 
 
 def test_a_post_must_be_a_json_object(tracker: TrackerServer) -> None:
