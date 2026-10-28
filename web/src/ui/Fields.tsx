@@ -6,10 +6,12 @@ import { type ReactNode, useState } from "react";
 import { cx } from "../lib/cx";
 import styles from "./Fields.module.css";
 import { Check, ChevronDown, Close } from "./icons";
+import { Info } from "./Info";
 
 type TextFieldProps = {
   label: ReactNode;
   hint?: ReactNode;
+  info?: ReactNode;
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
@@ -24,9 +26,32 @@ type TextFieldProps = {
   placeholder?: string;
 };
 
+function about(label: ReactNode): string {
+  return typeof label === "string" ? label : "";
+}
+
+function Titled({
+  info,
+  label,
+  children,
+}: {
+  info?: ReactNode;
+  label: ReactNode;
+  children: ReactNode;
+}) {
+  if (!info) return children;
+  return (
+    <div className={styles.labelRow}>
+      {children}
+      <Info about={about(label)}>{info}</Info>
+    </div>
+  );
+}
+
 export function TextField({
   label,
   hint,
+  info,
   value,
   onChange,
   multiline = false,
@@ -35,7 +60,9 @@ export function TextField({
 }: TextFieldProps) {
   return (
     <Field.Root className={styles.field}>
-      <Field.Label className={styles.label}>{label}</Field.Label>
+      <Titled info={info} label={label}>
+        <Field.Label className={styles.label}>{label}</Field.Label>
+      </Titled>
       <Field.Control
         className={styles.input}
         value={value}
@@ -51,6 +78,7 @@ export function TextField({
 type TagsFieldProps = {
   label: ReactNode;
   hint?: ReactNode;
+  info?: ReactNode;
   values: readonly string[];
   onChange: (values: string[]) => void;
   maxItems: number;
@@ -68,7 +96,15 @@ function merged(values: readonly string[], typed: string): string[] {
   return [...kept.values()];
 }
 
-export function TagsField({ label, hint, values, onChange, maxItems, maxLength }: TagsFieldProps) {
+export function TagsField({
+  label,
+  hint,
+  info,
+  values,
+  onChange,
+  maxItems,
+  maxLength,
+}: TagsFieldProps) {
   const [draft, setDraft] = useState("");
   const add = () => {
     if (draft.trim()) {
@@ -78,7 +114,9 @@ export function TagsField({ label, hint, values, onChange, maxItems, maxLength }
   };
   return (
     <Field.Root className={styles.field}>
-      <Field.Label className={styles.label}>{label}</Field.Label>
+      <Titled info={info} label={label}>
+        <Field.Label className={styles.label}>{label}</Field.Label>
+      </Titled>
       <div className={cx(styles.input, styles.tags)}>
         {values.map((value) => (
           <span key={value} className={styles.tag}>
@@ -120,12 +158,13 @@ export function TagsField({ label, hint, values, onChange, maxItems, maxLength }
 
 type SelectFieldProps = {
   label: ReactNode;
+  info?: ReactNode;
   value: string;
   options: readonly string[];
   onChange: (value: string) => void;
 };
 
-export function SelectField({ label, value, options, onChange }: SelectFieldProps) {
+export function SelectField({ label, info, value, options, onChange }: SelectFieldProps) {
   return (
     <Select.Root
       value={value}
@@ -136,7 +175,9 @@ export function SelectField({ label, value, options, onChange }: SelectFieldProp
       }}
     >
       <div className={styles.field}>
-        <Select.Label className={styles.label}>{label}</Select.Label>
+        <Titled info={info} label={label}>
+          <Select.Label className={styles.label}>{label}</Select.Label>
+        </Titled>
         <Select.Trigger className={cx(styles.input, styles.trigger)}>
           <Select.Value />
           <Select.Icon className={styles.chevron}>
@@ -168,28 +209,37 @@ export function SelectField({ label, value, options, onChange }: SelectFieldProp
   );
 }
 
-type ToggleProps = { label: ReactNode; checked: boolean; onChange: (checked: boolean) => void };
+type ToggleProps = {
+  label: ReactNode;
+  info?: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+};
 
-export function Checkbox({ label, checked, onChange }: ToggleProps) {
+export function Checkbox({ label, info, checked, onChange }: ToggleProps) {
   return (
-    <label className={styles.toggle}>
-      <BaseCheckbox.Root className={styles.checkbox} checked={checked} onCheckedChange={onChange}>
-        <BaseCheckbox.Indicator className={styles.checkboxMark}>
-          <Check size={12} />
-        </BaseCheckbox.Indicator>
-      </BaseCheckbox.Root>
-      <span>{label}</span>
-    </label>
+    <Titled info={info} label={label}>
+      <label className={styles.toggle}>
+        <BaseCheckbox.Root className={styles.checkbox} checked={checked} onCheckedChange={onChange}>
+          <BaseCheckbox.Indicator className={styles.checkboxMark}>
+            <Check size={12} />
+          </BaseCheckbox.Indicator>
+        </BaseCheckbox.Root>
+        <span>{label}</span>
+      </label>
+    </Titled>
   );
 }
 
-export function Switch({ label, checked, onChange }: ToggleProps) {
+export function Switch({ label, info, checked, onChange }: ToggleProps) {
   return (
-    <label className={styles.toggle}>
-      <BaseSwitch.Root className={styles.switch} checked={checked} onCheckedChange={onChange}>
-        <BaseSwitch.Thumb className={styles.thumb} />
-      </BaseSwitch.Root>
-      <span>{label}</span>
-    </label>
+    <Titled info={info} label={label}>
+      <label className={styles.toggle}>
+        <BaseSwitch.Root className={styles.switch} checked={checked} onCheckedChange={onChange}>
+          <BaseSwitch.Thumb className={styles.thumb} />
+        </BaseSwitch.Root>
+        <span>{label}</span>
+      </label>
+    </Titled>
   );
 }

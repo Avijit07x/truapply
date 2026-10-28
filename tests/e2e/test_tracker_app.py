@@ -331,9 +331,9 @@ def test_every_setting_is_changed_from_the_settings_page(
                 heading = page.get_by_role("heading", level=2, name=title, exact=True)
                 expect(heading).to_be_visible()
         tabs.get_by_role("tab", name="Profile", exact=True).click()
-        page.get_by_label("Years of experience").fill("3.5")
+        page.get_by_label("Years of experience", exact=True).fill("3.5")
         tabs.get_by_role("tab", name="Applying", exact=True).click()
-        page.get_by_label("Jobs to get ready each run").fill("12")
+        page.get_by_label("Jobs to get ready each run", exact=True).fill("12")
         page.get_by_role("combobox", name="Write a cover letter").click()
         page.get_by_role("option", name="Never", exact=True).click()
         with answered(page, "/api/settings"):
@@ -349,6 +349,16 @@ def test_every_setting_is_changed_from_the_settings_page(
     assert saved.years_experience == 3.5
     assert saved.cover_letter == "never"
     assert autorun.installed(agents) is not None
+
+
+def test_an_info_button_explains_its_setting(browser: Browser, home: Paths) -> None:
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/settings")
+        page.get_by_role("tablist", name="Settings").get_by_role("tab", name="Job search").click()
+        page.get_by_role("button", name="About Oldest job to consider, in days").click()
+        expect(page.get_by_text("Jobs with no posting date are always kept.")).to_be_visible()
+        expect(page.get_by_label("Oldest job to consider, in days", exact=True)).to_have_value("30")
+        assert errors == []
 
 
 def test_the_learned_list_lines_up_with_its_heading(browser: Browser, home: Paths) -> None:

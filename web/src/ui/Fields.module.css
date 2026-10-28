@@ -233,3 +233,13 @@ textarea.input {
 .tagInput:focus-visible {
   outline: 0;
 }
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.labelRow > button {
+  margin-block: -4px;
+}

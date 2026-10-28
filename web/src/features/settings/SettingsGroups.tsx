@@ -3,6 +3,7 @@ import type { SettingsLimits, SettingsValues } from "../../api/types";
 import { Checkbox, SelectField, TagsField, TextField } from "../../ui/Fields";
 import { type Clock, useClock } from "../../lib/clock";
 import type { Draft, NumberName } from "./draft";
+import { INFO, REMOTE_ABROAD_INFO, UNKNOWN_INFO } from "./info";
 import styles from "./Settings.module.css";
 
 type Set = <Name extends keyof Draft>(name: Name) => (value: Draft[Name]) => void;
@@ -52,6 +53,7 @@ export function fieldsFor({ draft, set, limits }: GroupProps) {
     <TextField
       label={label}
       hint={hint}
+      info={INFO[name]}
       maxLength={limits.maxText}
       required={required}
       value={draft[name]}
@@ -59,7 +61,14 @@ export function fieldsFor({ draft, set, limits }: GroupProps) {
     />
   );
   const tags = (name: NamesOf<string[]>, label: string, hint?: string) => (
-    <TagsField label={label} hint={hint} values={draft[name]} onChange={set(name)} {...list} />
+    <TagsField
+      label={label}
+      hint={hint}
+      info={INFO[name]}
+      values={draft[name]}
+      onChange={set(name)}
+      {...list}
+    />
   );
   const number = (name: NumberName, label: string, hint?: string, required = true) => {
     const range = limits.numbers[name] ?? { min: 0, max: Number.MAX_SAFE_INTEGER };
@@ -71,6 +80,7 @@ export function fieldsFor({ draft, set, limits }: GroupProps) {
             ? undefined
             : (hint ?? `${range.min.toLocaleString()} to ${range.max.toLocaleString()}.`)
         }
+        info={INFO[name]}
         type="number"
         min={range.min}
         max={range.max}
@@ -86,9 +96,11 @@ export function fieldsFor({ draft, set, limits }: GroupProps) {
     names: Record<Key, string>,
     value: Key,
     onChange: (value: Key) => void,
+    info?: string,
   ) => (
     <SelectField
       label={label}
+      info={info}
       value={names[value]}
       options={Object.values(names)}
       onChange={(picked) => {
@@ -213,6 +225,7 @@ export function WorkPlaces({ draft, set, limits }: GroupProps) {
       {draft.relocate && tags("relocateCities", "Cities you'd move to")}
       <Checkbox
         label="Remote for companies abroad"
+        info={REMOTE_ABROAD_INFO}
         checked={draft.remoteAbroad}
         onChange={set("remoteAbroad")}
       />
@@ -322,6 +335,7 @@ export function FormAnswers(props: GroupProps) {
         UNKNOWN,
         draft.unknownQuestions,
         set("unknownQuestions"),
+        UNKNOWN_INFO,
       )}
       {choice("Write a cover letter", COVER, draft.coverLetter, set("coverLetter"))}
     </Group>

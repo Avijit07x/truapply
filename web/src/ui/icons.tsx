@@ -176,6 +176,16 @@ export function Alert(props: IconProps) {
   );
 }
 
+export function Info(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 7.5V11" />
+      <Pip cx={8} cy={5.25} />
+    </Svg>
+  );
+}
+
 export function Undo(props: IconProps) {
   return (
     <Svg {...props}>
