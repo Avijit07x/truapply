@@ -91,4 +91,8 @@ MIGRATIONS: tuple[str, ...] = (
         primary key (job_id, question)
     );
     """,
+    """
+    alter table jobs add column auto_send text;
+    alter table jobs add column auto_send_at text;
+    """,
 )

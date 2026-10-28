@@ -22,6 +22,7 @@ RETIRED_SETTINGS = frozenset(
     }
 )
 MAX_SCORE = 100
+MIN_AUTO_SUBMIT_SCORE = 0
 LAST_HOUR = 23
 MAX_JOBS_PER_RUN = 50
 MAX_SCORES_PER_RUN = 200
@@ -33,6 +34,12 @@ MINUTES_PER_HOUR = 60
 class UnknownQuestions(StrEnum):
     SKIP = "skip"
     GUESS = "guess"
+
+
+class CompanySearch(StrEnum):
+    OFF = "off"
+    DAILY = "daily"
+    WEEKLY = "weekly"
 
 
 class CoverLetter(StrEnum):
@@ -80,6 +87,9 @@ class Settings:
     summary_hour: int = 20
     ai_calls_per_day: int = 300
     max_job_age_days: int = 30
+    company_search: CompanySearch = CompanySearch.WEEKLY
+    auto_submit: bool = False
+    auto_submit_score: int = 80
     wellfound: bool = True
     wellfound_roles: tuple[str, ...] = ()
     wellfound_titles: tuple[str, ...] = ()
@@ -123,6 +133,8 @@ def _settings_problems(settings: Settings) -> list[str]:
     problems = []
     if not 0 <= settings.min_score <= MAX_SCORE:
         problems.append("settings.min_score must be 0-100")
+    if not MIN_AUTO_SUBMIT_SCORE <= settings.auto_submit_score <= MAX_SCORE:
+        problems.append("settings.auto_submit_score must be 0-100")
     if not 1 <= settings.jobs_per_run <= MAX_JOBS_PER_RUN:
         problems.append(f"settings.jobs_per_run must be 1-{MAX_JOBS_PER_RUN}")
     if not 1 <= settings.scores_per_run <= MAX_SCORES_PER_RUN:

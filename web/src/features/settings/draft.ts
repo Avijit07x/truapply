@@ -4,6 +4,7 @@ const NUMBERS = [
   "yearsExperience",
   "maxJobAgeDays",
   "minScore",
+  "autoSubmitScore",
   "expectedMin",
   "expectedMax",
   "jobsPerRun",

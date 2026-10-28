@@ -59,7 +59,11 @@ flowchart LR
 | Consent and agreement boxes | **Never ticked.** Outlined for you |
 | Legal and eligibility questions with no answer in your profile | **Never guessed.** Outlined for you |
 
-It fills only when you open a job from the tracker or press **Fill this form**. It never presses Submit, Next on the last step, or anything that sends.
+It fills when you open a job from the tracker or press **Fill this form**, and then never presses Submit, Next on the last step, or anything that sends.
+
+## Auto-submit
+
+Only while **Auto-submit** is on in Settings. Every minute, right after each send ends, and the moment you press **Send these with auto-submit** (the tracker page signals the extension), the background asks the app for the next job to send (`POST /api/extension/send/next`); the app hands one out only when no run is going and no other send is in progress. The extension opens it in a new tab you can see (forms stall in hidden tabs), fills it, and presses Submit only when nothing is left for you, no human check is showing and there's exactly one Submit button (`/submitting` first, so it's never sent twice). It closes the tab once the site confirms. If anything stops it, it tells the app why (`/held`) and leaves the tab filled in for you. The rules are in [safety.md](safety.md#3-auto-submit).
 
 ## After Submit
 

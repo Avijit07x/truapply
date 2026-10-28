@@ -55,6 +55,9 @@ VALID: dict[str, object] = {
     "extraFacts": "",
     "unknownQuestions": "skip",
     "coverLetter": "required",
+    "companySearch": "weekly",
+    "autoSubmit": False,
+    "autoSubmitScore": 80,
     "jobsPerRun": 5,
     "scoresPerRun": 40,
     "dailyCap": 20,
@@ -156,6 +159,7 @@ def test_every_hidden_setting_can_be_changed(paths: Paths) -> None:
         "extraFacts": " Led a team of 3. ",
         "unknownQuestions": "guess",
         "coverLetter": "never",
+        "companySearch": "off",
         "jobsPerRun": 12,
         "scoresPerRun": 80,
         "linkedinCap": 4,
@@ -177,6 +181,7 @@ def test_every_hidden_setting_can_be_changed(paths: Paths) -> None:
     assert saved.extra_facts == "Led a team of 3."
     assert saved.unknown_questions == "guess"
     assert saved.cover_letter == "never"
+    assert saved.settings.company_search == "off"
     assert not saved.needs_sponsorship_elsewhere
     chosen = saved.settings
     assert (chosen.jobs_per_run, chosen.scores_per_run, chosen.linkedin_cap) == (12, 80, 4)

@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 from satyaapply.ai.replies import Posting
 from satyaapply.ai.tasks import answer_fields, read_posting
-from satyaapply.apply.answering import FormReply, answer_form
+from satyaapply.apply.answering import CONSENT_WHY, FormReply, answer_form
 from satyaapply.core.clock import utc_now
 from satyaapply.core.codec import decode
 from satyaapply.core.errors import DecodeError, SatyaApplyError
@@ -19,7 +19,7 @@ from satyaapply.resume.master import load_resume
 from satyaapply.sources.ats import board_of
 from satyaapply.sources.intake import take_in_link
 from satyaapply.sources.pages import page_job
-from satyaapply.store import answers, feedback, jobs, records
+from satyaapply.store import answers, autosend, feedback, jobs, records
 from satyaapply.store.answers import AnswerSource, SavedAnswer
 from satyaapply.store.feedback import Feedback, FeedbackKind
 from satyaapply.store.jobs import StatusChange
@@ -172,7 +172,10 @@ def _answers(db: sqlite3.Connection, paths: Paths, match: re.Match[str], body: B
     return ok(
         {
             "answers": [{"id": key, "value": value} for key, value in reply.answers.items()],
-            "forYou": [{"id": i.id, "label": i.label, "why": i.why} for i in reply.for_you],
+            "forYou": [
+                {"id": i.id, "label": i.label, "why": i.why, "consent": i.why == CONSENT_WHY}
+                for i in reply.for_you
+            ],
             "waiting": list(reply.waiting),
             "note": reply.note,
         }
@@ -205,6 +208,8 @@ def _applied(db: sqlite3.Connection, _paths: Paths, match: re.Match[str], body: 
     sent = _sent(body)
     yours = [item for item, learn in sent if learn]
     feedback.finished(db, job_id, StatusChange(Status.APPLIED, now, APPLIED_NOTE))
+    if autosend.state(db, job_id) in autosend.PRESSED:
+        autosend.mark_sent(db, job_id)
     feedback.save_sent(db, job_id, tuple(item for item, _ in sent))
     typed = [SavedAnswer(item.question, item.answer, AnswerSource.USER) for item in yours]
     answers.save_many(db, typed, now)

@@ -25,6 +25,7 @@ class FeedbackKind(StrEnum):
     THUMBS = "thumbs"
     ANSWER = "answer"
     FINISHED = "finished"
+    AUTO_HELD = "auto_held"
 
 
 @dataclass(frozen=True)

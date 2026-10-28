@@ -36,7 +36,7 @@ export type Job = {
 export type Posting = { title: string; company: string; location: string; description: string };
 export type Added = { job: Job; preparing: boolean };
 
-export type ForYou = { id: string; label: string; why: string };
+export type ForYou = { id: string; label: string; why: string; consent: boolean };
 export type Answers = {
   answers: { id: string; value: string }[];
   forYou: ForYou[];
@@ -51,7 +51,15 @@ export type Request =
   | { type: "answers"; jobId: number; fields: Field[]; ai: boolean }
   | { type: "add"; url: string; posting?: Posting; text: string }
   | { type: "resume"; jobId: number }
-  | { type: "applied"; jobId: number; sent: SentItem[] };
+  | { type: "applied"; jobId: number; sent: SentItem[] }
+  | { type: "sending" }
+  | { type: "submitting"; jobId: number }
+  | { type: "held"; jobId: number; why: string }
+  | { type: "sent"; jobId: number }
+  | { type: "wake" };
+
+export type Sending = { jobId: number | null };
+export type Go = { go: boolean };
 
 export type Failure = { error: string };
 export type Reply<T> = T | Failure;

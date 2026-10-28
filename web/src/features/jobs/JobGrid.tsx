@@ -19,7 +19,8 @@ import { StatusDot } from "../../components/StatusDot";
 import { defaultOrder, isSort, jobsHref } from "../../domain/filters";
 import { STATUS } from "../../domain/status";
 import { cx } from "../../lib/cx";
-import { ago, when } from "../../lib/format";
+import { when } from "../../lib/format";
+import { Ago } from "../../ui/Ago";
 import { Link, navigate } from "../../lib/router";
 import { ChevronDown } from "../../ui/icons";
 import { type FilterKind, HeaderFilter } from "./HeaderFilter";
@@ -80,14 +81,20 @@ const columns = helper.columns([
   scoreColumn,
   helper.accessor("status", {
     enableSorting: false,
-    cell: (info) => <StatusDot status={info.getValue()} labelClassName={styles.statusLabel} />,
+    cell: (info) => (
+      <StatusDot
+        status={info.getValue()}
+        auto={info.row.original.autoSubmitted}
+        labelClassName={styles.statusLabel}
+      />
+    ),
   }),
   helper.accessor("updatedAt", {
     id: "updated",
     sortDescFirst: true,
     cell: (info) => (
       <time dateTime={info.getValue()} title={when(info.getValue())}>
-        {ago(info.getValue())}
+        <Ago iso={info.getValue()} />
       </time>
     ),
   }),

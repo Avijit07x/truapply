@@ -48,6 +48,7 @@ class JobRecord:
     updated_at: datetime
     sent: tuple[Sent, ...]
     resume_pdf: Path | None
+    auto_submitted: bool = False
 
 
 def _sent(raw: str | None) -> tuple[Sent, ...]:
@@ -70,6 +71,7 @@ def to_record(row: sqlite3.Row) -> JobRecord:
         updated_at=datetime.fromisoformat(row["status_at"]),
         sent=_sent(row["sent"]),
         resume_pdf=Path(row["resume_pdf"]) if row["resume_pdf"] else None,
+        auto_submitted=bool(row["auto_submitted"]),
     )
 
 

@@ -1,18 +1,19 @@
 import type { JobDetail } from "../../api/types";
 import { StatusDot } from "../../components/StatusDot";
 import { sourceLabel } from "../../domain/sources";
-import { ago, when } from "../../lib/format";
+import { when } from "../../lib/format";
+import { Ago } from "../../ui/Ago";
 import { ExternalLink } from "../../ui/ExternalLink";
 import styles from "./Job.module.css";
 
 export function JobMeta({ job }: { job: JobDetail }) {
   return (
     <p className={styles.meta}>
-      <StatusDot status={job.status} />
+      <StatusDot status={job.status} auto={job.autoSubmitted} />
       <span>{job.score === null ? "Not scored yet" : `Score ${String(job.score)}`}</span>
       <span>{sourceLabel(job.source)}</span>
       <time dateTime={job.updatedAt} title={when(job.updatedAt)}>
-        Updated {ago(job.updatedAt)}
+        Updated <Ago iso={job.updatedAt} />
       </time>
       {job.url && (
         <span>

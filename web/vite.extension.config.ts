@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 
-const ENTRIES = ["content", "background", "network"];
+const ENTRIES = ["content", "background", "network", "wake"];
 
 export default defineConfig(({ mode }) => {
   const entry = ENTRIES.includes(mode) ? mode : "content";

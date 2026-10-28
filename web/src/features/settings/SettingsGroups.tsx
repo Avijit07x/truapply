@@ -15,6 +15,11 @@ const UNKNOWN: Record<SettingsValues["unknownQuestions"], string> = {
   skip: "Leave them for me to answer",
   guess: "Give the most sensible answer from my facts",
 };
+const COMPANY_SEARCH: Record<SettingsValues["companySearch"], string> = {
+  weekly: "Every week",
+  daily: "Every day",
+  off: "Never",
+};
 const COVER: Record<SettingsValues["coverLetter"], string> = {
   required: "Only when the form needs one",
   always: "Whenever there's a cover letter box",
@@ -120,7 +125,8 @@ export function AboutYou(props: GroupProps) {
 }
 
 export function JobSearch(props: GroupProps) {
-  const { tags, number } = fieldsFor(props);
+  const { tags, number, choice } = fieldsFor(props);
+  const { draft, set } = props;
   return (
     <Group
       title="Job search"
@@ -134,6 +140,12 @@ export function JobSearch(props: GroupProps) {
         {number("maxJobAgeDays", "Oldest job to consider, in days")}
         {number("minScore", "Minimum match score")}
       </div>
+      {choice(
+        "Search the web for new companies",
+        COMPANY_SEARCH,
+        draft.companySearch,
+        set("companySearch"),
+      )}
     </Group>
   );
 }
@@ -312,6 +324,26 @@ export function FormAnswers(props: GroupProps) {
         set("unknownQuestions"),
       )}
       {choice("Write a cover letter", COVER, draft.coverLetter, set("coverLetter"))}
+    </Group>
+  );
+}
+
+export function AutoSubmit(props: GroupProps) {
+  const { number } = fieldsFor(props);
+  const { draft, set } = props;
+  return (
+    <Group
+      title="Auto-submit"
+      note="The extension sends a job in your Chrome by itself after a run, but only when no consent box, required question or human check is left for you. Optional questions it can't answer stay blank. Otherwise it stops before Submit and leaves the tab for you. Only jobs tailored after you turn it on are sent. Two 👎 on the last 10 it sent turn it off."
+    >
+      <Checkbox
+        label="Send strong matches by itself"
+        checked={draft.autoSubmit}
+        onChange={set("autoSubmit")}
+      />
+      {draft.autoSubmit && (
+        <div className={styles.pair}>{number("autoSubmitScore", "Send from score")}</div>
+      )}
     </Group>
   );
 }

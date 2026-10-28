@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "format": "prettier --write src extension",
     "check": "tsc --noEmit && eslint . && prettier --check src extension",
-    "build:extension": "vite build -c vite.extension.config.ts --mode content && vite build -c vite.extension.config.ts --mode background && vite build -c vite.extension.config.ts --mode network"
+    "build:extension": "vite build -c vite.extension.config.ts --mode content && vite build -c vite.extension.config.ts --mode background && vite build -c vite.extension.config.ts --mode network && vite build -c vite.extension.config.ts --mode wake"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

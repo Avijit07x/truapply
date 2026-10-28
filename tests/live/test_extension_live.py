@@ -1,10 +1,12 @@
 import json
+import logging
 import re
 import shutil
+import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import closing, contextmanager, suppress
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime, timedelta
 from importlib import resources
 from pathlib import Path
 
@@ -15,12 +17,13 @@ from satyaapply.ai.replies import Posting
 from satyaapply.browser.fetch import fetch_json
 from satyaapply.core.forms import RESUME_FILE, Answer, Field, FieldKind, FormAnswers, FormContext
 from satyaapply.core.models import Ats, Board, Job, Status
+from satyaapply.core.notes import UNCONFIRMED_NOTE
 from satyaapply.core.paths import Paths
-from satyaapply.core.profile import save
+from satyaapply.core.profile import load, save
 from satyaapply.sources.ats import poll
 from satyaapply.sources.discover import shared_boards
 from satyaapply.sources.text import items, mapping, text
-from satyaapply.store import jobs, records
+from satyaapply.store import autosend, jobs, records
 from satyaapply.store.db import connect
 from satyaapply.store.jobs import AttemptRecord
 from satyaapply.tracker import extension
@@ -390,3 +393,61 @@ def test_the_panel_stays_when_the_page_redraws_itself(tmp_path: Path) -> None:
         page.wait_for_timeout(STAYS_MS)
         assert page.locator("satyaapply-panel").count() == 1
         assert page.evaluate("document.documentElement.dataset.satyaapply") == "unknown"
+
+
+AUTO_JOBS_PER_SITE = 2
+AUTO_WAIT_MS = 180_000
+SEND_NOW = "chrome.alarms.create('send', { when: Date.now() })"
+
+
+def auto_seeded(tmp_path: Path, found: Sequence[Job]) -> Paths:
+    paths = seeded(tmp_path, found)
+    profile = load(paths)
+    chosen = replace(profile.settings, auto_submit=True, auto_submit_score=70)
+    save(paths, replace(profile, settings=chosen))
+    with closing(connect(paths.database)) as db:
+        db.execute("update jobs set score = 90")
+        db.commit()
+        autosend.turned_on(db, NOW - timedelta(hours=1))
+    return paths
+
+
+def send_outcome(paths: Paths, context: BrowserContext, job_id: int) -> tuple[str, str]:
+    worker = context.service_workers[0]
+    with context.expect_page(timeout=AUTO_WAIT_MS):
+        worker.evaluate(SEND_NOW)
+    deadline = time.monotonic() + AUTO_WAIT_MS / 1000
+    while time.monotonic() < deadline:
+        with closing(connect(paths.database)) as db:
+            row = db.execute(
+                "select status, auto_send, note from jobs where id = ?", (job_id,)
+            ).fetchone()
+        if row["auto_send"] in {"held", "sent"} or row["status"] == Status.APPLIED:
+            return str(row["auto_send"] or row["status"]), str(row["note"])
+        time.sleep(1)
+    return "stuck", ""
+
+
+@pytest.mark.parametrize("ats", list(Ats))
+def test_auto_submit_sends_nothing_real_and_holds_every_job_it_cannot_finish(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ats: Ats
+) -> None:
+    monkeypatch.setattr(extension, "answer_fields", every_answer)
+    found = real_jobs(ats)[:AUTO_JOBS_PER_SITE]
+    paths = auto_seeded(tmp_path, found)
+    failures: list[str] = []
+    seen: list[str] = []
+    with running(paths) as server:
+        port = server.server_address[1]
+        for job_id, job in enumerate(found, start=1):
+            guard = Guard()
+            with chrome_with_extension(port, guard) as context:
+                outcome, note = send_outcome(paths, context, job_id)
+            pressed = any(SUBMISSION.search(item.split(" ", 2)[1]) for item in guard.blocked)
+            seen.append(f"{job.apply_url}: {outcome}, pressed Submit: {pressed}, {note}")
+            logging.getLogger(__name__).info(seen[-1])
+            if outcome != "held":
+                failures.append(f"{job.apply_url}: ended {outcome}, not held for you")
+            if pressed and note != UNCONFIRMED_NOTE:
+                failures.append(f"{job.apply_url}: Submit was pressed but the note says {note}")
+    assert not failures, "\n".join(failures + seen)

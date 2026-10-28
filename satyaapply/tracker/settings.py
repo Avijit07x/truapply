@@ -3,6 +3,7 @@ import sqlite3
 from dataclasses import replace
 from http import HTTPStatus
 
+from satyaapply.core.clock import utc_now
 from satyaapply.core.errors import ProfileInvalidError, ProfileMissingError, SatyaApplyError
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import (
@@ -11,7 +12,9 @@ from satyaapply.core.profile import (
     MAX_JOBS_PER_RUN,
     MAX_SCORE,
     MAX_SCORES_PER_RUN,
+    MIN_AUTO_SUBMIT_SCORE,
     MIN_EVERY_MINUTES,
+    CompanySearch,
     CoverLetter,
     Diversity,
     Profile,
@@ -21,6 +24,7 @@ from satyaapply.core.profile import (
     save,
 )
 from satyaapply.core.profile import problems as profile_problems
+from satyaapply.store import autosend
 from satyaapply.tracker import automatic
 from satyaapply.tracker.body import Body
 from satyaapply.tracker.extension import install_info
@@ -45,6 +49,7 @@ UNKNOWN_LABEL = "Questions it can't answer"
 
 JOB_AGE = Number("maxJobAgeDays", "Oldest job to consider, in days", 1, MAX_JOB_AGE_DAYS)
 MIN_SCORE = Number("minScore", "Minimum match score", 0, MAX_SCORE)
+AUTO_SCORE = Number("autoSubmitScore", "Auto-submit from score", MIN_AUTO_SUBMIT_SCORE, MAX_SCORE)
 SALARY_MIN = Number("expectedMin", "Expected salary, lowest", 1, MAX_SALARY)
 SALARY_MAX = Number("expectedMax", "Expected salary, highest", 1, MAX_SALARY)
 SALARY_NOW = Number("currentSalary", "Current salary", 0, MAX_SALARY)
@@ -61,6 +66,7 @@ SUMMARY_HOUR = Number("summaryHour", "Daily summary hour", 0, LAST_HOUR)
 LIMITED = (
     JOB_AGE,
     MIN_SCORE,
+    AUTO_SCORE,
     DAILY_CAP,
     LINKEDIN_CAP,
     JOBS_PER_RUN,
@@ -117,6 +123,9 @@ def _values(profile: Profile) -> dict[str, object]:
         "extraFacts": profile.extra_facts,
         "unknownQuestions": profile.unknown_questions.value,
         "coverLetter": profile.cover_letter.value,
+        "companySearch": chosen.company_search.value,
+        "autoSubmit": chosen.auto_submit,
+        "autoSubmitScore": chosen.auto_submit_score,
         "jobsPerRun": chosen.jobs_per_run,
         "scoresPerRun": chosen.scores_per_run,
         "dailyCap": profile.daily_cap,
@@ -141,6 +150,11 @@ def _settings(profile: Profile, read: Reader) -> Settings:
         profile.settings,
         min_score=read.number(MIN_SCORE),
         max_job_age_days=read.number(JOB_AGE),
+        company_search=read.choice(
+            "companySearch", "Find new companies", CompanySearch, profile.settings.company_search
+        ),
+        auto_submit=read.flag("autoSubmit", "Auto-submit"),
+        auto_submit_score=read.number(AUTO_SCORE),
         wellfound=read.flag("wellfound", "Check Wellfound"),
         wellfound_roles=read.items("wellfoundRoles", "Wellfound roles to read"),
         wellfound_titles=read.items("wellfoundTitles", "Wellfound titles to pull"),
@@ -257,7 +271,7 @@ def _show(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: B
     return profile if isinstance(profile, Response) else _shown(profile)
 
 
-def _save(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
+def _save(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
     profile = _loaded(paths)
     if isinstance(profile, Response):
         return profile
@@ -265,6 +279,8 @@ def _save(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Bo
     if found:
         return bad_request(NOT_SAVED, found)
     save(paths, changed)
+    if changed.settings.auto_submit and not profile.settings.auto_submit:
+        autosend.turned_on(db, utc_now())
     try:
         automatic.follow(paths, changed.settings.run_every_minutes)
     except SatyaApplyError as error:

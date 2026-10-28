@@ -1,7 +1,18 @@
 import { FIELD_ATTR, controlsOf, readFields } from "./fields";
 import { fillField, readChoices, recommit, sleep } from "./fill";
 import { failed } from "./messages";
-import type { Added, Answers, Field, Job, Reply, Request, Resume, SentItem } from "./messages";
+import type {
+  Added,
+  Answers,
+  Field,
+  Go,
+  Job,
+  Reply,
+  Request,
+  Resume,
+  Sending,
+  SentItem,
+} from "./messages";
 import { readPage } from "./posting";
 import { openPanel, stayOnPage } from "./panel";
 import type { Panel } from "./panel";
@@ -27,6 +38,13 @@ const NO_SUGGESTION_WHY = "none of its suggestions matched your answer";
 const NOTE_KEY = "";
 const MAX_ROUNDS = 4;
 const MAX_ATTEMPTS = 2;
+const CONFIRM_WAIT_MS = 45_000;
+const NAMED_LEFT = 3;
+const CHECK_FRAME =
+  /recaptcha|hcaptcha|challenges\.cloudflare\.com|turnstile|arkoselabs|funcaptcha/i;
+const SUBMIT_TEXT = /^(submit( (my |your )?application)?|apply( now)?|send( my)? application)$/i;
+const SAYS_SUBMIT = /submit|send/i;
+const SHOWN = { opacityProperty: true, visibilityProperty: true };
 
 type State =
   | "loading"
@@ -60,6 +78,7 @@ const filled = new Map<string, string>();
 const answered = new Map<string, string>();
 const reasons = new Map<string, string>();
 const attempts = new Map<string, number>();
+const consents = new Set<string>();
 const keyOf = (field: Field) => `${field.kind}:${field.label}`;
 const plural = (count: number) => (count === 1 ? "1 answer" : `${String(count)} answers`);
 let quickDone = false;
@@ -78,10 +97,12 @@ function noteTouch(event: Event): void {
   if (event.isTrusted && id) touched.add(id);
 }
 
+const since = (start: number) => performance.now() - start;
+
 async function waitForForm(): Promise<Field[]> {
   let seen = -1;
   let steady = 0;
-  for (let waited = 0; waited < FORM_WAIT_MS; waited += POLL_MS) {
+  for (const start = performance.now(); since(start) < FORM_WAIT_MS;) {
     const fields = readFields();
     steady = fields.length && fields.length === seen ? steady + 1 : 0;
     if (steady >= STEADY_READS) return fields;
@@ -132,9 +153,10 @@ async function askFor(job: Job, fields: Field[], ai: boolean): Promise<string | 
     const field = byId.get(id);
     if (field) answered.set(keyOf(field), value);
   }
-  for (const { id, why } of reply.forYou) {
+  for (const { id, why, consent } of reply.forYou) {
     const field = byId.get(id);
     if (field) reasons.set(keyOf(field), why);
+    if (field && consent) consents.add(keyOf(field));
   }
   if (reply.note) reasons.set(NOTE_KEY, reply.note);
   return null;
@@ -144,9 +166,10 @@ const pageRequests = () => Number(document.documentElement.getAttribute(BUSY) ??
 
 async function pageSettled(): Promise<void> {
   await sleep(SAVE_START_MS);
-  let quiet = 0;
-  for (let waited = 0; waited < SAVE_WAIT_MS && quiet < QUIET_MS; waited += STEP_MS) {
-    quiet = pageRequests() ? 0 : quiet + STEP_MS;
+  let quietFrom = performance.now();
+  for (const start = performance.now(); since(start) < SAVE_WAIT_MS;) {
+    if (pageRequests()) quietFrom = performance.now();
+    else if (since(quietFrom) >= QUIET_MS) return;
     await sleep(STEP_MS);
   }
 }
@@ -154,7 +177,7 @@ async function pageSettled(): Promise<void> {
 const filesFirst = (a: Field, b: Field) => Number(b.kind === "file") - Number(a.kind === "file");
 
 async function uploaded(name: string): Promise<void> {
-  for (let waited = 0; waited < UPLOAD_WAIT_MS; waited += POLL_MS) {
+  for (const start = performance.now(); since(start) < UPLOAD_WAIT_MS;) {
     if (document.body.innerText.includes(name)) break;
     await sleep(POLL_MS);
   }
@@ -250,7 +273,7 @@ function watch(job: Job, panel: Panel): void {
   }, WATCH_MS);
 }
 
-function finish(fields: Field[], panel: Panel): void {
+function finish(fields: Field[], panel: Panel): string[] {
   const left = leftForYou(fields);
   for (const { field } of left) {
     for (const element of controlsOf(field.id)) element.style.outline = OUTLINE;
@@ -274,9 +297,86 @@ function finish(fields: Field[], panel: Panel): void {
     note: reasons.get(NOTE_KEY) ?? null,
     timings,
   });
+  return left
+    .filter(({ field }) => (field.required && !field.value) || consents.has(keyOf(field)))
+    .map(({ field }) => field.label);
 }
 
-async function fill(job: Job, panel: Panel): Promise<void> {
+const humanCheck = () =>
+  [...document.querySelectorAll("iframe")].some(
+    (frame) =>
+      CHECK_FRAME.test(frame.src) &&
+      !frame.src.includes("size=invisible") &&
+      !frame.closest(".grecaptcha-badge") &&
+      frame.checkVisibility(SHOWN) &&
+      frame.getBoundingClientRect().width > 0,
+  );
+
+const labelOf = (element: HTMLElement) =>
+  (element instanceof HTMLInputElement ? element.value : element.innerText).trim();
+
+function submitButton(): HTMLElement | null {
+  const buttons = [
+    ...document.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
+      "button, input[type='submit']",
+    ),
+  ].filter(
+    (element) =>
+      !element.disabled && element.checkVisibility(SHOWN) && SUBMIT_TEXT.test(labelOf(element)),
+  );
+  const submits = buttons.filter((element) => SAYS_SUBMIT.test(labelOf(element)));
+  const [only] = submits.length === 1 ? submits : buttons.length === 1 ? buttons : [];
+  return only ?? null;
+}
+
+async function holdForYou(job: Job, panel: Panel, why: string): Promise<void> {
+  await ask<object>({ type: "held", jobId: job.id, why });
+  panel.say(`Auto-submit stopped: ${why}. Check it, then press Submit yourself.`);
+}
+
+function whyNotSend(left: string[]): string | null {
+  if (left.length) {
+    const named = left.slice(0, NAMED_LEFT).join("; ");
+    const more = left.length > NAMED_LEFT ? ` and ${String(left.length - NAMED_LEFT)} more` : "";
+    return `left for you: ${named}${more}`;
+  }
+  const note = reasons.get(NOTE_KEY);
+  if (note) return note;
+  return humanCheck() ? "the site shows a human check" : null;
+}
+
+async function confirmed(): Promise<string | null> {
+  for (const start = performance.now(); since(start) < CONFIRM_WAIT_MS;) {
+    if (shown.state === "applied") return null;
+    if (humanCheck()) return "the site wants a human check after Submit";
+    await sleep(POLL_MS);
+  }
+  return "the site didn't confirm it was sent";
+}
+
+async function autoSubmit(job: Job, panel: Panel, left: string[]): Promise<void> {
+  const why = whyNotSend(left);
+  const button = submitButton();
+  if (why || !button) {
+    await holdForYou(job, panel, why ?? "it couldn't find one clear Submit button");
+    return;
+  }
+  const reply = await ask<Go>({ type: "submitting", jobId: job.id });
+  if (failed(reply) || !reply.go) {
+    panel.say("Auto-submit is off now. Check it, then press Submit yourself.");
+    return;
+  }
+  panel.wait("Nothing is left for you. Sending it …");
+  button.click();
+  const problem = await confirmed();
+  if (problem) {
+    await holdForYou(job, panel, problem);
+    return;
+  }
+  await ask<object>({ type: "sent", jobId: job.id });
+}
+
+async function fill(job: Job, panel: Panel, sending = false): Promise<void> {
   mark("filling");
   panel.wait("Reading the form …");
   let fields = await timed("wait for form", waitForForm());
@@ -291,6 +391,8 @@ async function fill(job: Job, panel: Panel): Promise<void> {
     if (problem) {
       mark("broken", { error: problem });
       panel.say(problem === "offline" ? "SatyaApply isn't running." : `Couldn't fill: ${problem}`);
+      if (sending)
+        await ask<object>({ type: "held", jobId: job.id, why: `couldn't fill: ${problem}` });
       return;
     }
     await sleep(SETTLE_MS);
@@ -298,15 +400,16 @@ async function fill(job: Job, panel: Panel): Promise<void> {
   }
   for (const field of fields) if (filled.has(field.id)) recommit(field);
   await sleep(SETTLE_MS);
-  finish(readFields(), panel);
+  const left = finish(readFields(), panel);
   watch(job, panel);
+  if (sending) await autoSubmit(job, panel, left);
 }
 
 const FORM_LOOK_MS = 5000;
 const RESUME_UPLOAD = "input[type='file']";
 
 async function whatPage(): Promise<"form" | "thanks" | "other"> {
-  for (let waited = 0; waited < FORM_LOOK_MS; waited += POLL_MS) {
+  for (const start = performance.now(); since(start) < FORM_LOOK_MS;) {
     if (document.querySelector(RESUME_UPLOAD)) return "form";
     if (isThankYou()) return "thanks";
     await sleep(POLL_MS);
@@ -359,12 +462,13 @@ async function add(panel: Panel): Promise<void> {
   await show(job, panel);
 }
 
-async function show(job: Job, panel: Panel): Promise<void> {
+async function show(job: Job, panel: Panel, sending = false): Promise<void> {
   const page = job.status === "ready" ? await whatPage() : "other";
   if (page === "form") {
-    await fill(job, panel);
+    await fill(job, panel, sending);
     return;
   }
+  if (sending) await ask<object>({ type: "held", jobId: job.id, why: "no application form here" });
   if (page === "thanks") {
     await markApplied(job, panel, await savedAnswers(job));
     return;
@@ -405,7 +509,9 @@ async function main(): Promise<void> {
     panel.offer("Add to SatyaApply", () => void add(panel));
     return;
   }
-  await show(found.job, openPanel(found.job));
+  const asked = await ask<Sending>({ type: "sending" });
+  const sending = !failed(asked) && asked.jobId === found.job.id;
+  await show(found.job, openPanel(found.job), sending);
 }
 
 void main();

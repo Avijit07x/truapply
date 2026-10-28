@@ -39,15 +39,15 @@ Even in "best guess" mode, these come **only** from the profile or your saved an
 - email or SMS verification codes ("enter the code we emailed you to confirm you're human"): the job goes to **Finish these**, and you enter the code yourself
 - creating an account or entering a password: the job goes to `needs_input`
 
-## 3. Trust before auto-submit
+## 3. Auto-submit
 
-- **Nobody starts with auto-submit**, the project owner included. Every application waits in the review queue (`ready`) until you approve it on the tracker, or until you turn auto-submit on. An approved job is sent for real on the next run with Really send.
-- **The trust count** is your clean approvals in a row: approvals with no edits. An edit or a 👎 resets it to 0.
-- Auto-submit is **suggested** on the home page once the count reaches 20. You can also turn it on sooner with **Turn on now**. It's never switched on by itself.
-- Even with auto-submit on, it applies only to strong matches (score ≥ 80). Those are sent without waiting and marked as auto-submitted. Everything else still waits for you, and so does any job whose site wants a human check (it goes to Finish these) or asks something your profile doesn't answer (Needs you).
-- **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, auto-submit turns off, every job waits for your OK again, and you get a desktop notification (a macOS notification, or `notify-send` on Linux).
-- **Never sent twice.** `submitting` is written before Submit is clicked. A job still in `submitting` when a run starts means the last run crashed: it becomes `unconfirmed` and is never sent again.
-- **A human check is never solved.** If one shows up after Submit, the job goes to **Finish these** (`finish`) for you to complete yourself.
+- **Off until you turn it on**, in Settings › Applying › Auto-submit. Nobody starts with it, the project owner included. Only jobs tailored after you turn it on are sent, so switching it on never sends what's already waiting in Ready. To send those too, press **Send these with auto-submit** on Home; the score rule and every check below still apply.
+- **Only matches at or above your score:** 80 by default. You pick any score from 0 to 100.
+- **Only when nothing is left for you.** After a run, the Chrome extension opens one job at a time in a new tab of your own Chrome (hidden tabs stall, so you see it) and fills it. It presses Submit only when no consent or agreement box (required or not) and no required question or file is left for you (optional questions it can't answer, like diversity ones, stay blank), the employer hasn't asked for no AI, no human check is showing, and there's exactly one Submit button. Otherwise it stops before Submit, leaves the tab filled in, and notes why on the job.
+- **A human check is never solved.** If one shows up before or after Submit, the job is left for you.
+- **Never sent twice.** The job is marked as being sent before Submit is pressed. If the site doesn't confirm, it isn't tried again, and its note says to check your email before applying yourself.
+- **Marked as auto-submitted.** A confirmed send shows **Auto-submitted** as its status, with every answer it sent saved on the job.
+- **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, auto-submit turns off.
 - **What it learns from you stays inside these rules.** It can't override this page, add facts to your resume, or raise a limit. A **Tell SatyaApply** rule is passed to scoring as your preference, never as a fact. Everything it has learned is listed on the "What it learned" page, where you can edit or delete it.
 
 ## 4. Employer "no AI" rules

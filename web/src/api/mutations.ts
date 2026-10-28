@@ -13,6 +13,7 @@ import type {
   RunChoice,
   RunState,
   Scoring,
+  SendQueued,
   SettingsValues,
   SettingsView,
 } from "./types";
@@ -70,6 +71,14 @@ export function useRunStart() {
 
 export function useRunStop() {
   return useChange<RunState, undefined>(() => ["/api/runs/stop", {}], queries.runs().queryKey);
+}
+
+export function useFindCompanies() {
+  return useChange<RunState, undefined>(() => ["/api/companies/find", {}], queries.runs().queryKey);
+}
+
+export function useSendReady() {
+  return useChange<SendQueued, undefined>(() => ["/api/autosend/queue", {}]);
 }
 
 export function useSetAutomatic() {

@@ -13,7 +13,7 @@ from satyaapply.store import feedback, jobs, records
 from satyaapply.store.feedback import Feedback, FeedbackKind
 from satyaapply.store.jobs import StatusChange
 from satyaapply.store.records import JobRecord
-from satyaapply.tracker import runs
+from satyaapply.tracker import autosend, runs
 from satyaapply.tracker.body import Body, number, numbers, text
 from satyaapply.tracker.detail import (
     ALLOWED,
@@ -65,13 +65,15 @@ def _dismiss(db: sqlite3.Connection, _paths: Paths, record: JobRecord, body: Bod
     return None
 
 
-def _thumbs(db: sqlite3.Connection, _paths: Paths, record: JobRecord, body: Body) -> str | None:
+def _thumbs(db: sqlite3.Connection, paths: Paths, record: JobRecord, body: Body) -> str | None:
     value = number(body, "value")
     if value not in THUMBS or value is None:
         return "Pick thumbs up or thumbs down."
     now = utc_now()
     feedback.set_thumbs(db, job_id(record), value)
     _note(db, record, Feedback(FeedbackKind.THUMBS, str(value), now))
+    if value < 0:
+        autosend.keep_trust(db, paths)
     return None
 
 

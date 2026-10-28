@@ -71,6 +71,7 @@ def job_row(record: JobRecord) -> dict[str, object]:
         "score": job.score,
         "status": job.status.value,
         "source": job.source.value,
+        "autoSubmitted": record.auto_submitted,
         "updatedAt": iso(record.updated_at),
     }
 
