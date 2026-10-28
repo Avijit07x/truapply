@@ -1,4 +1,4 @@
-import type { Group } from "../../api/types";
+import type { Group, RunStage } from "../../api/types";
 import type { FlowEdge } from "./FlowEdge";
 import {
   LANES,
@@ -13,6 +13,22 @@ import {
 import type { FlowNode, LaneNode, OutcomeNode, StepNode } from "./nodes";
 
 type Counts = Record<Group, number>;
+export type Live = { running: boolean; stage: RunStage | null; added: Counts | null };
+
+function addedTo(live: Live, group: Group | undefined): number {
+  return group && live.added ? live.added[group] : 0;
+}
+
+function stepData(step: StepNode["data"]["step"], counts: Counts, live: Live) {
+  return {
+    step,
+    count: step.group ? counts[step.group] : null,
+    total: counts.found,
+    running: live.running,
+    active: live.running && step.stage !== undefined && step.stage === live.stage,
+    added: addedTo(live, step.group),
+  };
+}
 
 const GAP_INSET = 28;
 const HANDLES: Record<Link["kind"], readonly [string, string]> = {
@@ -27,7 +43,7 @@ export const GROUP_OF: ReadonlyMap<string, Group> = new Map([
   ...OUTCOMES.map((item) => [item.id, item.group] as const),
 ]);
 
-export function buildNodes(counts: Counts, running: boolean): FlowNode[] {
+export function buildNodes(counts: Counts, live: Live): FlowNode[] {
   const lanes: LaneNode[] = LANES.map((lane) => ({
     id: lane.id,
     type: "lane",
@@ -41,10 +57,8 @@ export function buildNodes(counts: Counts, running: boolean): FlowNode[] {
     id: step.id,
     type: "step",
     position: { x: step.x, y: step.y },
-    data: { step, count: step.group ? counts[step.group] : null, total: counts.found, running },
+    data: stepData(step, counts, live),
     style: { width: STEP_WIDTH },
-    selectable: step.group !== undefined,
-    focusable: step.group !== undefined,
   }));
   const outcomes: OutcomeNode[] = OUTCOMES.map((item) => ({
     id: item.id,
@@ -56,22 +70,23 @@ export function buildNodes(counts: Counts, running: boolean): FlowNode[] {
       title: item.title,
       count: counts[item.group],
       total: counts.found,
+      added: addedTo(live, item.group),
     },
     style: { width: OUTCOME_WIDTH },
   }));
   return [...lanes, ...steps, ...outcomes];
 }
 
-export function refreshNodes(nodes: FlowNode[], counts: Counts, running: boolean): FlowNode[] {
+export function refreshNodes(nodes: FlowNode[], counts: Counts, live: Live): FlowNode[] {
   return nodes.map((node) => {
     if (node.type === "step") {
-      const { group } = node.data.step;
-      const count = group ? counts[group] : null;
-      return { ...node, data: { ...node.data, count, total: counts.found, running } };
+      return { ...node, data: stepData(node.data.step, counts, live) };
     }
     if (node.type === "outcome") {
-      const count = counts[node.data.group];
-      return { ...node, data: { ...node.data, count, total: counts.found } };
+      const { group } = node.data;
+      const count = counts[group];
+      const added = addedTo(live, group);
+      return { ...node, data: { ...node.data, count, total: counts.found, added } };
     }
     return node;
   });

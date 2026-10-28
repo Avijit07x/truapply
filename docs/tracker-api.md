@@ -21,13 +21,14 @@ The TypeScript shapes below are the same ones the app uses, in `web/src/api/type
 type Status = "new" | "skipped" | "scored" | "ready" | "approved" | "dismissed" | "submitting"
   | "applied" | "unconfirmed" | "needs_input" | "external" | "failed" | "closed" | "finish";
 
-type Group = "found" | "waiting_score" | "duplicate" | "no_ai" | "not_a_fit" | "skipped_other"
+type Group = "found" | "waiting_score" | "duplicate" | "no_ai" | "not_a_fit" | "skipped" | "wrong_title" | "wrong_place" | "too_old" | "skipped_company"
   | "scored" | "closed" | "needs_input" | "finish" | "failed" | "external" | "ready"
   | "auto_sent" | "approved" | "dismissed" | "applied" | "unconfirmed";
 
 type JobRow = {
   id: number; title: string; company: string; location: string;
-  score: number | null; status: Status; source: string; updatedAt: string;
+  score: number | null; status: Status; source: string; autoSubmitted: boolean;
+  updatedAt: string;
 };
 
 type Sent = { question: string; answer: string; editable: boolean };
@@ -43,16 +44,18 @@ type JobDetail = JobRow & {
   feedback: -1 | 0 | 1; actions: Action[]; dismissReasons: string[];
 };
 
-type Trust = { count: number; offerAt: number; autoSubmit: boolean; autoSubmitScore: number };
-type RunLog = { name: string; finishedAt: string };
+type RunLog = {
+  name: string; finishedAt: string; kind: "automatic" | "manual" | null;
+  running: boolean; outcome: "done" | "failed" | "stopped" | null;
+};
 type RunState = {
   running: boolean; startedAt: string | null; exitCode: number | null;
-  log: string[]; logs: RunLog[]; limits: { min: number; max: number; default: number };
+  log: string[]; stoppable: boolean; stage: "find" | "score" | "tailor" | null; logs: RunLog[]; nextAutomatic: string | null; limits: { min: number; max: number; default: number };
 };
 type Summary = {
   total: number; counts: Partial<Record<Status, number>>;
   sites: { source: string; total: number; counts: Partial<Record<Status, number>> }[];
-  trust: Trust; run: RunState; suggestions: number;
+  run: RunState; suggestions: number;
 };
 
 type Sort = "updated" | "score" | "title" | "company" | "location";
@@ -79,6 +82,7 @@ type SettingsValues = {
   noticePeriod: string; citizenship: string; workWithoutVisa: string[]; needsSponsorship: boolean;
   dateOfBirth: string; gender: string; disability: string; veteran: string; ethnicity: string;
   extraFacts: string; unknownQuestions: "skip" | "guess"; coverLetter: "required" | "always" | "never";
+  companySearch: "off" | "daily" | "weekly"; autoSubmit: boolean; autoSubmitScore: number;
   jobsPerRun: number; scoresPerRun: number; dailyCap: number | null; linkedinCap: number;
   aiCallsPerDay: number; runEveryMinutes: number; summaryHour: number;
 };
@@ -104,11 +108,11 @@ type SettingsView = {
 | `GET /api/summary` | | `Summary` |
 | `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped and closed jobs are left out unless you ask for a status, a group or `show=all`. `total` counts every match. |
 | `GET /api/new-jobs` | `?jobs=<ISO>&wellfound=<ISO>` | `{ jobs?: number, wellfound?: number }`: for each tab you name, the jobs found after that time that aren't skipped or closed (`jobs` is Career jobs). The sidebar sends when you last opened each tab, kept in this browser, and shows the counts as badges. |
-| `GET /api/jobs?show=all` | | the same, skipped jobs included. Skipped also holds software jobs outside your titles, places or age (`note`: "not your titles or places", no description); they go back to `new` once they fit. |
+| `GET /api/jobs?show=all` | | the same, skipped jobs included. Skipped also holds software jobs outside your titles, places or age (`note` says which: "not one of your titles", "not a place you work in", "posted too long ago" or "a company you skip"; no description). Each run updates the note, and the job goes back to `new` once it fits. The `skipped` group counts them all; `wrong_title`, `wrong_place`, `too_old` and `skipped_company` count each reason. |
 | `GET /api/jobs?status=<Status>` | | the same, for one status |
 | `GET /api/jobs?group=<Group>` | | the same, for one workflow box |
-| `GET /api/workflow` | | `{ groups: Record<Group, number> }`: the count in each workflow box |
-| `GET /api/board` | | `{ columns: Column[], dismissReasons }`: scored, needs_input, finish, ready, approved, applied (the order jobs move in), the newest 8 jobs in each |
+| `GET /api/workflow` | | `{ groups: Record<Group, number>, lastRun: { startedAt, groups: Record<Group, number> } \| null }`: the count in each workflow box, and how many jobs reached each box since the latest run started (`found` by when it was found, the rest by their last status change). `stage` in `RunState` is the step a run is on, read from its latest progress line. |
+| `GET /api/board` | | Home's job lists. `{ columns: Column[], dismissReasons }`: scored, needs_input, finish, ready, approved, applied (the order jobs move in), the newest 8 jobs in each |
 | `GET /api/jobs/<id>` | | `JobDetail` |
 
 `GET /api/jobs` also takes, in any mix:
@@ -142,7 +146,6 @@ Each one answers with the updated `JobDetail`, and is refused with `400` if the 
 | `POST /api/jobs/score` | `{ ids }` | `{ scoring, skipped }`. The same for several jobs; `JobList.scoring` lists the ids being scored or waiting. |
 | `POST /api/jobs/dismiss` | `{ ids: number[], reason }`, 1 to 200 ids, `reason` one of `dismissReasons` | Dismisses many at once, the same way as one by one, and answers `{ dismissed, skipped }`. Jobs that moved on to a status you can't dismiss from are skipped. |
 
-The board's drag and drop uses `approve` and `dismiss`, so a drag does exactly what the job page buttons do.
 
 ### Companies
 
@@ -169,14 +172,29 @@ Each one answers with the updated `Learned`.
 
 | Method and path | Body | Answer |
 |---|---|---|
+| `GET /api/companies` | | `{ companies: { key, company, site, url, origin: "shared" \| "search" \| "link", addedAt, checkedAt, closed, jobs }[], search: { every, last, next } }`. `jobs` counts that company's listed jobs that aren't skipped or closed. |
+| `POST /api/companies/find` | `{}` | `RunState`: starts a run that searches the web for new companies now, whatever **companySearch** says. `400` if a run is going. |
 | `GET /api/runs` | | `RunState` |
-| `POST /api/runs/start` | `{ limit, search }` | `RunState`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
+| `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `satyaapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
 | `POST /api/runs/stop` | `{}` | `RunState` |
 | `GET /api/runs/log/<name>` | | `RunLog & { lines: string[] }`, the last 200 lines |
 | `GET /api/settings` | | `SettingsView` |
 | `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
 | `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |
 | `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS only. |
+
+### Chrome extension
+
+| Request | Body | Answer |
+|---|---|---|
+| `POST /api/extension/job` | `{ url }` | `{ job }` for the page's job, or `null` |
+| `POST /api/extension/add` | `{ url, posting?, text }` | `{ job, preparing }` |
+| `POST /api/extension/jobs/<id>/answers` | `{ fields, ai }` | `{ answers, forYou, waiting, note }` |
+| `POST /api/extension/jobs/<id>/applied` | `{ sent }` | `{ applied: true }`; a job that auto-submit pressed Submit on is marked auto-submitted |
+| `POST /api/extension/send/next` | `{}` | `{ job: { id, url } \| null }`: the next job to auto-submit, only while **autoSubmit** is on, no run is going and no other send is in progress. Each job is handed out once |
+| `POST /api/extension/jobs/<id>/submitting` | `{}` | `{ go }`: written before Submit is pressed; `false` if auto-submit was turned off or the job was already tried |
+| `POST /api/autosend/queue` | `{}` | `{ queued, below, score }`: **Send these with auto-submit** on Home. Queues every ready career-page job scoring `autoSubmitScore` or more for sending, even jobs tailored before it was turned on and even during a run. `400` while auto-submit is off |
+| `POST /api/extension/jobs/<id>/held` | `{ why }` | `{ held: true }`: auto-submit stopped; the reason goes in the job's note |
 
 ## Files and pages
 

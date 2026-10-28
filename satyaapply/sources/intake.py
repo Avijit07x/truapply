@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from satyaapply.core.models import Board, Job
 from satyaapply.core.profile import Profile
 from satyaapply.sources.ats import boards_in, poll
-from satyaapply.sources.filters import in_your_field, worth_scoring
+from satyaapply.sources.filters import in_your_field, why_skipped
 from satyaapply.store import boards, jobs
 from satyaapply.store.boards import BoardOrigin
 
@@ -15,11 +15,12 @@ NOT_A_BOARD = "That link isn't a Greenhouse, Lever or Ashby job or board."
 
 
 Wanted = Callable[[Job], bool]
+Skip = Callable[[Job], str | None]
 
 
 @dataclass(frozen=True)
 class Wants:
-    queue: Wanted
+    skip: Skip
     keep: Wanted
 
 
@@ -42,12 +43,13 @@ def take_in(
     result = poll(checked)
     boards.mark_checked(db, result.alive, result.dead, now)
     kept: list[Job] = []
-    outside: list[Job] = []
+    outside: list[tuple[Job, str]] = []
     for job in result.jobs:
-        if wants.queue(job):
+        why = wants.skip(job)
+        if why is None:
             kept.append(job)
         elif wants.keep(job):
-            outside.append(job)
+            outside.append((job, why))
     added = jobs.add_many(db, kept, now) + jobs.back_in_search(db, kept, now)
     jobs.add_outside_search(db, outside, now)
     return Intake(len(result.jobs), len(kept), added, len(result.dead), len(result.unreachable))
@@ -55,7 +57,7 @@ def take_in(
 
 def fits(profile: Profile, now: datetime) -> Wants:
     return Wants(
-        queue=lambda job: worth_scoring(job, profile, now),
+        skip=lambda job: why_skipped(job, profile, now),
         keep=lambda job: in_your_field(job, profile),
     )
 
@@ -68,5 +70,5 @@ def take_in_link(
         return None
     boards.add_many(db, found, BoardOrigin.LINK, now)
     usual = fits(profile, now)
-    wants = Wants(lambda job: usual.queue(job) or _linked(job, link), usual.keep)
+    wants = Wants(lambda job: None if _linked(job, link) else usual.skip(job), usual.keep)
     return found[0], take_in(db, found[:1], wants, now)

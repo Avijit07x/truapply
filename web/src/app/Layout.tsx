@@ -9,17 +9,7 @@ import { Link, useLocation } from "../lib/router";
 import { Toaster } from "../ui/Toaster";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { PAGE_NAMES, sitePage } from "../lib/pages";
-import {
-  Columns,
-  Flow,
-  Home,
-  type IconProps,
-  Inbox,
-  Play,
-  Rows,
-  Sliders,
-  Spark,
-} from "../ui/icons";
+import { Flow, Frame, Home, type IconProps, Inbox, Play, Rows, Sliders, Spark } from "../ui/icons";
 import styles from "./Layout.module.css";
 import { useLiveRefresh } from "./useLiveRefresh";
 
@@ -27,9 +17,9 @@ type NavItem = { to: string; label: string; Icon: ComponentType<IconProps>; tab?
 
 const NAV: readonly NavItem[] = [
   { to: "/", label: PAGE_NAMES["/"], Icon: Home },
-  { to: "/board", label: PAGE_NAMES["/board"], Icon: Columns },
   { to: "/workflow", label: PAGE_NAMES["/workflow"], Icon: Flow },
   { to: "/jobs", label: PAGE_NAMES["/jobs"], Icon: Rows, tab: "jobs" },
+  { to: "/companies", label: PAGE_NAMES["/companies"], Icon: Frame },
   { to: "/runs", label: PAGE_NAMES["/runs"], Icon: Play },
   { to: "/learned", label: PAGE_NAMES["/learned"], Icon: Spark },
   { to: "/settings", label: PAGE_NAMES["/settings"], Icon: Sliders },

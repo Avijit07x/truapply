@@ -10,7 +10,7 @@ from satyaapply.core.models import Source, Status
 from satyaapply.core.notes import WELLFOUND_NOTE
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import save
-from satyaapply.store import jobs
+from satyaapply.store import groups, jobs
 from satyaapply.store.browse import PAGE_SIZE
 from satyaapply.store.db import connect
 from satyaapply.store.groups import Group
@@ -146,7 +146,7 @@ def test_the_board_has_its_columns_in_order_with_their_totals(tracker: TrackerSe
     assert [column["status"] for column in board["columns"]] == [str(s) for s in COLUMNS]
     applied = next(column for column in board["columns"] if column["status"] == "applied")
     assert applied["total"] == 1
-    assert [job["id"] for job in applied["jobs"]] == [11]
+    assert [job["id"] for job in applied["jobs"]] == ids_in(Group.APPLIED)
     assert "too senior" in board["dismissReasons"]
 
 
@@ -231,3 +231,17 @@ def test_new_jobs_counts_each_tab_since_your_last_visit(tmp_path: Path) -> None:
         refused = get(server, "/api/new-jobs?jobs=yesterday")[0]
     assert (status, new) == (200, {"jobs": 1, "wellfound": 1})
     assert refused == 400
+
+
+def test_the_workflow_counts_what_the_latest_run_changed(
+    tmp_path: Path,
+) -> None:
+    paths = Paths(tmp_path)
+    paths.ensure()
+    with closing(connect(paths.database)) as db:
+        seed_every_group(db, NOW)
+        assert groups.changed_since(db, NOW + timedelta(minutes=10))[Group.APPLIED] == 1
+        assert groups.changed_since(db, NOW + timedelta(hours=1))[Group.APPLIED] == 0
+        assert groups.changed_since(db, NOW - timedelta(minutes=1))[Group.FOUND] == len(SEEDED)
+    with running(paths) as server:
+        assert get(server, "/api/workflow")[1]["lastRun"] is None

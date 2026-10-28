@@ -164,7 +164,7 @@ These docs.
 
 **Builds**
 - The tracker as a React + TypeScript app (`web/`, built with Vite and shipped prebuilt inside the package, so users don't need Node), talking to the Python tracker only through the JSON API in [tracker-api.md](tracker-api.md)
-- Drag and drop on the board (Waiting for your OK → Approved or Dismissed), inline answer editing, live run progress without reloads
+- Inline answer editing, live run progress without reloads
 - **Workflow map** (`/workflow`): a live decision-flow chart of how every job is handled, in the style of a Notion decision diagram. Questions are nodes with YES / NO branches, outcomes are boxes with live job counts, and automatic steps (AI scoring, tailoring, form filling, reply tracking) are dashed purple lines. Clicking a box opens those jobs. The flow:
   - Found on a career page → Title fits your keywords? → Location fits where you'll work? → Seen before? (duplicate) → AI score at least your minimum, with no deal-breaker? (no → Not a fit) → Employer bans AI-written applications? (yes → Skipped)
   - → Tailor the resume → Passes the fact check? (no → original resume used) → Fill the form → Legal question it can't answer? (yes → Needs your answer) → Picture check? (yes → Finish these)
@@ -174,7 +174,6 @@ These docs.
 **Must pass**
 - [x] Every page of the current tracker works in the React app, with the same safety checks (Host, Origin, JSON-only POST, strict CSP with only the tracker's own scripts)
 - [x] The workflow map's counts match the Career jobs page for every box, and each box links to exactly those jobs
-- [x] Dragging a job to Approved or Dismissed on the board does the same as the job page buttons
 - [ ] Checked in a real browser, light and dark, at phone width, with screenshots
 
 ### Phase 4 · Background runs and daily summary

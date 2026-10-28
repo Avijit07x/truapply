@@ -6,7 +6,11 @@ export type Group =
   | "duplicate"
   | "no_ai"
   | "not_a_fit"
-  | "skipped_other"
+  | "skipped"
+  | "wrong_title"
+  | "wrong_place"
+  | "too_old"
+  | "skipped_company"
   | "scored"
   | "closed"
   | "ready"
@@ -21,6 +25,7 @@ export type JobRow = {
   score: number | null;
   status: Status;
   source: string;
+  autoSubmitted: boolean;
   updatedAt: string;
 };
 
@@ -73,21 +78,34 @@ export type Scoring = { scoring: number; skipped: number };
 export type Linked = { company: string; open: number; kept: number; added: number; gone: boolean };
 export type Column = { status: Status; total: number; jobs: JobRow[] };
 export type Board = { columns: Column[]; dismissReasons: string[] };
-export type Workflow = { groups: Record<Group, number> };
+export type Workflow = {
+  groups: Record<Group, number>;
+  lastRun: { startedAt: string; groups: Record<Group, number> } | null;
+};
 
 export type RunKind = "automatic" | "manual";
-export type RunLog = { name: string; finishedAt: string; kind: RunKind | null };
+export type RunLog = {
+  name: string;
+  finishedAt: string;
+  kind: RunKind | null;
+  running: boolean;
+  outcome: "done" | "failed" | "stopped" | null;
+};
 export type RunLimits = { min: number; max: number; default: number };
 export type RunState = {
   running: boolean;
   startedAt: string | null;
   exitCode: number | null;
   log: string[];
+  stoppable: boolean;
+  stage: RunStage | null;
   logs: RunLog[];
+  nextAutomatic: string | null;
   limits: RunLimits;
 };
-export type RunLogLines = RunLog & { lines: string[] };
-export type RunChoice = { limit: number; search: boolean };
+export type RunLogLines = Omit<RunLog, "running" | "outcome"> & { lines: string[] };
+export type RunStage = "find" | "score" | "tailor";
+export type RunChoice = { limit: number; search: boolean; only?: RunStage };
 
 export type SiteSummary = {
   source: string;
@@ -113,6 +131,24 @@ export type Learned = {
   suggestions: Suggestion[];
 };
 
+export type CompanySearch = "off" | "daily" | "weekly";
+export type CompanyOrigin = "shared" | "search" | "link";
+export type CompanyRow = {
+  key: string;
+  company: string;
+  site: "greenhouse" | "lever" | "ashby";
+  url: string;
+  origin: CompanyOrigin;
+  addedAt: string;
+  checkedAt: string | null;
+  closed: boolean;
+  jobs: number;
+};
+export type Companies = {
+  companies: CompanyRow[];
+  search: { every: CompanySearch; last: string | null; next: string | null };
+};
+export type SendQueued = { queued: number; below: number; score: number };
 export type SettingsValues = {
   name: string;
   email: string;
@@ -153,6 +189,9 @@ export type SettingsValues = {
   extraFacts: string;
   unknownQuestions: "skip" | "guess";
   coverLetter: "required" | "always" | "never";
+  companySearch: CompanySearch;
+  autoSubmit: boolean;
+  autoSubmitScore: number;
   jobsPerRun: number;
   scoresPerRun: number;
   dailyCap: number | null;

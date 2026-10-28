@@ -305,7 +305,7 @@ files = ["satyaapply", "tools", "tests"]
 | Site fixtures | `tests/fixtures/<site>/` | Saved search, job, blocked and logged-out pages, **with personal data removed**. Tests link matching, parsing, and block/logout detection. |
 | Form end to end | `tests/e2e/form.html` | The real form filler on a local 3-step form with every field type, through to "submitted" |
 | Tracker API | `tests/unit/test_tracker*.py` | Every endpoint, the request checks (Host, Origin, JSON only, size) and the headers |
-| Tracker app | `tests/e2e/test_tracker_app.py` | Every page in a real headless browser, light and dark, desktop and phone width: no errors, no sideways scrolling. The workflow map's counts and links, and the board's drag and drop. Needs the built app. |
+| Tracker app | `tests/e2e/test_tracker_app.py` | Every page in a real headless browser, light and dark, desktop and phone width: no errors, no sideways scrolling. The workflow map's counts and links, and the job page buttons. Needs the built app. |
 | AI | — | Recorded replies in unit tests. Live AI only in tests marked `@pytest.mark.ai`. |
 | Live sites | `tests/live/` | Real public job-board APIs, only in tests marked `@pytest.mark.network`. |
 | Real employers | — | **Never submitted to in tests.** Dry run only, and only by maintainers. |

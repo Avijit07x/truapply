@@ -114,7 +114,7 @@ def test_a_post_must_be_a_json_object(tracker: TrackerServer) -> None:
 
 
 def test_every_other_page_gets_the_app_and_assets_are_cached(tracker: TrackerServer) -> None:
-    for path in ("/", "/board", "/jobs/1", "/settings?x=1"):
+    for path in ("/", "/runs", "/jobs/1", "/settings?x=1"):
         status, headers, body = fetch(tracker, path)
         assert (status, body) == (200, INDEX)
         assert headers["Content-Type"].startswith("text/html")

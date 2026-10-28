@@ -1,4 +1,4 @@
-import type { Group } from "../../api/types";
+import type { Group, RunStage } from "../../api/types";
 
 export type StepKind = "auto" | "question" | "jobs" | "done";
 
@@ -8,6 +8,7 @@ export type Step = {
   title: string;
   note?: string;
   group?: Group;
+  stage?: RunStage;
   countLabel?: string;
   x: number;
   y: number;
@@ -71,6 +72,7 @@ export const STEPS: readonly Step[] = [
     title: "Finds jobs on career pages",
     note: "Skips unwanted titles and places",
     group: "found",
+    stage: "find",
     countLabel: "found",
   }),
   step(0, row(1), { id: "seen", kind: "question", title: "Seen it before?" }),
@@ -80,6 +82,7 @@ export const STEPS: readonly Step[] = [
     title: "AI scores each job",
     note: "Against your resume and rules",
     group: "waiting_score",
+    stage: "score",
     countLabel: "waiting",
   }),
   step(0, row(3), { id: "fit", kind: "question", title: "A fit for you?" }),
@@ -89,6 +92,7 @@ export const STEPS: readonly Step[] = [
     kind: "auto",
     title: "Tailors your resume",
     note: "Fact-checked, never adds anything",
+    stage: "tailor",
   }),
   step(1, row(2), { id: "open", kind: "question", title: "Still open?" }),
   step(2, row(0), {
@@ -103,7 +107,7 @@ export const STEPS: readonly Step[] = [
 ];
 
 export const OUTCOMES: readonly Outcome[] = [
-  outcome(0, 68, "skipped_other", "Skipped", "Other reason"),
+  outcome(0, 68, "skipped", "Skipped", "Title, place or date"),
   outcome(0, 170, "duplicate", "Yes", "Duplicates"),
   outcome(0, 364, "no_ai", "No", "Bans AI help"),
   outcome(0, 424, "not_a_fit", "No", "Not a fit"),
@@ -113,7 +117,7 @@ export const OUTCOMES: readonly Outcome[] = [
 
 export const LINKS: readonly Link[] = [
   { from: "find", to: "seen", kind: "spine" },
-  { from: "find", to: "o-skipped_other", kind: "branch" },
+  { from: "find", to: "o-skipped", kind: "branch" },
   { from: "seen", to: "score", label: "No", kind: "spine" },
   { from: "seen", to: "o-duplicate", kind: "branch" },
   { from: "score", to: "fit", kind: "spine" },
@@ -132,7 +136,11 @@ export const LINKS: readonly Link[] = [
 export const EXPLAIN: Record<Group, string> = {
   found: "Every job saved from the career pages it checks.",
   waiting_score: "Saved jobs the AI hasn't scored yet. They're scored on the next run.",
-  skipped_other: "Skipped for another reason, such as a place you don't work in.",
+  skipped: "Saved but never scored, because it missed one of your Job search settings.",
+  wrong_title: "The title isn't one of your title keywords, or it has a word you skip.",
+  wrong_place: "It's in a place you don't work in, or remote where you don't want remote.",
+  too_old: "Posted longer ago than the oldest job you want to consider.",
+  skipped_company: "From a company on your list of companies to skip.",
   duplicate: "The same job seen again on another board or posting.",
   no_ai: "The employer doesn't accept AI-assisted applications, so it's left alone.",
   not_a_fit: "Scored below your minimum, or it has a deal-breaker.",
@@ -142,4 +150,46 @@ export const EXPLAIN: Record<Group, string> = {
     "Tailored and ready. Open one in your Chrome; the extension fills it in and you press Submit.",
   dismissed: "Jobs you said no to. Your reasons help it suggest what to skip.",
   applied: "Jobs you submitted.",
+};
+
+export type SettingsPart = "search" | "scoring" | "tailoring" | "applying";
+export type StepPanel = { stage?: RunStage; settings: SettingsPart };
+
+const SEARCH: StepPanel = { stage: "find", settings: "search" };
+const SCORING: StepPanel = { stage: "score", settings: "scoring" };
+const TAILORING: StepPanel = { stage: "tailor", settings: "tailoring" };
+const APPLYING: StepPanel = { settings: "applying" };
+
+export const PANELS: Readonly<Record<string, StepPanel>> = {
+  find: SEARCH,
+  seen: SEARCH,
+  "o-skipped": SEARCH,
+  "o-duplicate": SEARCH,
+  score: SCORING,
+  fit: SCORING,
+  "o-no_ai": SCORING,
+  "o-not_a_fit": SCORING,
+  scored: TAILORING,
+  tailor: TAILORING,
+  open: TAILORING,
+  "o-closed": TAILORING,
+  ready: APPLYING,
+  apply: APPLYING,
+  applied: APPLYING,
+  "o-dismissed": APPLYING,
+};
+
+export const RUN_LABEL: Record<RunStage, string> = {
+  find: "Find new jobs now",
+  score: "Score waiting jobs now",
+  tailor: "Tailor good matches now",
+};
+
+export const STEP_EXPLAIN: Readonly<Record<string, string>> = {
+  seen: "A job already in your list, or the same job on another board, is set aside.",
+  fit: "The AI score is checked against your minimum match score, deal-breakers and employers that ban AI help.",
+  tailor: "Your resume is rewritten for each good match, using only facts you gave it.",
+  open: "Before tailoring, it checks the job is still on the company's board.",
+  apply:
+    "You open each ready job in your Chrome, check it and press Submit, or auto-submit sends it.",
 };

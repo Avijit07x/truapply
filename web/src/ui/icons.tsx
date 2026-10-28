@@ -35,15 +35,6 @@ export function Home(props: IconProps) {
   );
 }
 
-export function Columns(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="2" y="2.5" width="12" height="11" rx="2" />
-      <path d="M6 2.5V13.5M10 2.5V13.5" />
-    </Svg>
-  );
-}
-
 export function Flow(props: IconProps) {
   return (
     <Svg {...props}>

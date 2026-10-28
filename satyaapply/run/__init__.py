@@ -4,13 +4,13 @@ from dataclasses import dataclass
 
 from satyaapply.ai.budget import Budget, metered
 from satyaapply.core.clock import Clock, utc_now
-from satyaapply.core.models import Status
+from satyaapply.core.models import RunStage, Status
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import load
 from satyaapply.report.summary import summarize
 from satyaapply.resume.master import load_resume, master_pdf
 from satyaapply.run.context import Progress, RunContext, quiet
-from satyaapply.run.discovery import Discovery, discover
+from satyaapply.run.discovery import CompanySearchNow, Discovery, discover
 from satyaapply.run.lock import run_lock
 from satyaapply.run.rescoring import with_descriptions
 from satyaapply.run.scoring import Scoring, score_pending, score_these
@@ -31,9 +31,11 @@ class RunOptions:
     limit: int | None = None
     score_limit: int | None = None
     search: bool = True
+    search_now: bool = False
     find: bool = True
     job: int | None = None
     score: tuple[int, ...] = ()
+    only: RunStage | None = None
     progress: Progress = quiet
 
 
@@ -59,6 +61,12 @@ def _score_and_tailor(
     return RunReport(NOTHING_FOUND, scored, tailor_all(db, context, good))
 
 
+def _company_search(options: RunOptions) -> CompanySearchNow:
+    if options.search_now:
+        return CompanySearchNow.NOW
+    return CompanySearchNow.WHEN_DUE if options.search else CompanySearchNow.SKIP
+
+
 def _steps(db: sqlite3.Connection, context: RunContext, options: RunOptions) -> RunReport:
     if options.job is not None:
         return RunReport(NOTHING_FOUND, NOTHING_SCORED, prepare_one(db, context, options.job))
@@ -70,9 +78,10 @@ def _steps(db: sqlite3.Connection, context: RunContext, options: RunOptions) -> 
         )
     say = context.progress
     found = NOTHING_FOUND
-    if options.find:
+    wanted = {options.only} if options.only else set(RunStage)
+    if options.find and RunStage.FIND in wanted:
         say("Checking company career pages …")
-        found = discover(db, context.profile, context.clock(), options.search)
+        found = discover(db, context.profile, context.clock(), _company_search(options))
         say(f"  {found.found:,} open jobs · {found.added} new ones fit your titles and places")
         if context.profile.settings.wellfound:
             say("Checking Wellfound …")
@@ -82,8 +91,12 @@ def _steps(db: sqlite3.Connection, context: RunContext, options: RunOptions) -> 
                 again = checked.waiting_until.astimezone().strftime("%H:%M")
                 say(f"  Wellfound asked to slow down · next check after {again}")
     settings = context.profile.settings
-    scored = score_pending(db, context, options.score_limit or settings.scores_per_run)
-    prepared = prepare(db, context, options.limit or settings.jobs_per_run)
+    scored = NOTHING_SCORED
+    if RunStage.SCORE in wanted:
+        scored = score_pending(db, context, options.score_limit or settings.scores_per_run)
+    prepared: list[Prepared] = []
+    if RunStage.TAILOR in wanted:
+        prepared = prepare(db, context, options.limit or settings.jobs_per_run)
     return RunReport(found, scored, prepared)
 
 

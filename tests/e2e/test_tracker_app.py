@@ -23,7 +23,7 @@ from playwright.sync_api import (
 
 from satyaapply.core import schedule
 from satyaapply.core.models import Source, Status
-from satyaapply.core.notes import WELLFOUND_NOTE
+from satyaapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
 from satyaapply.core.paths import Paths
 from satyaapply.core.profile import load, save
 from satyaapply.store import feedback, jobs, records, rules
@@ -51,11 +51,11 @@ PAGES = (
         "/",
         re.compile(r"^(You're all caught up|1 job is ready for you|\d+ jobs are ready for you)$"),
     ),
-    ("/board", "Board"),
     ("/workflow", "Workflow"),
     ("/jobs", "Career jobs"),
     ("/jobs?group=ready", "Ready for you to apply"),
     ("/jobs/9", "Frontend Engineer"),
+    ("/companies", "Companies"),
     ("/runs", "Run"),
     ("/learned", "What it learned"),
     ("/settings", "Settings"),
@@ -68,7 +68,12 @@ STEP_BOXES = {
     "ready": Group.READY,
     "applied": Group.APPLIED,
 }
-OUTCOME_BOXES = {f"o-{group}": group for group in Group if group not in STEP_BOXES.values()}
+SKIP_REASONS = (Group.WRONG_TITLE, Group.WRONG_PLACE, Group.TOO_OLD, Group.SKIPPED_COMPANY)
+OUTCOME_BOXES = {
+    f"o-{group}": group
+    for group in Group
+    if group not in STEP_BOXES.values() and group not in SKIP_REASONS
+}
 OVERLAPPING_BOXES = """() => {
   const boxes = [...document.querySelectorAll('.react-flow__node:not(.react-flow__node-lane)')]
     .map((node) => [node.dataset.id, node.getBoundingClientRect()]);
@@ -128,14 +133,6 @@ def answered(page: Page, path: str) -> Iterator[None]:
     assert reply.value.ok, path
 
 
-def drag(page: Page, card: str, target: str) -> None:
-    page.locator(card).hover()
-    page.mouse.down()
-    page.mouse.move(0, 0, steps=4)
-    page.get_by_role("region", name=target, exact=True).hover()
-    page.mouse.up()
-
-
 def status_of(paths: Paths, job_id: int) -> Status:
     with closing(connect(paths.database)) as db:
         record = records.find(db, job_id)
@@ -177,6 +174,11 @@ def test_each_workflow_box_opens_exactly_the_jobs_it_counts(browser: Browser, ho
             page.locator(f'.react-flow__node[data-id="{node}"]').click()
             link = page.get_by_role("link", name=f"See all {counts[group]}", exact=True)
             expect(link).to_have_attribute("href", f"/jobs?group={group}")
+            if group is Group.SKIPPED:
+                reasons = page.get_by_role("list", name="Why they were skipped")
+                for reason in SKIP_REASONS:
+                    link = reasons.locator(f'a[href="/jobs?group={reason}"]')
+                    expect(link).to_contain_text(str(counts[reason]))
             page.get_by_role("button", name="Close", exact=True).click()
         for group in Group:
             page.goto(server.url + f"/jobs?group={group}")
@@ -184,38 +186,24 @@ def test_each_workflow_box_opens_exactly_the_jobs_it_counts(browser: Browser, ho
         assert errors == []
 
 
-def test_dragging_on_the_board_does_what_the_job_page_buttons_do(
-    browser: Browser, home: Paths
-) -> None:
-    picks = [samples.job(external_id=str(n), company=f"Co {n}") for n in range(4)]
+def test_the_job_page_buttons_mark_it_applied_or_dismiss_it(browser: Browser, home: Paths) -> None:
+    picks = [samples.job(external_id=str(n), company=f"Co {n}") for n in range(2)]
     with closing(connect(home.database)) as db:
         jobs.add_many(db, picks, NOW)
-        for job_id in range(1, 5):
+        for job_id in range(1, 3):
             jobs.record_attempt(db, job_id, AttemptRecord(Status.READY, NOW, "filled", (), None))
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/board")
+        page.goto(server.url + "/jobs/1")
         with answered(page, "/api/jobs/1/finished"):
-            drag(page, 'a[href="/jobs/1"]', "I submitted it")
-        page.goto(server.url + "/jobs/2")
-        with answered(page, "/api/jobs/2/finished"):
             page.get_by_role("button", name="I submitted it", exact=True).click()
-        page.goto(server.url + "/board")
-        drag(page, 'a[href="/jobs/3"]', "Dismiss")
-        with answered(page, "/api/jobs/3/dismiss"):
-            page.get_by_role("dialog").get_by_role("button", name="Dismiss", exact=True).click()
-        page.goto(server.url + "/jobs/4")
+        page.goto(server.url + "/jobs/2")
         page.get_by_role("button", name="Dismiss", exact=True).click()
-        with answered(page, "/api/jobs/4/dismiss"):
+        with answered(page, "/api/jobs/2/dismiss"):
             page.get_by_role("dialog").get_by_role("button", name="Dismiss", exact=True).click()
         assert errors == []
-    assert [status_of(home, job_id) for job_id in range(1, 5)] == [
-        Status.APPLIED,
-        Status.APPLIED,
-        Status.DISMISSED,
-        Status.DISMISSED,
-    ]
-    assert kinds(home, 1) == kinds(home, 2) == [(FeedbackKind.FINISHED, "")]
-    assert kinds(home, 3) == kinds(home, 4) == [(FeedbackKind.DISMISS, "wrong role")]
+    assert [status_of(home, 1), status_of(home, 2)] == [Status.APPLIED, Status.DISMISSED]
+    assert kinds(home, 1) == [(FeedbackKind.FINISHED, "")]
+    assert kinds(home, 2) == [(FeedbackKind.DISMISS, "wrong role")]
 
 
 def test_the_jobs_grid_moves_by_keys_filters_and_dismisses_many(
@@ -436,7 +424,7 @@ def test_score_from_the_table_shows_a_spinner_then_the_score(
     monkeypatch.setattr(runs, "scoring_now", lambda: [job for ids in asked for job in ids])
     senior = replace(samples.job(external_id="greenhouse/x/1"), title="Senior Frontend Engineer")
     with closing(connect(home.database)) as db:
-        jobs.add_outside_search(db, [senior], NOW)
+        jobs.add_outside_search(db, [(senior, WRONG_TITLE_NOTE)], NOW)
     with running(home) as server, opened(browser) as (page, errors):
         page.goto(server.url + "/jobs?show=all")
         page.get_by_role("button", name="Score Senior Frontend Engineer at Northwind").click()
@@ -492,6 +480,24 @@ def test_the_clock_setting_changes_every_time_shown(browser: Browser, home: Path
         assert errors == []
 
 
+def test_how_long_ago_keeps_counting_while_the_page_stays_open(
+    browser: Browser, home: Paths
+) -> None:
+    home.runs.mkdir(parents=True, exist_ok=True)
+    log = home.runs / "20261027-170000-000000.log"
+    log.write_text("Automatic run\n", encoding="utf-8")
+    finished = (datetime.now(UTC) - timedelta(minutes=10)).timestamp()
+    os.utime(log, (finished, finished))
+    with running(home) as server, opened(browser) as (page, errors):
+        page.clock.install()
+        page.goto(server.url + "/runs")
+        recent = page.get_by_role("region", name="Recent runs")
+        expect(recent).to_contain_text(re.compile(r"10 ?m(in)? ago"))
+        page.clock.fast_forward("05:00")
+        expect(recent).to_contain_text(re.compile(r"15 ?m(in)? ago"))
+        assert errors == []
+
+
 def test_an_empty_site_table_spans_exactly_its_own_columns(browser: Browser, home: Paths) -> None:
     with running(home) as server, opened(browser) as (page, errors):
         page.goto(server.url + "/sites/wellfound")
@@ -523,7 +529,7 @@ def test_the_sidebar_counts_new_jobs_per_tab_until_you_open_it(
     browser: Browser, home: Paths
 ) -> None:
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/board")
+        page.goto(server.url + "/runs")
         nav = page.get_by_role("navigation", name="Main")
         nav.get_by_role("link", name="Wellfound").wait_for()
         page.wait_for_load_state("networkidle")
@@ -538,7 +544,7 @@ def test_the_sidebar_counts_new_jobs_per_tab_until_you_open_it(
         nav.get_by_role("link", name="Wellfound").click()
         expect(page).to_have_url(server.url + "/sites/wellfound")
         expect(nav.get_by_label("3 new")).to_have_count(0)
-        nav.get_by_role("link", name="Board").click()
+        nav.get_by_role("link", name="Run").click()
         expect(nav.get_by_label("2 new")).to_be_visible()
         expect(nav.get_by_label("3 new")).to_have_count(0)
         page.wait_for_load_state("networkidle")

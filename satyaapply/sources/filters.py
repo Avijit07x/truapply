@@ -3,6 +3,12 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from satyaapply.core.models import Job, normalize, normalize_company
+from satyaapply.core.notes import (
+    SKIPPED_COMPANY_NOTE,
+    TOO_OLD_NOTE,
+    WRONG_PLACE_NOTE,
+    WRONG_TITLE_NOTE,
+)
 from satyaapply.core.profile import Profile
 from satyaapply.sources.skills import skills_fit, skills_in
 
@@ -200,8 +206,20 @@ def _place_and_time_fit(job: Job, profile: Profile, now: datetime) -> bool:
     )
 
 
+def why_skipped(job: Job, profile: Profile, now: datetime) -> str | None:
+    if not role_fits(job, profile):
+        return WRONG_TITLE_NOTE
+    if not location_fits(job.location, profile):
+        return WRONG_PLACE_NOTE
+    if not is_fresh(job, now, profile.settings.max_job_age_days):
+        return TOO_OLD_NOTE
+    if company_skipped(job, profile):
+        return SKIPPED_COMPANY_NOTE
+    return None
+
+
 def worth_scoring(job: Job, profile: Profile, now: datetime) -> bool:
-    return role_fits(job, profile) and _place_and_time_fit(job, profile, now)
+    return why_skipped(job, profile, now) is None
 
 
 def _title_listed(job: Job, profile: Profile, fit: ListingFit) -> bool:

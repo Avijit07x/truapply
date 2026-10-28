@@ -215,6 +215,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+.active,
+.active:hover {
+  border-style: solid;
+  border-color: var(--auto);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--auto) 25%, transparent);
+}
+
+.added {
+  margin-right: 6px;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .cardCount small {
   margin-left: 4px;
   color: var(--muted);
@@ -492,6 +506,53 @@
   font-weight: 650;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+.reasons {
+  display: grid;
+  margin: 0 calc(-1 * var(--space-2));
+  padding: 0;
+  list-style: none;
+}
+
+.reason {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-small);
+  color: var(--text);
+  font-size: 13.5px;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+
+a.reason:hover {
+  background: var(--subtle);
+}
+
+.reasonCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.panelSection {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.panelForm {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.panelSave {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: 12.5px;
 }
 
 .loading {

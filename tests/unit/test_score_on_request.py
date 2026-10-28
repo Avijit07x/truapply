@@ -9,7 +9,8 @@ import pytest
 
 import satyaapply.run as run_module
 from satyaapply.ai.replies import Score
-from satyaapply.core.models import Job, Status
+from satyaapply.core.models import Job, RunStage, Status
+from satyaapply.core.notes import WRONG_TITLE_NOTE
 from satyaapply.core.paths import Paths
 from satyaapply.resume.contract import Rendered
 from satyaapply.run import rescoring, scoring
@@ -43,7 +44,7 @@ def tracker(tmp_path: Path) -> Iterator[TrackerServer]:
     paths = Paths(tmp_path)
     paths.ensure()
     with closing(connect(paths.database)) as db:
-        jobs.add_outside_search(db, [SENIOR], NOW)
+        jobs.add_outside_search(db, [(SENIOR, WRONG_TITLE_NOTE)], NOW)
         jobs.add_many(db, [samples.job(external_id="greenhouse/northwind/8")], NOW)
         jobs.set_status(db, 2, StatusChange(Status.APPLIED, NOW, "submitted by you"))
     with running(paths) as server:
@@ -98,7 +99,7 @@ def test_a_job_without_its_description_is_read_again_then_scored(
     monkeypatch.setattr(rescoring, "take_in_link", refetched)
     monkeypatch.setattr(scoring, "score_job", lambda *_: Score(85, "strong React fit", None, False))
     with closing(connect(tmp_path / "jobs.db")) as db:
-        jobs.add_outside_search(db, [SENIOR], NOW)
+        jobs.add_outside_search(db, [(SENIOR, WRONG_TITLE_NOTE)], NOW)
         ready = rescoring.with_descriptions(db, run, [1])
         result = scoring.score_these(db, run, ready)
         found = jobs.find(db, 1)
@@ -144,3 +145,35 @@ def test_only_good_matches_offer_tailoring(tracker: TrackerServer) -> None:
         jobs.set_status(db, 1, StatusChange(Status.SCORED, NOW, "fit"))
     assert "tailor" in get(tracker, "/api/jobs/1")[1]["actions"]
     assert "tailor" not in get(tracker, "/api/jobs/2")[1]["actions"]
+
+
+@pytest.mark.parametrize(
+    ("only", "done"),
+    [
+        (RunStage.FIND, ["find"]),
+        (RunStage.SCORE, ["score"]),
+        (RunStage.TAILOR, ["tailor"]),
+        (None, ["find", "score", "tailor"]),
+    ],
+)
+def test_a_run_can_do_just_one_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, only: RunStage | None, done: list[str]
+) -> None:
+    run = RunContext(
+        Paths(tmp_path),
+        samples.profile(tmp_path / "master.tex"),
+        CountingResume(),
+        Rendered(tmp_path / "m.pdf", 1),
+        lambda: NOW,
+    )
+    seen: list[str] = []
+    monkeypatch.setattr(
+        run_module, "discover", lambda *_: seen.append("find") or run_module.NOTHING_FOUND
+    )
+    monkeypatch.setattr(
+        run_module, "score_pending", lambda *_: seen.append("score") or run_module.NOTHING_SCORED
+    )
+    monkeypatch.setattr(run_module, "prepare", lambda *_: seen.append("tailor") or [])
+    with closing(connect(tmp_path / "jobs.db")) as db:
+        run_module._steps(db, run, run_module.RunOptions(search=False, only=only))
+    assert seen == done

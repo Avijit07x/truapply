@@ -10,7 +10,15 @@ from typing import Any
 from urllib.error import HTTPError
 
 from satyaapply.core.models import Status
-from satyaapply.core.notes import AI_RULE_NOTE, DEALBREAKER_PREFIX, DUPLICATE_NOTE
+from satyaapply.core.notes import (
+    AI_RULE_NOTE,
+    DEALBREAKER_PREFIX,
+    DUPLICATE_NOTE,
+    SKIPPED_COMPANY_NOTE,
+    TOO_OLD_NOTE,
+    WRONG_PLACE_NOTE,
+    WRONG_TITLE_NOTE,
+)
 from satyaapply.core.paths import Paths
 from satyaapply.store import jobs
 from satyaapply.store.groups import Group
@@ -26,12 +34,16 @@ SEEDED: tuple[tuple[Status, str, set[Group]], ...] = (
     (Status.SKIPPED, AI_RULE_NOTE, {Group.NO_AI}),
     (Status.SKIPPED, f"{DEALBREAKER_PREFIX}on-site only", {Group.NOT_A_FIT}),
     (Status.SKIPPED, "score 41: weak React match", {Group.NOT_A_FIT}),
-    (Status.SKIPPED, "title doesn't fit", {Group.SKIPPED_OTHER}),
+    (Status.SKIPPED, "title doesn't fit", {Group.SKIPPED}),
     (Status.SCORED, "good match", {Group.SCORED}),
     (Status.CLOSED, "removed", {Group.CLOSED}),
     (Status.READY, "tailored", {Group.READY}),
     (Status.DISMISSED, "dismissed: location", {Group.DISMISSED}),
     (Status.APPLIED, "sent", {Group.APPLIED}),
+    (Status.SKIPPED, WRONG_TITLE_NOTE, {Group.SKIPPED, Group.WRONG_TITLE}),
+    (Status.SKIPPED, WRONG_PLACE_NOTE, {Group.SKIPPED, Group.WRONG_PLACE}),
+    (Status.SKIPPED, TOO_OLD_NOTE, {Group.SKIPPED, Group.TOO_OLD}),
+    (Status.SKIPPED, SKIPPED_COMPANY_NOTE, {Group.SKIPPED, Group.SKIPPED_COMPANY}),
 )
 
 

@@ -8,13 +8,21 @@ import { Check, type IconProps, Rows, Spark } from "../../ui/icons";
 import type { Step, StepKind } from "./flow";
 import styles from "./Workflow.module.css";
 
-export type StepData = { step: Step; count: number | null; total: number; running: boolean };
+export type StepData = {
+  step: Step;
+  count: number | null;
+  total: number;
+  running: boolean;
+  active: boolean;
+  added: number;
+};
 export type OutcomeData = {
   group: Group;
   branch: string;
   title: string;
   count: number;
   total: number;
+  added: number;
 };
 export type LaneData = { title: string };
 
@@ -99,15 +107,23 @@ function Share({ part, total, fill }: { part: number; total: number; fill: Fill 
   );
 }
 
+function Added({ count }: { count: number }) {
+  return count > 0 ? (
+    <span className={styles.added} title="Since the latest run started">
+      +{count.toLocaleString()}
+    </span>
+  ) : null;
+}
+
 export function StepCard({ data, selected }: NodeProps<StepNode>) {
-  const { step, count, total, running } = data;
-  const live = running && step.kind === "auto";
+  const { step, count, total, active, added } = data;
   return (
     <div
       className={cx(
         styles.card,
         styles[step.kind],
-        step.group && styles.clickable,
+        styles.clickable,
+        active && styles.active,
         count === 0 && styles.quiet,
         selected && styles.selected,
       )}
@@ -115,11 +131,12 @@ export function StepCard({ data, selected }: NodeProps<StepNode>) {
       <Pins sides={["top", "left", "bottom", "right"]} />
       <div className={styles.cardHead}>
         <Tile kind={step.kind} />
-        <span className={cx(styles.tag, live && styles.liveTag)}>
-          {live ? "Running" : TAG[step.kind]}
+        <span className={cx(styles.tag, active && styles.liveTag)}>
+          {active ? "Running" : TAG[step.kind]}
         </span>
         {count !== null && (
           <span className={styles.cardCount}>
+            <Added count={added} />
             <CountUp value={count} />
             {step.countLabel && <small>{step.countLabel}</small>}
           </span>
@@ -150,6 +167,7 @@ export function OutcomeCard({ data, selected }: NodeProps<OutcomeNode>) {
         <span className={styles.branch}>{data.branch}</span>
         <Share part={data.count} total={data.total} fill={tone} />
         <span className={styles.outcomeCount}>
+          <Added count={data.added} />
           <CountUp value={data.count} />
         </span>
       </span>

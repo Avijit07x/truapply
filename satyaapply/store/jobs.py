@@ -8,7 +8,7 @@ from pathlib import Path
 from satyaapply.core.codec import encode
 from satyaapply.core.forms import Sent
 from satyaapply.core.models import ACTIVE_STATUSES, Job, Source, Status
-from satyaapply.core.notes import OUTSIDE_SEARCH_NOTE
+from satyaapply.core.notes import OUTSIDE_SEARCH_NOTES
 
 INSERT_JOB = """
 insert or ignore into jobs (
@@ -22,15 +22,19 @@ insert or ignore into jobs (
     posted_at, found_at, status, status_at, note
 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
+OUTSIDE = json.dumps(OUTSIDE_SEARCH_NOTES)
 INSERT_OUTSIDE_SEARCH = """
-insert or ignore into jobs (
+insert into jobs (
     key, dupe, source, url, apply_url, company, title, location, description,
     posted_at, found_at, status, status_at, note
 ) values (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, 'skipped', ?, ?)
+on conflict (key) do update set note = excluded.note
+where jobs.status = 'skipped' and jobs.note != excluded.note
+  and jobs.note in (select value from json_each(?))
 """
 BACK_IN_SEARCH = """
 update jobs set status = 'new', status_at = ?, note = null, description = ?
-where key = ? and status = 'skipped' and note = ?
+where key = ? and status = 'skipped' and note in (select value from json_each(?))
 """
 SELECT_JOB = "select * from jobs where id = ?"
 UNLIST = """
@@ -147,11 +151,13 @@ def unlist(db: sqlite3.Connection, keys: Iterable[str], listed: str, change: Sta
         return db.total_changes - before
 
 
-def add_outside_search(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
+def add_outside_search(
+    db: sqlite3.Connection, jobs: Iterable[tuple[Job, str]], now: datetime
+) -> int:
     stamp = now.isoformat()
     rows = (
-        (*row[:8], *row[9:11], stamp, OUTSIDE_SEARCH_NOTE)
-        for row in (_row(job, now) for job in jobs)
+        (*row[:8], *row[9:11], stamp, note, OUTSIDE)
+        for row, note in ((_row(job, now), note) for job, note in jobs)
     )
     with db:
         before = db.total_changes
@@ -161,7 +167,7 @@ def add_outside_search(db: sqlite3.Connection, jobs: Iterable[Job], now: datetim
 
 def back_in_search(db: sqlite3.Connection, jobs: Iterable[Job], now: datetime) -> int:
     stamp = now.isoformat()
-    rows = ((stamp, job.description, job.key, OUTSIDE_SEARCH_NOTE) for job in jobs)
+    rows = ((stamp, job.description, job.key, OUTSIDE) for job in jobs)
     with db:
         before = db.total_changes
         db.executemany(BACK_IN_SEARCH, rows)

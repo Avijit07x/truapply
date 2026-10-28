@@ -39,6 +39,12 @@ class Status(StrEnum):
 ACTIVE_STATUSES = (Status.READY, Status.APPLIED)
 
 
+class RunStage(StrEnum):
+    FIND = "find"
+    SCORE = "score"
+    TAILOR = "tailor"
+
+
 class Ats(StrEnum):
     GREENHOUSE = "greenhouse"
     LEVER = "lever"

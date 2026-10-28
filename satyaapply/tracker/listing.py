@@ -11,7 +11,14 @@ from satyaapply.store.browse import NEWEST_FIRST, PAGE_SIZE, Browse, Sort
 from satyaapply.store.groups import Group
 from satyaapply.tracker import learning, runs
 from satyaapply.tracker.body import Body, text
-from satyaapply.tracker.detail import DISMISS_REASONS, DISMISSABLE, SCORABLE, job_detail, job_row
+from satyaapply.tracker.detail import (
+    DISMISS_REASONS,
+    DISMISSABLE,
+    SCORABLE,
+    iso,
+    job_detail,
+    job_row,
+)
 from satyaapply.tracker.responses import Response, bad_request, not_found, ok
 from satyaapply.tracker.routes import Route, route
 
@@ -153,10 +160,18 @@ def _job(db: sqlite3.Connection, paths: Paths, match: re.Match[str], _body: Body
     return ok(job_detail(db, paths, record)) if record else not_found("No such job.")
 
 
-def _workflow(
-    db: sqlite3.Connection, _paths: Paths, _match: re.Match[str], _body: Body
-) -> Response:
-    return ok({"groups": {group.value: total for group, total in groups.counts(db).items()}})
+def _by_group(totals: dict[groups.Group, int]) -> dict[str, int]:
+    return {group.value: total for group, total in totals.items()}
+
+
+def _workflow(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
+    started = runs.latest_start(paths)
+    last_run = (
+        {"startedAt": iso(started), "groups": _by_group(groups.changed_since(db, started))}
+        if started
+        else None
+    )
+    return ok({"groups": _by_group(groups.counts(db)), "lastRun": last_run})
 
 
 GET: tuple[Route, ...] = (

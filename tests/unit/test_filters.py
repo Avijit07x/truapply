@@ -4,6 +4,12 @@ from pathlib import Path
 
 import pytest
 
+from satyaapply.core.notes import (
+    SKIPPED_COMPANY_NOTE,
+    TOO_OLD_NOTE,
+    WRONG_PLACE_NOTE,
+    WRONG_TITLE_NOTE,
+)
 from satyaapply.core.profile import Profile, WorkPlaces
 from satyaapply.sources.filters import (
     company_skipped,
@@ -12,6 +18,7 @@ from satyaapply.sources.filters import (
     location_fits,
     role_fits,
     title_fits,
+    why_skipped,
 )
 from tests.unit import samples
 
@@ -148,3 +155,17 @@ def test_software_jobs_count_as_your_field_even_when_skipped(
     profile: Profile, title: str, related: bool
 ) -> None:
     assert in_your_field(replace(samples.job(), title=title), profile) is related
+
+
+def test_a_skipped_job_says_which_of_your_choices_it_missed(profile: Profile) -> None:
+    job = samples.job()
+    old = NOW - timedelta(days=profile.settings.max_job_age_days + 1)
+    assert why_skipped(job, profile, NOW) is None
+    assert why_skipped(replace(job, title="Senior Frontend Engineer"), profile, NOW) == (
+        WRONG_TITLE_NOTE
+    )
+    assert why_skipped(replace(job, location="Toronto, Canada"), profile, NOW) == WRONG_PLACE_NOTE
+    assert why_skipped(replace(job, posted_at=old), profile, NOW) == TOO_OLD_NOTE
+    assert why_skipped(replace(job, company="Acme Analytics"), profile, NOW) == (
+        SKIPPED_COMPANY_NOTE
+    )

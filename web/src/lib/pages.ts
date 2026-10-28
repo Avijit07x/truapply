@@ -2,9 +2,9 @@ import { sourceLabel } from "../domain/sources";
 
 export const PAGE_NAMES = {
   "/": "Home",
-  "/board": "Board",
   "/workflow": "Workflow",
   "/jobs": "Career jobs",
+  "/companies": "Companies",
   "/runs": "Run",
   "/learned": "Learned",
   "/settings": "Settings",

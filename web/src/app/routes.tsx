@@ -56,10 +56,6 @@ const ROUTES: readonly Route[] = [
       queryClient.query(queries.workflow()),
     ],
   }),
-  page(/^\/board$/, () => import("../features/board/BoardPage"), {
-    layout: "fit",
-    warm: () => [queryClient.query(queries.board())],
-  }),
   page(/^\/workflow$/, () => import("../features/workflow/WorkflowPage"), {
     layout: "bleed",
     warm: () => [queryClient.query(queries.workflow())],
@@ -80,6 +76,10 @@ const ROUTES: readonly Route[] = [
   }),
   page(/^\/jobs\/(\d+)$/, () => import("../features/job/JobPage"), {
     warm: (params) => [queryClient.query(queries.job(Number(params[0])))],
+  }),
+  page(/^\/companies$/, () => import("../features/companies/CompaniesPage"), {
+    layout: "fit",
+    warm: () => [queryClient.query(queries.companies())],
   }),
   page(/^\/runs$/, () => import("../features/runs/RunsPage"), {
     layout: "fit",

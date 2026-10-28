@@ -1,7 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
-import { RequestFailed } from "../../api/client";
-import { useSaveSettings } from "../../api/mutations";
+import type { ReactNode } from "react";
 import { queries } from "../../api/queries";
 import type { Extension, SettingsView } from "../../api/types";
 import { CopyButton } from "../../components/CopyButton";
@@ -13,10 +11,10 @@ import { navigate, useLocation } from "../../lib/router";
 import { type TabItem, TabList } from "../../ui/Tabs";
 import { toast } from "../../ui/toasts";
 import { AutomaticRuns } from "./AutomaticRuns";
-import { type Draft, toDraft, toValues } from "./draft";
 import { ResumeSection } from "./ResumeSection";
 import {
   AboutYou,
+  AutoSubmit,
   FormAnswers,
   Group,
   type GroupProps,
@@ -31,6 +29,7 @@ import {
   WorkRights,
 } from "./SettingsGroups";
 import styles from "./Settings.module.css";
+import { useSettingsDraft } from "./useSettingsDraft";
 
 function ExtensionSteps({ extension }: { extension: Extension }) {
   if (!extension.built) {
@@ -90,6 +89,7 @@ const TABS: readonly Tab[] = [
     show: (props) => (
       <>
         <FormAnswers {...props} />
+        <AutoSubmit {...props} />
         <RunsAndLimits {...props} />
       </>
     ),
@@ -130,19 +130,10 @@ function useTab(): Tab {
 }
 
 function SettingsForm({ view }: { view: SettingsView }) {
-  const save = useSaveSettings();
-  const saved = toDraft(view.values);
-  const [edits, setEdits] = useState<Draft | null>(null);
-  const draft = edits ?? saved;
-  const dirty = edits !== null && JSON.stringify(edits) !== JSON.stringify(saved);
-  const set =
-    <Name extends keyof Draft>(name: Name) =>
-    (value: Draft[Name]) => {
-      setEdits((current) => ({ ...(current ?? saved), [name]: value }));
-    };
-  const group = { draft, set, limits: view.limits };
+  const { group, dirty, saving, problems, submit, undo } = useSettingsDraft(view, () => {
+    toast("Settings saved. They're used from the next run.");
+  });
   const tab = useTab();
-  const problems = save.error instanceof RequestFailed ? save.error.problems : [];
   return (
     <Tabs.Root
       value={tab.value}
@@ -156,12 +147,7 @@ function SettingsForm({ view }: { view: SettingsView }) {
         className={styles.form}
         onSubmit={(event) => {
           event.preventDefault();
-          save.mutate(toValues(draft), {
-            onSuccess: () => {
-              setEdits(null);
-              toast("Settings saved. They're used from the next run.");
-            },
-          });
+          submit();
         }}
       >
         <div className={styles.body}>
@@ -185,17 +171,11 @@ function SettingsForm({ view }: { view: SettingsView }) {
               </span>
               <Row>
                 {dirty && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setEdits(null);
-                      save.reset();
-                    }}
-                  >
+                  <Button variant="ghost" onClick={undo}>
                     Undo changes
                   </Button>
                 )}
-                <Button type="submit" variant="primary" busy={save.isPending} disabled={!dirty}>
+                <Button type="submit" variant="primary" busy={saving} disabled={!dirty}>
                   Save settings
                 </Button>
               </Row>

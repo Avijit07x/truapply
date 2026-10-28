@@ -12,10 +12,12 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { queries } from "../../api/queries";
 import { CanvasControls } from "./CanvasControls";
 import { edgeTypes } from "./FlowEdge";
-import { GROUP_OF, buildEdges, buildNodes, pathThrough, refreshNodes } from "./graph";
+import { buildEdges, buildNodes, pathThrough, refreshNodes } from "./graph";
 import { Inspector } from "./Inspector";
 import { type FlowNode, nodeTypes } from "./nodes";
 import styles from "./Workflow.module.css";
+
+const LIVE_MS = 1_500;
 
 function Legend({ running }: { running: boolean }) {
   return (
@@ -34,7 +36,7 @@ function Legend({ running }: { running: boolean }) {
         <span className={styles.legendJobs} aria-hidden="true">
           3
         </span>
-        Your jobs. Click one for details.
+        Click any box to change its settings or run it.
       </span>
       {running && (
         <span className={styles.legendLive}>
@@ -49,11 +51,15 @@ function Legend({ running }: { running: boolean }) {
 export default function WorkflowPage() {
   const { data } = useSuspenseQuery(queries.workflow());
   const running = useQuery(queries.summary()).data?.run.running ?? false;
-  const [nodes, setNodes] = useState(() => buildNodes(data.groups, running));
-  const [shown, setShown] = useState({ groups: data.groups, running });
-  if (shown.groups !== data.groups || shown.running !== running) {
-    setShown({ groups: data.groups, running });
-    setNodes((current) => refreshNodes(current, data.groups, running));
+  const run = useQuery({ ...queries.runs(), refetchInterval: running ? LIVE_MS : false }).data;
+  const stage = run?.running ? run.stage : null;
+  const added = data.lastRun?.groups ?? null;
+  const live = { running, stage, added };
+  const [nodes, setNodes] = useState(() => buildNodes(data.groups, live));
+  const [shown, setShown] = useState({ groups: data.groups, running, stage });
+  if (shown.groups !== data.groups || shown.running !== running || shown.stage !== stage) {
+    setShown({ groups: data.groups, running, stage });
+    setNodes((current) => refreshNodes(current, data.groups, live));
   }
   const [hovered, setHovered] = useState<string | null>(null);
   const path = useMemo(() => (hovered ? pathThrough(hovered) : null), [hovered]);
@@ -86,7 +92,6 @@ export default function WorkflowPage() {
   }, []);
   const canvas = useRef<HTMLDivElement>(null);
   const selected = nodes.find((node) => node.selected)?.id ?? null;
-  const group = selected ? GROUP_OF.get(selected) : undefined;
   return (
     <div className={styles.page}>
       <h1 className={styles.hiddenTitle}>Workflow</h1>
@@ -115,11 +120,13 @@ export default function WorkflowPage() {
           <CanvasControls container={canvas} />
           <Legend running={running} />
         </ReactFlow>
-        {group && (
+        {selected && (
           <Inspector
-            key={group}
-            group={group}
-            count={data.groups[group]}
+            key={selected}
+            node={selected}
+            counts={data.groups}
+            lastRun={data.lastRun}
+            run={run}
             onClose={clearSelection}
           />
         )}

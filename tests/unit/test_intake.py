@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from satyaapply.core.models import Board, Job, Status
-from satyaapply.core.notes import OUTSIDE_SEARCH_NOTE
+from satyaapply.core.notes import OUTSIDE_SEARCH_NOTE, WRONG_TITLE_NOTE
 from satyaapply.sources import intake
 from satyaapply.sources.ats import PollResult
 from satyaapply.store import jobs, records
@@ -40,7 +40,8 @@ def stored(path: Path, job_id: int) -> tuple[Job, str | None]:
 
 def titles_with(word: str) -> intake.Wants:
     return intake.Wants(
-        queue=lambda job: word in job.title, keep=lambda job: "Sales" not in job.title
+        skip=lambda job: None if word in job.title else WRONG_TITLE_NOTE,
+        keep=lambda job: "Sales" not in job.title,
     )
 
 
@@ -52,7 +53,7 @@ def test_every_job_found_is_kept_and_only_fitting_ones_are_queued(db_path: Path)
     outside, note = stored(db_path, 2)
     assert queued.status is Status.NEW
     assert outside.status is Status.SKIPPED
-    assert note == OUTSIDE_SEARCH_NOTE
+    assert note == WRONG_TITLE_NOTE
     assert outside.description == ""
     with closing(connect(db_path)) as db:
         assert db.execute("select count(*) from jobs").fetchone()[0] == 2
@@ -75,3 +76,12 @@ def test_jobs_skipped_for_other_reasons_stay_skipped(db_path: Path) -> None:
         jobs.set_status(db, 1, StatusChange(Status.SKIPPED, NOW, "score 30"))
         intake.take_in(db, [], titles_with("Frontend"), NOW)
     assert stored(db_path, 1)[0].status is Status.SKIPPED
+
+
+def test_jobs_skipped_before_reasons_were_saved_get_their_reason_next_time(
+    db_path: Path,
+) -> None:
+    with closing(connect(db_path)) as db:
+        jobs.add_outside_search(db, [(OFFICE, OUTSIDE_SEARCH_NOTE)], NOW)
+        intake.take_in(db, [], titles_with("Frontend"), NOW)
+    assert stored(db_path, 1)[1] == WRONG_TITLE_NOTE
