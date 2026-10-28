@@ -3,7 +3,9 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
+from http.client import HTTPConnection
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -102,6 +104,22 @@ def test_requests_from_other_websites_are_refused(tracker: TrackerServer) -> Non
     assert send(tracker, own | {"Content-Length": str(MAX_BODY_BYTES + 1)}) == 403
     assert fetch(tracker, "/api/summary", headers={"Host": "evil.example"})[0] == 403
     assert fetch(tracker, "/", headers={"Host": "evil.example"})[0] == 403
+
+
+def test_one_connection_carries_many_requests_until_a_post_is_refused(
+    tracker: TrackerServer,
+) -> None:
+    host, port = urlsplit(tracker.url).hostname or "", urlsplit(tracker.url).port
+    with closing(HTTPConnection(host, port, timeout=5)) as connection:
+        for _ in range(3):
+            connection.request("GET", "/api/summary")
+            reply = connection.getresponse()
+            reply.read()
+            assert (reply.status, reply.getheader("Connection")) == (200, None)
+        connection.request("POST", "/api/summary", b"{}", {"Origin": "https://evil.example"})
+        refused = connection.getresponse()
+        refused.read()
+        assert (refused.status, refused.getheader("Connection")) == (403, "close")
 
 
 def test_a_post_must_be_a_json_object(tracker: TrackerServer) -> None:

@@ -28,6 +28,7 @@ MAX_BODY_BYTES = 200_000
 JSON_TYPE = "application/json"
 PENDING_CONNECTIONS = 128
 NOT_JSON = "Send a JSON object."
+IDLE_CONNECTION_S = 30
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +63,8 @@ def open_server(paths: Paths, port: int | None) -> TrackerServer:
 class TrackerHandler(BaseHTTPRequestHandler):
     server_version = "TruApply"
     sys_version = ""
+    protocol_version = "HTTP/1.1"
+    timeout = IDLE_CONNECTION_S
 
     @property
     def tracker(self) -> TrackerServer:
@@ -76,6 +79,8 @@ class TrackerHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", FOREVER if response.cacheable else NO_STORE)
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
+        if self.close_connection:
+            self.send_header("Connection", "close")
         try:
             self.end_headers()
             self.wfile.write(response.body)
@@ -117,6 +122,7 @@ class TrackerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         if not self._post_allowed() or not 0 <= self._length() <= self._limit():
+            self.close_connection = True
             self._send(forbidden())
             return
         body = self._body()
