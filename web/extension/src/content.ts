@@ -441,14 +441,15 @@ async function prepared(job: Job): Promise<Job> {
 
 async function add(panel: Panel): Promise<void> {
   panel.wait("Reading this job …");
-  const reply = await ask<Added>({ type: "add", url: location.href, ...(await readPage()) });
+  const page = await readPage();
+  const reply = await ask<Added>({ type: "add", url: location.href, ...page, prepare: !clicked });
   if (failed(reply)) {
     mark("broken", { error: reply.error });
     panel.say(`Couldn't add it: ${reply.error}`);
     return;
   }
   panel.show(reply.job);
-  if (!WAITING.has(reply.job.status)) {
+  if (clicked || !WAITING.has(reply.job.status)) {
     await show(reply.job, panel);
     return;
   }

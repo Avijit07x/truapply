@@ -49,7 +49,7 @@ export type Resume = { data: string };
 export type Request =
   | { type: "job"; url: string }
   | { type: "answers"; jobId: number; fields: Field[]; ai: boolean }
-  | { type: "add"; url: string; posting?: Posting; text: string }
+  | { type: "add"; url: string; posting?: Posting; text: string; prepare: boolean }
   | { type: "resume"; jobId: number }
   | { type: "applied"; jobId: number; sent: SentItem[] }
   | { type: "sending" }

@@ -126,7 +126,8 @@ def _add(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body
     if isinstance(found, str):
         return bad_request(found)
     job_id = found.job.id or 0
-    preparing = found.job.status in PREPARABLE and start_preparing(paths, job_id)
+    wanted = body.get("prepare") is not False
+    preparing = wanted and found.job.status in PREPARABLE and start_preparing(paths, job_id)
     return ok({"job": _view(paths, found), "preparing": preparing})
 
 

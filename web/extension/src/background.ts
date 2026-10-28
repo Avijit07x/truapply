@@ -92,6 +92,7 @@ function handle(request: Request, tabId: number | undefined): Promise<unknown> {
         url: request.url,
         posting: request.posting,
         text: request.text,
+        prepare: request.prepare,
       });
     case "resume":
       return resume(request.jobId);

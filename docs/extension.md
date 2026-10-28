@@ -22,7 +22,7 @@ What stays the same: nothing is ever submitted without you pressing Submit. No C
 4. You check the form and press Submit.
 5. When the site shows its confirmation, the job becomes **Applied** in the tracker. The panel offers **Next job**, which opens the next one waiting for you.
 
-**On any other job site**, open the application form and click the TruApply icon in Chrome's toolbar. If the job is new, it's added, scored and tailored (about a minute), then the form is filled. A job that isn't a good match is filled with your original resume. A form filled this way is **never submitted**, even with auto-submit on: you check it and press Submit.
+**On any other job site**, open the application form and click the TruApply icon in Chrome's toolbar. It fills every field it can right away: your saved answers and profile first, then Claude for the rest. A job TruApply hasn't seen is added without scoring or tailoring, and filled with your original resume; a job that already has a tailored resume gets that one. A form filled this way is **never submitted**, even with auto-submit on: you check it and press Submit.
 
 ## How it works
 

@@ -364,6 +364,18 @@ def test_a_job_page_is_added_and_prepared_in_the_background(
     assert record.job.description == POSTING["description"]
 
 
+def test_a_job_added_by_clicking_the_icon_is_filled_now_and_not_prepared(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    preparing = Preparing()
+    monkeypatch.setattr(extension, "start_preparing", preparing)
+    page = {"url": LINKEDIN, "posting": POSTING, "prepare": False}
+    with running(paths) as server:
+        status, body = call(server, "/api/extension/add", page)
+    assert (status, body["preparing"], body["job"]["status"]) == (200, False, "new")
+    assert preparing.jobs == []
+
+
 def test_a_page_from_any_other_site_is_found_again_without_its_tracking_bits(
     paths: Paths, monkeypatch: pytest.MonkeyPatch
 ) -> None:
