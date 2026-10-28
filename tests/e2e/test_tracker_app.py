@@ -22,7 +22,7 @@ from playwright.sync_api import (
 )
 
 from tests.unit import samples
-from tests.unit.tracker_api import get, ids_in, running, seed_every_group
+from tests.unit.tracker_api import fetch, get, ids_in, running, seed_every_group
 from truapply.core import autorun
 from truapply.core.models import Board, Source, Status
 from truapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
@@ -415,6 +415,26 @@ def test_the_workflow_legend_stays_on_one_line_during_a_run(browser: Browser, ho
         box = legend.bounding_box()
         assert box is not None
         assert box["height"] < 40
+        assert errors == []
+
+
+def test_the_tab_icon_shows_a_dot_while_a_run_is_going(browser: Browser, home: Paths) -> None:
+    going = {"running": True}
+
+    def live(route: Route) -> None:
+        answer = route.fetch().json()
+        answer["run"]["running"] = going["running"]
+        route.fulfill(json=answer)
+
+    with running(home) as server, opened(browser) as (page, errors):
+        page.route("**/api/summary", live)
+        page.goto(server.url + "/")
+        icon = page.locator('link[rel="icon"]')
+        expect(icon).to_have_attribute("href", "/favicon-running.svg")
+        assert fetch(server, "/favicon-running.svg")[0] == 200
+        going["running"] = False
+        page.reload()
+        expect(icon).to_have_attribute("href", "/favicon.svg")
         assert errors == []
 
 

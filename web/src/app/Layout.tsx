@@ -13,6 +13,7 @@ import { PAGE_NAMES, sitePage } from "../lib/pages";
 import { Flow, Frame, Home, type IconProps, Inbox, Play, Rows, Sliders, Spark } from "../ui/icons";
 import styles from "./Layout.module.css";
 import { useLiveRefresh } from "./useLiveRefresh";
+import { useRunIcon } from "./useRunIcon";
 
 type NavItem = { to: string; label: string; Icon: ComponentType<IconProps>; tab?: string };
 
@@ -75,6 +76,7 @@ type LayoutProps = { path: string; layout: PageLayout; children: ReactNode };
 export function Layout({ path, layout, children }: LayoutProps) {
   const { pending } = useLocation();
   const running = useLiveRefresh();
+  useRunIcon(running);
   const { data: summary } = useQuery(queries.summary());
   const nav = withSites(summary?.sites.map((site) => site.source) ?? []);
   const active = section(nav, path);

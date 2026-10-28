@@ -7,7 +7,7 @@ from pathlib import PurePosixPath
 from truapply.tracker.responses import TEXT, Response, not_found
 
 ASSET = re.compile(r"^/assets/([A-Za-z0-9_-][A-Za-z0-9._-]*)$")
-ROOT_FILES = frozenset({"/favicon.svg"})
+ROOT_FILES = frozenset({"/favicon.svg", "/favicon-running.svg"})
 TYPES = {
     ".js": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",

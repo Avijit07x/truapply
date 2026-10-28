@@ -531,6 +531,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 - The Python side is a JSON API on `http.server`, described in [tracker-api.md](tracker-api.md). `server.py` does the checks, `views.py` and `routes.py` send each address to its handler, and each feature has its own module of routes.
 - The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. The Career jobs grid uses TanStack Table for its columns, sorting and row selection, while paging, sorting, search and filters run on the server and live in the address, so Back and reload keep your place. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
 - The app follows your system's light or dark mode, or the one you pick at the bottom of the sidebar.
+- While a run is going, the tab icon gets an amber dot (`favicon-running.svg`), so you can see it from another tab.
 
 ### Pages
 
