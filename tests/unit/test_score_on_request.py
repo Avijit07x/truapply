@@ -1,5 +1,5 @@
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -167,13 +167,17 @@ def test_a_run_can_do_just_one_step(
         lambda: NOW,
     )
     seen: list[str] = []
-    monkeypatch.setattr(
-        run_module, "discover", lambda *_: seen.append("find") or run_module.NOTHING_FOUND
-    )
-    monkeypatch.setattr(
-        run_module, "score_pending", lambda *_: seen.append("score") or run_module.NOTHING_SCORED
-    )
-    monkeypatch.setattr(run_module, "prepare", lambda *_: seen.append("tailor") or [])
+
+    def step(name: str, result: object) -> Callable[..., object]:
+        def ran(*_args: object) -> object:
+            seen.append(name)
+            return result
+
+        return ran
+
+    monkeypatch.setattr(run_module, "discover", step("find", run_module.NOTHING_FOUND))
+    monkeypatch.setattr(run_module, "score_pending", step("score", run_module.NOTHING_SCORED))
+    monkeypatch.setattr(run_module, "prepare", step("tailor", []))
     with closing(connect(tmp_path / "jobs.db")) as db:
         run_module._steps(db, run, run_module.RunOptions(search=False, only=only))
     assert seen == done

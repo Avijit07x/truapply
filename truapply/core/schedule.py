@@ -102,8 +102,14 @@ def cron_line(paths: Paths, plan: Plan) -> str:
     return f"{_cron_times(plan)} {home} {shlex.join(run_command())} >> {log} 2>&1"
 
 
+def _user() -> int:
+    if sys.platform == "win32":
+        return 0
+    return os.getuid()
+
+
 def _service() -> tuple[str, str]:
-    domain = f"gui/{os.getuid()}"
+    domain = f"gui/{_user()}"
     return domain, f"{domain}/{LABEL}"
 
 

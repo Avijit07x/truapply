@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -11,7 +12,12 @@ from truapply.resume.contract import Rendered
 PDFLATEX_TIMEOUT_S = 60
 JOB_NAME = "resume"
 SANDBOX_ENV = {"openin_any": "p", "openout_any": "p"}
-TINYTEX_BIN_DIRS = (Path("~/Library/TinyTeX/bin"), Path("~/.TinyTeX/bin"))
+TINYTEX_BIN_DIRS = (
+    Path("~/Library/TinyTeX/bin"),
+    Path("~/.TinyTeX/bin"),
+    Path("~/AppData/Roaming/TinyTeX/bin"),
+)
+PDFLATEX = "pdflatex.exe" if sys.platform == "win32" else "pdflatex"
 COMMAND = re.compile(r"\\([A-Za-z@]+)")
 MISSING_FILE = re.compile(r"! LaTeX Error: File `([^']+)' not found")
 MISSING_FONT = re.compile(r"Font \S+=(\S+) at \S+ not loadable: Metric \(TFM\) file not found")
@@ -28,7 +34,7 @@ def find_pdflatex() -> Path | None:
     if on_path:
         return Path(on_path)
     for bin_dir in TINYTEX_BIN_DIRS:
-        for candidate in sorted(bin_dir.expanduser().glob("*/pdflatex")):
+        for candidate in sorted(bin_dir.expanduser().glob(f"*/{PDFLATEX}")):
             return candidate
     return None
 
@@ -59,6 +65,7 @@ def _compile(pdflatex: Path, workdir: Path) -> tuple[int, str]:
             cwd=workdir,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=PDFLATEX_TIMEOUT_S,
             env={**os.environ, **SANDBOX_ENV},

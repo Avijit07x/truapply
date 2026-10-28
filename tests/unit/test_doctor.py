@@ -46,6 +46,7 @@ def test_a_missing_data_folder_is_named(tmp_path: Path) -> None:
     broken(check, "truapply setup")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="chmod can't make a Windows folder read-only")
 def test_a_read_only_data_folder_is_named(tmp_path: Path) -> None:
     tmp_path.chmod(0o500)
     try:

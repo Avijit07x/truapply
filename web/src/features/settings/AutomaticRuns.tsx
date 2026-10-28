@@ -43,7 +43,7 @@ export function AutomaticRuns({ automatic, ...props }: GroupProps & { automatic:
           }}
         />
       ) : (
-        <Callout>Automatic runs from this page work on macOS only for now.</Callout>
+        <Callout>Automatic runs from this page work on macOS and Windows for now.</Callout>
       )}
       {failed && <Callout tone="bad">{failed}</Callout>}
       <div className={styles.pair}>

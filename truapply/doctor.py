@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import sys
 from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
@@ -10,6 +9,7 @@ from pathlib import Path
 
 from truapply.ai.tasks import ping
 from truapply.browser.chrome import browser_name
+from truapply.core import autorun
 from truapply.core.clock import utc_now
 from truapply.core.errors import (
     AppNotBuiltError,
@@ -20,7 +20,7 @@ from truapply.core.errors import (
 )
 from truapply.core.paths import Paths
 from truapply.core.profile import Profile, load
-from truapply.core.schedule import agents_dir, every, installed
+from truapply.core.schedule import every
 from truapply.resume.master import load_resume, master_pdf
 from truapply.store import usage
 from truapply.store.db import connect
@@ -86,9 +86,9 @@ def app(page: Path | None = None) -> str:
 
 
 def schedule(agents: Path) -> str:
-    if sys.platform != "darwin":
+    if not autorun.SUPPORTED:
         return "not checked here; see `crontab -l`"
-    found = installed(agents)
+    found = autorun.installed(agents)
     if found is None:
         return "not scheduled; run `truapply schedule` for automatic runs"
     if not found.program.exists():
@@ -117,7 +117,7 @@ def run_checks(paths: Paths) -> list[Check]:
     checks.append(attempt("Claude Code", claude))
     checks.append(attempt("Browser", browser_name))
     checks.append(attempt("Tracker page", app))
-    checks.append(attempt("Schedule", partial(schedule, agents_dir())))
+    checks.append(attempt("Schedule", partial(schedule, autorun.folder())))
     return checks
 
 

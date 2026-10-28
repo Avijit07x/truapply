@@ -93,7 +93,7 @@ def command(choice: Choice) -> list[str]:
 
 def _spawn(arguments: list[str], log: Path) -> subprocess.Popen[bytes]:
     log.parent.mkdir(parents=True, exist_ok=True)
-    environment = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    environment = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
     with log.open("wb") as out:
         return subprocess.Popen(  # noqa: S603
             arguments,

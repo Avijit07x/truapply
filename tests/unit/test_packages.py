@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,8 @@ from truapply.core.errors import LatexFailedError
 from truapply.resume import packages
 from truapply.resume.contract import Rendered
 from truapply.resume.packages import render_installing, tlmgr
+
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="the fake tlmgr is a shell script")
 
 SEARCH_OUTPUT = (
     "tlmgr: package repository https://example.org (not verified)\n"

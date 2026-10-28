@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from truapply.core import schedule
+from truapply.core import schedule, tasks
 from truapply.tracker import automatic
 
 HARMLESS = "/usr/bin/true"
@@ -14,3 +14,5 @@ def never_touch_the_real_schedule(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(schedule, "agents_dir", lambda: agents)
     monkeypatch.setattr(automatic, "agents", lambda: agents)
     monkeypatch.setattr(schedule, "LAUNCHCTL", HARMLESS)
+    monkeypatch.setattr(tasks, "folder", lambda: tmp_path / "Tasks")
+    monkeypatch.setattr(tasks, "schtasks", lambda _arguments: 0)

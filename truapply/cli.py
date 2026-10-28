@@ -8,7 +8,7 @@ from importlib import metadata
 from pathlib import Path
 
 from truapply import doctor
-from truapply.core import logs, schedule
+from truapply.core import autorun, logs, schedule
 from truapply.core.clock import utc_now
 from truapply.core.errors import TruApplyError
 from truapply.core.locks import is_held
@@ -160,21 +160,21 @@ def _minutes(text: str) -> int:
 def _schedule(args: argparse.Namespace, paths: Paths) -> int:
     every: int = args.every or load(paths).settings.run_every_minutes
     plan = schedule.Plan(every)
-    if sys.platform != "darwin":
+    if not autorun.SUPPORTED:
         print("Add this line with `crontab -e`:")
         print(schedule.cron_line(paths, plan))
         return 0
-    schedule.install(paths, plan, schedule.agents_dir())
+    autorun.install(paths, plan, autorun.folder(), autorun.runner())
     print(f"✔ Scheduled every {schedule.every(plan.every_minutes)}.")
     print("  Logs show on the tracker's Run page. Stop with: truapply unschedule")
     return 0
 
 
 def _unschedule(_args: argparse.Namespace, _paths: Paths) -> int:
-    if sys.platform != "darwin":
+    if not autorun.SUPPORTED:
         print("Remove the truapply line with `crontab -e`.")
         return 0
-    removed = schedule.remove(schedule.agents_dir())
+    removed = autorun.remove(autorun.folder(), autorun.runner())
     print("✔ Unscheduled. Nothing runs on its own now." if removed else "Nothing was scheduled.")
     return 0
 
@@ -226,6 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=metadata.version("truapply"))
     parser.add_argument("--verbose", action="store_true", help="show detailed logs")
+    parser.add_argument("--home", type=Path, help=argparse.SUPPRESS)
     commands = parser.add_subparsers(dest="command", required=True)
 
     setup = commands.add_parser("setup", help="answer the setup questions")
@@ -292,7 +293,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     logs.configure(args.verbose)
     handler: Handler = args.handler
     try:
-        return handler(args, default_paths())
+        return handler(args, Paths(args.home) if args.home else default_paths())
     except TruApplyError as error:
         _explain(error)
         return 1

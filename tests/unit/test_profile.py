@@ -1,5 +1,6 @@
 import json
 import stat
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -32,6 +33,9 @@ def test_saved_profile_loads_back_identical(paths: Paths, resume: Path) -> None:
     assert load(paths) == profile
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Windows keeps files private by account, not mode bits"
+)
 def test_profile_file_is_private(paths: Paths, resume: Path) -> None:
     save(paths, samples.profile(resume))
     assert stat.S_IMODE(paths.profile.stat().st_mode) == 0o600

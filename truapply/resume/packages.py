@@ -1,6 +1,7 @@
 import logging
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from truapply.core.errors import LatexFailedError
@@ -22,6 +23,8 @@ def tlmgr(executable: Path, *arguments: str) -> str:
             [str(executable), *arguments],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=TLMGR_TIMEOUT_S,
             check=True,
         )
@@ -40,7 +43,7 @@ def package_for(executable: Path, file_name: str) -> str | None:
 
 
 def render_installing(source: str, target: Path, pdflatex: Path) -> Rendered:
-    manager = pdflatex.parent / "tlmgr"
+    manager = pdflatex.with_name("tlmgr.bat" if sys.platform == "win32" else "tlmgr")
     installed: list[str] = []
     for _ in range(MAX_PACKAGE_INSTALLS):
         try:

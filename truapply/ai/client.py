@@ -102,6 +102,7 @@ def _run(request: Request, schema: dict[str, object]) -> dict[str, object]:
                 input=request.prompt,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=TIMEOUT_S,
                 cwd=sandbox,
                 check=False,

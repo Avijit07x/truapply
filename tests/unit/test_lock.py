@@ -11,11 +11,13 @@ from truapply.run import RunOptions, run
 from truapply.run.lock import run_lock
 
 HOLD_THE_LOCK = (
-    "import fcntl, sys, time\n"
-    "handle = open(sys.argv[1], 'a')\n"
-    "fcntl.flock(handle, fcntl.LOCK_EX)\n"
-    "print('locked', flush=True)\n"
-    "time.sleep(30)\n"
+    "import sys, time\n"
+    "from pathlib import Path\n"
+    "from truapply.core.errors import TruApplyError\n"
+    "from truapply.core.locks import held\n"
+    "with held(Path(sys.argv[1]), TruApplyError('busy')):\n"
+    "    print('locked', flush=True)\n"
+    "    time.sleep(30)\n"
 )
 
 
