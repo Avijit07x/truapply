@@ -20,6 +20,7 @@ from truapply.resume.diff import changed_lines
 from truapply.resume.master import load_resume, master_pdf
 from truapply.resume.tailor import Tailored, TailorRequest, file_name_for, tailor
 from truapply.run import RunOptions, RunReport, run
+from truapply.run.archive_check import check_now
 from truapply.run.lock import ALREADY_RUNNING as ALREADY_GOING
 from truapply.sources.discover import as_csv_rows, shared_boards
 from truapply.sources.intake import NOT_A_BOARD, take_in_link
@@ -126,7 +127,6 @@ def _run(args: argparse.Namespace, paths: Paths) -> int:
         limit=args.limit,
         search=not args.no_search,
         search_now=args.find_companies,
-        archive_now=args.check_archive,
         find=not args.no_find,
         job=args.job,
         score=tuple(args.score or ()),
@@ -207,6 +207,13 @@ def _boards(_args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def _archive(_args: argparse.Namespace, paths: Paths) -> int:
+    print("Checking the web archive for new companies …", flush=True)
+    added = check_now(paths)
+    print(f"✔ {added} new companies with jobs where you are. They're checked on the next run.")
+    return 0
+
+
 def _add(args: argparse.Namespace, paths: Paths) -> int:
     profile = load(paths)
     with closing(connect(paths.database)) as db:
@@ -251,11 +258,6 @@ def build_parser() -> argparse.ArgumentParser:
     runner.add_argument(
         "--find-companies", action="store_true", help="search the web for new companies now"
     )
-    runner.add_argument(
-        "--check-archive",
-        action="store_true",
-        help="look for new companies in the latest web archive now",
-    )
     runner.add_argument("--job", type=int, help="only score and tailor this one job")
     runner.add_argument(
         "--score", type=int, nargs="+", help="score these jobs, then tailor the good matches"
@@ -281,6 +283,10 @@ def build_parser() -> argparse.ArgumentParser:
     adder = commands.add_parser("add", help="add a company's jobs from a job or board link")
     adder.add_argument("link", help="a Greenhouse, Lever or Ashby job or board link")
     adder.set_defaults(handler=_add)
+
+    commands.add_parser(
+        "archive", help="find new companies in the latest web archive (no AI)"
+    ).set_defaults(handler=_archive)
 
     listing = commands.add_parser("boards", help="print boards you found that aren't shared yet")
     listing.add_argument("--new", action="store_true", help="only boards not in the shared list")

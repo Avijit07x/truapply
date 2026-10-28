@@ -148,6 +148,7 @@ export type CompanyRow = {
 export type Companies = {
   companies: CompanyRow[];
   search: { every: CompanySearch; last: string | null; next: string | null };
+  archive: { going: boolean; last: string | null };
 };
 export type SendQueued = { queued: number; below: number; score: number };
 export type SettingsValues = {

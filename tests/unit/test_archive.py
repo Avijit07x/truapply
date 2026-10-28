@@ -9,13 +9,15 @@ import pytest
 
 from tests.unit import samples
 from truapply.browser.fetch import Response
+from truapply.core import archive_task
+from truapply.core.errors import ArchiveCheckGoingError
+from truapply.core.locks import held
 from truapply.core.models import Ats, Board
-from truapply.core.profile import CompanySearch
-from truapply.run import discovery
-from truapply.run.discovery import CompanySearchNow, Finding
+from truapply.core.paths import Paths
+from truapply.core.profile import CompanySearch, load, save
+from truapply.run.archive_check import check_now, due
 from truapply.sources import archive
 from truapply.sources.ats import PollResult
-from truapply.sources.intake import Intake
 from truapply.store import archive as archived
 from truapply.store import boards
 from truapply.store.boards import BoardOrigin
@@ -81,52 +83,69 @@ def test_a_page_that_keeps_failing_is_retried_then_left_for_next_time(
     assert "lever/acme" not in {board.key for board in read.boards}
 
 
+def polled(tried: Sequence[Board]) -> PollResult:
+    places = {"greenhouse/northwind": "Bengaluru", "lever/acme": "London"}
+    found = [
+        replace(samples.job(external_id=f"{board.key}/1"), location=places[board.key])
+        for board in tried
+        if board.key in places
+    ]
+    alive = [board for board in tried if board.key in places]
+    return PollResult(found, alive, [board for board in tried if board not in alive], [])
+
+
+@pytest.fixture
+def home(tmp_path: Path) -> Paths:
+    paths = Paths(tmp_path / "home")
+    paths.ensure()
+    resume = tmp_path / "master.tex"
+    resume.write_text("resume", encoding="utf-8")
+    save(paths, samples.profile(resume))
+    return paths
+
+
 def test_companies_with_jobs_in_your_country_are_added_once_per_crawl(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    home: Paths, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     index(monkeypatch, set())
-    polled: list[list[str]] = []
+    asked: list[list[str]] = []
 
     def poll(tried: Sequence[Board]) -> PollResult:
-        polled.append(sorted(board.key for board in tried))
-        places = {"greenhouse/northwind": "Bengaluru", "lever/acme": "London"}
-        found = [
-            replace(samples.job(external_id=f"{board.key}/1"), location=places[board.key])
-            for board in tried
-            if board.key in places
-        ]
-        alive = [board for board in tried if board.key in places]
-        dead = [board for board in tried if board.key not in places]
-        return PollResult(found, alive, dead, [])
+        asked.append(sorted(board.key for board in tried))
+        return polled(tried)
 
     monkeypatch.setattr(archive, "poll", poll)
-    monkeypatch.setattr(discovery, "shared_boards", list)
-    monkeypatch.setattr(discovery, "find_posting_urls", lambda _profile: ())
-    monkeypatch.setattr(discovery, "take_in", lambda *_: Intake(0, 0, 0, 0, 0))
-    profile = samples.profile(tmp_path / "master.tex")
-    with closing(connect(tmp_path / "jobs.db")) as db:
+    with closing(connect(home.database)) as db:
         boards.add_many(db, [Board(Ats.ASHBY, "globex")], BoardOrigin.SHARED, NOW)
-        found = discovery.discover(db, profile, NOW, Finding(CompanySearchNow.WHEN_DUE))
-        assert found.archived == 1
+    assert check_now(home, lambda: NOW) == 1
+    assert check_now(home, lambda: NOW) == 0
+    with closing(connect(home.database)) as db:
         assert boards.by_origin(db, BoardOrigin.ARCHIVE) == [Board(Ats.GREENHOUSE, "northwind")]
         assert archived.last_crawl(db) == CRAWL
         assert archived.checked_since(db, NOW) == {"greenhouse/northwind", "lever/acme"}
-        again = discovery.discover(db, profile, NOW, Finding(CompanySearchNow.NOW, True))
-        assert again.archived == 0
-    assert polled == [["greenhouse/northwind", "lever/acme"]]
+    assert asked == [["greenhouse/northwind", "lever/acme"]]
 
 
-def test_checking_the_archive_now_works_even_when_finding_companies_is_off(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_only_one_archive_check_goes_at_a_time(home: Paths) -> None:
+    with held(home.archive_lock, ArchiveCheckGoingError("busy")):
+        assert archive_task.is_going(home)
+        assert not archive_task.start_in_background(home)
+        with pytest.raises(ArchiveCheckGoingError):
+            check_now(home)
+    assert archive_task.start_in_background(home)
+
+
+def test_a_run_starts_the_weekly_check_in_the_background_and_goes_on(
+    home: Paths, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    index(monkeypatch, set())
-    monkeypatch.setattr(archive, "poll", lambda _tried: PollResult([], [], [], []))
-    monkeypatch.setattr(discovery, "shared_boards", list)
-    monkeypatch.setattr(discovery, "take_in", lambda *_: Intake(0, 0, 0, 0, 0))
-    base = samples.profile(tmp_path / "master.tex")
-    off = replace(base, settings=replace(base.settings, company_search=CompanySearch.OFF))
-    with closing(connect(tmp_path / "jobs.db")) as db:
-        discovery.discover(db, off, NOW, Finding(CompanySearchNow.WHEN_DUE))
-        assert archived.last_crawl(db) is None
-        discovery.discover(db, off, NOW, Finding(CompanySearchNow.SKIP, archive_now=True))
-        assert archived.last_crawl(db) == CRAWL
+    started: list[Path] = []
+    monkeypatch.setattr(archive_task, "_spawn", started.append)
+    profile = load(home)
+    off = replace(profile, settings=replace(profile.settings, company_search=CompanySearch.OFF))
+    with closing(connect(home.database)) as db:
+        assert due(db, profile, NOW)
+        assert not due(db, off, NOW)
+        archived.checked(db, NOW)
+        assert not due(db, profile, NOW)
+    assert archive_task.start_in_background(home)
+    assert started == [home.archive_log]

@@ -3,14 +3,16 @@ from contextlib import closing
 from dataclasses import dataclass
 
 from truapply.ai.budget import Budget, metered
+from truapply.core.archive_task import start_in_background
 from truapply.core.clock import Clock, utc_now
 from truapply.core.models import RunStage, Status
 from truapply.core.paths import Paths
 from truapply.core.profile import load
 from truapply.report.summary import summarize
 from truapply.resume.master import load_resume, master_pdf
+from truapply.run.archive_check import due
 from truapply.run.context import Progress, RunContext, quiet
-from truapply.run.discovery import CompanySearchNow, Discovery, Finding, discover
+from truapply.run.discovery import CompanySearchNow, Discovery, discover
 from truapply.run.lock import run_lock
 from truapply.run.rescoring import with_descriptions
 from truapply.run.scoring import Scoring, score_pending, score_these
@@ -21,7 +23,7 @@ from truapply.store.db import connect
 
 RULE = "rule"
 TAILORING_NOTE = "tailoring_note"
-NOTHING_FOUND = Discovery(0, 0, 0, 0, 0, 0, 0, 0)
+NOTHING_FOUND = Discovery(0, 0, 0, 0, 0, 0, 0)
 NOTHING_SCORED = Scoring(0, 0, 0)
 UNSCORED = frozenset({Status.NEW, Status.SKIPPED})
 
@@ -32,7 +34,6 @@ class RunOptions:
     score_limit: int | None = None
     search: bool = True
     search_now: bool = False
-    archive_now: bool = False
     find: bool = True
     job: int | None = None
     score: tuple[int, ...] = ()
@@ -68,10 +69,6 @@ def _company_search(options: RunOptions) -> CompanySearchNow:
     return CompanySearchNow.WHEN_DUE if options.search else CompanySearchNow.SKIP
 
 
-def _finding(options: RunOptions) -> Finding:
-    return Finding(_company_search(options), options.archive_now)
-
-
 def _steps(db: sqlite3.Connection, context: RunContext, options: RunOptions) -> RunReport:
     if options.job is not None:
         return RunReport(NOTHING_FOUND, NOTHING_SCORED, prepare_one(db, context, options.job))
@@ -86,10 +83,11 @@ def _steps(db: sqlite3.Connection, context: RunContext, options: RunOptions) -> 
     wanted = {options.only} if options.only else set(RunStage)
     if options.find and RunStage.FIND in wanted:
         say("Checking company career pages …")
-        found = discover(db, context.profile, context.clock(), _finding(options))
-        if found.archived:
-            say(f"  {found.archived} new companies from the web archive")
+        found = discover(db, context.profile, context.clock(), _company_search(options))
         say(f"  {found.found:,} open jobs · {found.added} new ones fit your titles and places")
+        archive_due = options.search and due(db, context.profile, context.clock())
+        if archive_due and start_in_background(context.paths):
+            say("  Checking the web archive for new companies in the background")
         if context.profile.settings.wellfound:
             say("Checking Wellfound …")
             checked = wellfound.check(db, context.profile, context.resume_text, context.clock())

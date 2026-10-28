@@ -79,10 +79,7 @@ export function useFindCompanies() {
 }
 
 export function useCheckArchive() {
-  return useChange<RunState, undefined>(
-    () => ["/api/companies/archive", {}],
-    queries.runs().queryKey,
-  );
+  return useChange<{ going: boolean }, undefined>(() => ["/api/companies/archive", {}]);
 }
 
 export function useSendReady() {

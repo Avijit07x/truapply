@@ -61,6 +61,7 @@ What "good enough" means. Every number is measured, not guessed.
 | `truapply add LINK` | Adds a company from a Greenhouse, Lever or Ashby job or careers link and checks it now and on every run |
 | `truapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd, Windows Task Scheduler; prints a cron line on Linux) |
 | `truapply boards --new` | Prints the career boards you found that aren't in the shared list yet, ready to contribute |
+| `truapply archive` | Finds new companies in the latest web archive (no AI); the tracker and weekly runs start it in the background |
 
 Job sources: **career pages** (Greenhouse, Lever, Ashby) and **LinkedIn Easy Apply, Naukri, Indeed, Wellfound**.
 
@@ -193,7 +194,7 @@ These docs.
 
 Most Indian startups don't use Greenhouse, Lever or Ashby. A check of 975 Bengaluru startups' careers pages found Keka on 41, Google Forms on 30, Darwinbox on 27, Greenhouse, Lever and Ashby together on 28, Wellfound on 17, Zoho Recruit on 15 and Workday on 14; the rest load their links with JavaScript or post only on job sites. The measure is **relevant open jobs found per week**. In order, each its own change:
 
-1. **Companies from the web archive.** The free Common Crawl index lists every Greenhouse, Lever and Ashby page it has visited. A partial read on 28 Oct 2026 gave 2,353 names we didn't have, 210 of them with jobs in India. Read with the weekly company search or from **Check the web archive**; only new names are checked.
+1. **Companies from the web archive.** The free Common Crawl index lists every Greenhouse, Lever and Ashby page it has visited. A partial read on 28 Oct 2026 gave 2,353 names we didn't have, 210 of them with jobs in India. Read in the background beside runs, once a week or from **Check the web archive**; only new names are checked, and no AI is used.
 1. **Companies by name.** Paste company names or websites on the Companies page; each is tried on Greenhouse, Lever and Ashby, and kept only when it has jobs in your country, so a same-named company abroad isn't added.
 2. **Companies from every job.** Any job whose apply link or description points to a Greenhouse, Lever or Ashby board adds that company.
 3. **Many small web searches.** One search per role, place and job system instead of one per job system, within the daily Claude budget.

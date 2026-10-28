@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 import { useCheckArchive, useFindCompanies } from "../../api/mutations";
 import { queries } from "../../api/queries";
-import type { CompanyOrigin, CompanyRow, CompanySearch } from "../../api/types";
+import type { Companies, CompanyOrigin, CompanyRow, CompanySearch } from "../../api/types";
 import { cx } from "../../lib/cx";
 import { plural, when } from "../../lib/format";
 import { Link, navigate, useLocation } from "../../lib/router";
@@ -162,31 +162,33 @@ function FindMore({ running }: { running: boolean }) {
   );
 }
 
-function CheckArchive({ running }: { running: boolean }) {
+function CheckArchive({ going }: { going: boolean }) {
   const check = useCheckArchive();
   return (
     <Button
       icon={<Inbox size={14} />}
-      busy={check.isPending}
-      disabled={running}
-      title={running ? "Wait for the run that's going to finish." : undefined}
+      busy={check.isPending || going}
+      disabled={going}
       onClick={() => {
         check.mutate(undefined, {
           onSuccess: () => {
-            toast("Checking the web archive for new companies. Follow it on the Run page.");
+            toast(
+              "Checking the web archive in the background. New companies show up here when it's done.",
+            );
           },
         });
       }}
     >
-      Check the web archive
+      {going ? "Checking the web archive" : "Check the web archive"}
     </Button>
   );
 }
 
-function searchNote(search: { every: CompanySearch; last: string | null; next: string | null }) {
+function searchNote({ search, archive }: Pick<Companies, "search" | "archive">) {
   const parts: string[] = [EVERY[search.every]];
   if (search.last) parts.push(`last ${when(search.last)}`);
   if (search.next) parts.push(`next ${when(search.next)}`);
+  if (archive.last) parts.push(`web archive checked ${when(archive.last)}`);
   return parts.join(" · ");
 }
 
@@ -215,7 +217,7 @@ export default function CompaniesPage() {
     <div className={styles.page}>
       <PageHeader
         title="Companies"
-        description={`${plural(count(all, "all") - count(all, "closed"), "company", "companies")} checked on every run. ${searchNote(data.search)}.`}
+        description={`${plural(count(all, "all") - count(all, "closed"), "company", "companies")} checked on every run. ${searchNote(data)}.`}
         actions={
           <>
             <SearchBox
@@ -227,7 +229,7 @@ export default function CompaniesPage() {
               }}
             />
             <AddNames />
-            <CheckArchive running={summary.run.running} />
+            <CheckArchive going={data.archive.going} />
             <FindMore running={summary.run.running} />
           </>
         }

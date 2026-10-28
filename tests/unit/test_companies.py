@@ -9,11 +9,14 @@ from typing import Any
 import pytest
 
 from tests.unit import samples
+from truapply.core import archive_task
+from truapply.core.errors import ArchiveCheckGoingError
+from truapply.core.locks import held
 from truapply.core.models import Ats, Board, Status
 from truapply.core.paths import Paths
 from truapply.core.profile import CompanySearch, Profile, save
 from truapply.run import discovery
-from truapply.run.discovery import CompanySearchNow, Finding
+from truapply.run.discovery import CompanySearchNow
 from truapply.run.lock import run_lock
 from truapply.sources.intake import Intake
 from truapply.store import boards, jobs
@@ -69,8 +72,8 @@ def test_searching_now_works_even_when_the_setting_is_off(
     base = samples.profile(tmp_path / "master.tex")
     off = replace(base, settings=replace(base.settings, company_search=CompanySearch.OFF))
     with closing(connect(tmp_path / "jobs.db")) as db:
-        assert discovery.discover(db, off, NOW, Finding(CompanySearchNow.WHEN_DUE)).new_boards == 0
-        assert discovery.discover(db, off, NOW, Finding(CompanySearchNow.NOW)).new_boards == 1
+        assert discovery.discover(db, off, NOW, CompanySearchNow.WHEN_DUE).new_boards == 0
+        assert discovery.discover(db, off, NOW, CompanySearchNow.NOW).new_boards == 1
         assert boards.last_search(db) == NOW
     assert len(searches) == 1
 
@@ -114,12 +117,19 @@ def test_finding_companies_starts_a_run_that_searches_now_unless_one_is_going(
     assert "--find-companies" in runs.command(started[0])
 
 
-def test_checking_the_web_archive_starts_a_run_that_reads_it_now(
+def test_checking_the_web_archive_starts_it_in_the_background_without_a_run(
     paths: Paths, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    started: list[runs.Choice] = []
-    monkeypatch.setattr(runs, "_launch", lambda _paths, choice: started.append(choice))
-    call(paths, companies.POST, "/companies/archive")
-    assert started[0].archive
-    assert "--check-archive" in runs.command(started[0])
-    assert "--find-companies" not in runs.command(started[0])
+    spawned: list[Path] = []
+    monkeypatch.setattr(archive_task, "_spawn", spawned.append)
+    monkeypatch.setattr(runs, "_launch", lambda *_: pytest.fail("no run should start"))
+    with run_lock(paths):
+        assert call(paths, companies.POST, "/companies/archive") == (200, {"going": True})
+    assert spawned == [paths.archive_log]
+    with held(paths.archive_lock, ArchiveCheckGoingError("busy")):
+        status, _ = call(paths, companies.POST, "/companies/archive")
+        assert status == HTTPStatus.BAD_REQUEST
+        assert call(paths, companies.GET, "/companies")[1]["archive"] == {
+            "going": True,
+            "last": None,
+        }

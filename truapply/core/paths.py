@@ -55,6 +55,14 @@ class Paths:
         return self.root / "run.lock"
 
     @property
+    def archive_lock(self) -> Path:
+        return self.root / "archive.lock"
+
+    @property
+    def archive_log(self) -> Path:
+        return self.root / "archive.log"
+
+    @property
     def runs(self) -> Path:
         return self.root / "runs"
 

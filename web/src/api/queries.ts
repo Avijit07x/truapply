@@ -103,6 +103,7 @@ export const queries = {
     queryOptions({
       queryKey: ["companies"],
       queryFn: ({ signal }) => get<Companies>("/api/companies", signal),
+      refetchInterval: (query) => (query.state.data?.archive.going ? LIVE_POLL_MS : false),
     }),
   settings: () =>
     queryOptions({

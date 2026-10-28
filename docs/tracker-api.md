@@ -173,9 +173,9 @@ Each one answers with the updated `Learned`.
 
 | Method and path | Body | Answer |
 |---|---|---|
-| `GET /api/companies` | | `{ companies: { key, company, site, url, origin: "shared" \| "search" \| "archive" \| "link" \| "name", addedAt, checkedAt, closed, jobs }[], search: { every, last, next } }`. `jobs` counts that company's listed jobs that aren't skipped or closed. |
+| `GET /api/companies` | | `{ companies: { key, company, site, url, origin: "shared" \| "search" \| "archive" \| "link" \| "name", addedAt, checkedAt, closed, jobs }[], search: { every, last, next }, archive: { going, last } }`. `jobs` counts that company's listed jobs that aren't skipped or closed. |
 | `POST /api/companies/find` | `{}` | `RunState`: starts a run that searches the web for new companies now, whatever **companySearch** says. `400` if a run is going. |
-| `POST /api/companies/archive` | `{}` | `RunState`: starts a run that reads the latest web archive for new companies now, whatever **companySearch** says. `400` if a run is going. |
+| `POST /api/companies/archive` | `{}` | `{ going: true }`: starts reading the latest web archive for new companies in the background, whatever **companySearch** says. It runs beside any run; its companies' jobs come in on the next run. `400` if a check is already going. |
 | `GET /api/runs` | | `RunState` |
 | `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `truapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
 | `POST /api/runs/stop` | `{}` | `RunState` |

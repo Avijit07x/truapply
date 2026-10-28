@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from truapply.browser.fetch import Response
-from truapply.core import schedule, tasks
+from truapply.core import archive_task, schedule, tasks
 from truapply.sources import archive
 from truapply.tracker import automatic
 
@@ -30,3 +30,4 @@ def never_reach_the_web_archive(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(archive, "fetch_json", unreachable)
     monkeypatch.setattr(archive, "fetch_pages", unreachable)
     monkeypatch.setattr(archive, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(archive_task, "_spawn", lambda _log: None)

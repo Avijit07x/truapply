@@ -70,6 +70,10 @@ class RunAlreadyGoingError(TruApplyError):
     hint = "Wait for it to finish, or stop it on the tracker's Run page."
 
 
+class ArchiveCheckGoingError(TruApplyError):
+    hint = "Wait for it to finish; new companies show on the tracker's Companies page."
+
+
 class DailyBudgetError(UsageLimitError):
     hint = (
         "Today's Claude call budget is used up, so the run stopped. It picks up again "
