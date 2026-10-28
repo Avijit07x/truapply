@@ -1,13 +1,13 @@
 # Tracker API
 
-The tracker page is a React app (`web/`) served by the Python tracker (`truapply tracker`). The app talks to the tracker only through this JSON API. Everything runs on `127.0.0.1`; nothing leaves your computer.
+The tracker page is a React app (`web/`) served by the Python tracker (`truapply tracker`). The app talks to the tracker only through this JSON API. Everything runs on `127.0.0.1`; nothing leaves your computer unless you share it with your own devices through Tailscale.
 
 The TypeScript shapes below are the same ones the app uses, in `web/src/api/types.ts`. Tests in `tests/unit/test_tracker*.py` check every endpoint.
 
 ## Rules for every request
 
-- Only `Host: 127.0.0.1:<port>` or `localhost:<port>` is answered (this blocks DNS-rebinding tricks). Anything else gets `403`.
-- Every `POST` needs `Origin: http://127.0.0.1:<port>` (or `localhost`) **and** `Content-Type: application/json`. Anything else gets `403`.
+- Only `Host: 127.0.0.1:<port>` or `localhost:<port>` is answered (this blocks DNS-rebinding tricks), plus your Tailscale address or a `--allow-host` name (see [other-devices.md](other-devices.md)). Anything else gets `403`.
+- Every `POST` needs `Origin: http://127.0.0.1:<port>` (or `localhost`, or `https://` plus an allowed name) **and** `Content-Type: application/json`. Anything else gets `403`.
 - Bodies are JSON objects, at most 200 KB. A bigger body gets `403`; a body that isn't a JSON object gets `400`.
 - Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: run `truapply setup`).
 - Times are ISO 8601 strings in UTC. The app shows them in local time.

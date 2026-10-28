@@ -136,6 +136,17 @@ def test_a_browser_dropping_an_idle_connection_prints_nothing(
     assert "Traceback" not in capfd.readouterr().err
 
 
+def test_your_tailscale_address_is_let_in_only_once_allowed(tracker: TrackerServer) -> None:
+    phone = "laptop.tail1234.ts.net"
+    asked = {"Host": phone, "Origin": f"https://{phone}", "Content-Type": "application/json"}
+    assert fetch(tracker, "/api/summary", headers={"Host": phone})[0] == 403
+    tracker.allow(phone)
+    assert fetch(tracker, "/api/summary", headers={"Host": phone})[0] == 200
+    assert fetch(tracker, "/api/summary", b"{}", asked)[0] != 403
+    elsewhere = {**asked, "Origin": "https://evil.example"}
+    assert fetch(tracker, "/api/summary", b"{}", elsewhere)[0] == 403
+
+
 def test_a_post_must_be_a_json_object(tracker: TrackerServer) -> None:
     own = {"Origin": tracker.url, "Content-Type": JSON_TYPE}
     assert send(tracker, own, b"not json") == 400

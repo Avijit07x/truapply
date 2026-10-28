@@ -8,7 +8,7 @@ from importlib import metadata
 from pathlib import Path
 
 from truapply import doctor
-from truapply.core import autorun, logs, schedule
+from truapply.core import autorun, logs, schedule, tailscale
 from truapply.core.clock import utc_now
 from truapply.core.errors import TruApplyError
 from truapply.core.locks import is_held
@@ -184,6 +184,9 @@ def _unschedule(_args: argparse.Namespace, _paths: Paths) -> int:
 def _tracker(args: argparse.Namespace, paths: Paths) -> int:
     with open_server(paths, args.port) as server:
         print(f"Tracker running at {server.url}  (Ctrl+C to stop)", flush=True)
+        for host in [*args.allow_host, *filter(None, [tailscale.device_name()])]:
+            server.allow(host)
+            print(f"  On your other devices: https://{host}", flush=True)
         if args.open:
             webbrowser.open(server.url)
         try:
@@ -297,6 +300,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--port", type=int, help=f"default {DEFAULT_PORT}, or a free one if that's taken"
     )
     page.add_argument("--open", action="store_true", help="open it in your browser")
+    page.add_argument(
+        "--allow-host",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="also answer at this HTTPS address, e.g. a private Tailscale name",
+    )
     page.set_defaults(handler=_tracker)
     return parser
 

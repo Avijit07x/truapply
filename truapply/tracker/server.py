@@ -50,6 +50,10 @@ class TrackerServer(ThreadingHTTPServer):
     def url(self) -> str:
         return f"http://{HOST}:{self.server_address[1]}"
 
+    def allow(self, host: str) -> None:
+        self.hosts = self.hosts | {host}
+        self.origins = self.origins | {f"https://{host}"}
+
     def handle_error(
         self, request: socket.socket | tuple[bytes, socket.socket], client_address: object
     ) -> None:

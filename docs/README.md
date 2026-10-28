@@ -34,6 +34,7 @@ flowchart LR
 | [examples.md](examples.md) | Real samples: profile, AI prompt and reply, form answers, resume changes, tracker, summary, logs |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Coding rules, dev setup, tests, how to add a job site or a company, how to report a broken site |
 | [extension.md](extension.md) | Plan for the Chrome extension that fills forms in your own browser |
+| [other-devices.md](other-devices.md) | Opening the tracker from your phone or another computer, privately, with Tailscale |
 
 ## Words used in these docs
 
