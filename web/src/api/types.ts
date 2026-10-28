@@ -133,7 +133,7 @@ export type Learned = {
 };
 
 export type CompanySearch = "off" | "daily" | "weekly";
-export type CompanyOrigin = "shared" | "search" | "link" | "name";
+export type CompanyOrigin = "shared" | "search" | "link" | "name" | "archive";
 export type CompanyRow = {
   key: string;
   company: string;

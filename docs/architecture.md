@@ -541,7 +541,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 | **Career jobs** | `/jobs` | Every job except listed-only sites, with every status as a filter and its count (e.g. `/jobs?status=finish`, or `/jobs?group=not_a_fit` from the workflow map) |
 | **Wellfound** | `/sites/wellfound` | Only while **Also list Wellfound jobs** is on: the same table for Wellfound jobs, without scores |
 | **Job** | `/jobs/<id>` | Status, score and "why this score", links to the job post and the form, the controls below, what was filled in, the resume PDF, a readable **What changed** view (LaTeX commands stripped, so you read words, not markup), the screenshot and the job text |
-| **Companies** | `/companies` | Every company whose job list is checked on each run: its site, how it was found (came with the app, web search, your job link or a name you added), its jobs for you, when it was added and last checked, and closed ones. **Add companies** looks up pasted names or websites; **Find more companies** starts a run that searches the web right away |
+| **Companies** | `/companies` | Every company whose job list is checked on each run: its site, how it was found (came with the app, web search, the web archive, your job link or a name you added), its jobs for you, when it was added and last checked, and closed ones. **Add companies** looks up pasted names or websites; **Check the web archive** and **Find more companies** start a run that reads the archive or searches the web right away |
 | **Run** | `/runs` | Start a run (how many jobs, search first, really send), a live log with Stop, the last run and recent run logs |
 | **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI, with a search box) and suggestions. Each can be edited or deleted. |
 | **Settings** | `/settings` | Titles, companies and places to look for, the minimum score, pay, notice period and the daily limit |
@@ -574,6 +574,14 @@ A job lands in `finish` when the site wants a human check (a CAPTCHA, "verify yo
 Paste a Greenhouse, Lever or Ashby job or careers link (the **Add a job link** button on Career jobs, `POST /api/boards/link`, or `truapply add <link>`). Its board is saved with origin `link`, checked right away and on every run (`sources/intake.py`, the same intake the daily run uses). The job you pasted is kept even if your title or place filters would skip it; its other jobs go through the usual filters.
 
 Or paste company names or websites (**Add companies** on the Companies page, `POST /api/boards/names`). `sources/lookup.py` turns each into a few board names (`Sarvam AI` → `sarvamai`, `sarvam-ai`, `sarvam`; `zinier.com` → `zinier`), polls them on Greenhouse, Lever and Ashby at once, and keeps the first board with a job in your country, so a same-named company abroad isn't added. Found boards are saved with origin `name` and go through the usual intake.
+
+### Companies from the web archive
+
+[Common Crawl](https://commoncrawl.org) publishes a free archive of the web about once a month, with an index of every address it visited. `sources/archive.py` asks that index for every page it has on `job-boards.greenhouse.io`, `boards.greenhouse.io`, `jobs.lever.co` and `jobs.ashbyhq.com`, two pages at a time with up to 3 tries each, and reads the board names out of those addresses (`boards_in`, the same parser as pasted links). No AI is used.
+
+- **When:** with the weekly company search (**Search the web for new companies**; never when that's off), or right away from **Check the web archive** on the Companies page (`POST /api/companies/archive`, `truapply run --check-archive`).
+- **Only new work:** a crawl already read in full is skipped. Names you already have are skipped, and names checked in the last 180 days are skipped (`archive_checked` table), so after the first time a month's crawl checks only its new names. If some index pages time out, the crawl isn't marked read and the next check tries again.
+- **What's kept:** every new name's board is polled; boards with a job in your country are saved with origin `archive` and go through the usual intake. The rest are remembered as checked and looked at again after 180 days, in case they start hiring where you are.
 
 ### Learning and trust
 

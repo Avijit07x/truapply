@@ -53,12 +53,21 @@ def _show(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Bo
     )
 
 
-def _find(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
-    choice = runs.Choice(load(paths).settings.jobs_per_run, search=True, companies=True)
+def _start(paths: Paths, choice: runs.Choice) -> Response:
     if runs.start(paths, choice) is None:
         return bad_request(runs.ALREADY_RUNNING)
     return ok(runs.state(paths))
 
 
+def _find(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
+    limit = load(paths).settings.jobs_per_run
+    return _start(paths, runs.Choice(limit, search=True, companies=True))
+
+
+def _archive(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
+    limit = load(paths).settings.jobs_per_run
+    return _start(paths, runs.Choice(limit, search=True, archive=True))
+
+
 GET: tuple[Route, ...] = (route("/companies", _show),)
-POST: tuple[Route, ...] = (route("/companies/find", _find),)
+POST: tuple[Route, ...] = (route("/companies/find", _find), route("/companies/archive", _archive))

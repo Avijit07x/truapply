@@ -78,6 +78,13 @@ export function useFindCompanies() {
   return useChange<RunState, undefined>(() => ["/api/companies/find", {}], queries.runs().queryKey);
 }
 
+export function useCheckArchive() {
+  return useChange<RunState, undefined>(
+    () => ["/api/companies/archive", {}],
+    queries.runs().queryKey,
+  );
+}
+
 export function useSendReady() {
   return useChange<SendQueued, undefined>(() => ["/api/autosend/queue", {}]);
 }

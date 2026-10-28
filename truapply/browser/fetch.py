@@ -30,12 +30,19 @@ class Response:
 Reader = Callable[[str, int, bytes], Response]
 
 
+@dataclass(frozen=True)
+class Pace:
+    at_once: int
+    redirects: int
+    wait_ms: int = FETCH_TIMEOUT_MS
+
+
 async def _get(
-    context: APIRequestContext, url: str, gate: asyncio.Semaphore, redirects: int
+    context: APIRequestContext, url: str, gate: asyncio.Semaphore, pace: Pace
 ) -> tuple[int, bytes]:
     async with gate:
         try:
-            response = await context.get(url, timeout=FETCH_TIMEOUT_MS, max_redirects=redirects)
+            response = await context.get(url, timeout=pace.wait_ms, max_redirects=pace.redirects)
             return response.status, await response.body() if response.ok else b""
         except PlaywrightError as error:
             log.info("couldn't fetch %s: %s", url, str(error).splitlines()[0])
@@ -56,16 +63,14 @@ def _text(url: str, status: int, body: bytes) -> Response:
     return Response(url, status, body.decode("utf-8", "replace") if body else None)
 
 
-async def _fetch_all(
-    urls: Sequence[str], read: Reader, redirects: int, at_once: int
-) -> list[Response]:
-    gate = asyncio.Semaphore(at_once)
+async def _fetch_all(urls: Sequence[str], read: Reader, pace: Pace) -> list[Response]:
+    gate = asyncio.Semaphore(pace.at_once)
     async with async_playwright() as playwright:
         context = await playwright.request.new_context(
             extra_http_headers={"User-Agent": USER_AGENT}
         )
         try:
-            fetched = await asyncio.gather(*(_get(context, url, gate, redirects) for url in urls))
+            fetched = await asyncio.gather(*(_get(context, url, gate, pace) for url in urls))
         finally:
             await context.dispose()
     return [read(url, status, body) for url, (status, body) in zip(urls, fetched, strict=True)]
@@ -74,10 +79,12 @@ async def _fetch_all(
 def fetch_json(urls: Sequence[str]) -> list[Response]:
     if not urls:
         return []
-    return asyncio.run(_fetch_all(urls, _json, FOLLOW_REDIRECTS, MAX_CONCURRENT))
+    return asyncio.run(_fetch_all(urls, _json, Pace(MAX_CONCURRENT, FOLLOW_REDIRECTS)))
 
 
-def fetch_pages(urls: Sequence[str], at_once: int) -> list[Response]:
+def fetch_pages(
+    urls: Sequence[str], at_once: int, wait_ms: int = FETCH_TIMEOUT_MS
+) -> list[Response]:
     if not urls:
         return []
-    return asyncio.run(_fetch_all(urls, _text, 0, at_once))
+    return asyncio.run(_fetch_all(urls, _text, Pace(at_once, 0, wait_ms)))

@@ -95,4 +95,12 @@ MIGRATIONS: tuple[str, ...] = (
     alter table jobs add column auto_send text;
     alter table jobs add column auto_send_at text;
     """,
+    """
+    create table archive_checked (
+        ats text not null,
+        slug text not null,
+        checked_at text not null,
+        primary key (ats, slug)
+    );
+    """,
 )

@@ -193,6 +193,7 @@ These docs.
 
 Most Indian startups don't use Greenhouse, Lever or Ashby. A check of 975 Bengaluru startups' careers pages found Keka on 41, Google Forms on 30, Darwinbox on 27, Greenhouse, Lever and Ashby together on 28, Wellfound on 17, Zoho Recruit on 15 and Workday on 14; the rest load their links with JavaScript or post only on job sites. The measure is **relevant open jobs found per week**. In order, each its own change:
 
+1. **Companies from the web archive.** The free Common Crawl index lists every Greenhouse, Lever and Ashby page it has visited. A partial read on 28 Oct 2026 gave 2,353 names we didn't have, 210 of them with jobs in India. Read with the weekly company search or from **Check the web archive**; only new names are checked.
 1. **Companies by name.** Paste company names or websites on the Companies page; each is tried on Greenhouse, Lever and Ashby, and kept only when it has jobs in your country, so a same-named company abroad isn't added.
 2. **Companies from every job.** Any job whose apply link or description points to a Greenhouse, Lever or Ashby board adds that company.
 3. **Many small web searches.** One search per role, place and job system instead of one per job system, within the daily Claude budget.
@@ -202,6 +203,7 @@ SmartRecruiters and Workday stay out (dropped on 28 Oct 2026).
 
 **Must pass**
 - [x] The built-in list has the 17 Bengaluru companies found on Greenhouse, Lever and Ashby
+- [x] The web archive adds companies with jobs in your country, reads each crawl once, retries pages that time out, and checks a name again only after 180 days
 - [x] Pasting a name that matches a board with jobs in your country adds it; one with jobs only abroad is not added
 - [ ] A Wellfound or pasted job linking to a Greenhouse, Lever or Ashby board adds that company
 - [ ] The weekly web search finds more new companies than before, and stays within the daily Claude budget

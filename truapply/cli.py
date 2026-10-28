@@ -33,7 +33,7 @@ Handler = Callable[[argparse.Namespace, Paths], int]
 JOB_ID_CHARS = 12
 EXIT_USAGE = 2
 EXIT_INTERRUPTED = 130
-FOUND_ORIGINS = (BoardOrigin.SEARCH, BoardOrigin.LINK, BoardOrigin.NAME)
+FOUND_ORIGINS = (BoardOrigin.SEARCH, BoardOrigin.LINK, BoardOrigin.NAME, BoardOrigin.ARCHIVE)
 
 
 def _setup(args: argparse.Namespace, paths: Paths) -> int:
@@ -126,6 +126,7 @@ def _run(args: argparse.Namespace, paths: Paths) -> int:
         limit=args.limit,
         search=not args.no_search,
         search_now=args.find_companies,
+        archive_now=args.check_archive,
         find=not args.no_find,
         job=args.job,
         score=tuple(args.score or ()),
@@ -249,6 +250,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     runner.add_argument(
         "--find-companies", action="store_true", help="search the web for new companies now"
+    )
+    runner.add_argument(
+        "--check-archive",
+        action="store_true",
+        help="look for new companies in the latest web archive now",
     )
     runner.add_argument("--job", type=int, help="only score and tailor this one job")
     runner.add_argument(

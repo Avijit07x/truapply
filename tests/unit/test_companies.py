@@ -13,7 +13,7 @@ from truapply.core.models import Ats, Board, Status
 from truapply.core.paths import Paths
 from truapply.core.profile import CompanySearch, Profile, save
 from truapply.run import discovery
-from truapply.run.discovery import CompanySearchNow
+from truapply.run.discovery import CompanySearchNow, Finding
 from truapply.run.lock import run_lock
 from truapply.sources.intake import Intake
 from truapply.store import boards, jobs
@@ -69,8 +69,8 @@ def test_searching_now_works_even_when_the_setting_is_off(
     base = samples.profile(tmp_path / "master.tex")
     off = replace(base, settings=replace(base.settings, company_search=CompanySearch.OFF))
     with closing(connect(tmp_path / "jobs.db")) as db:
-        assert discovery.discover(db, off, NOW, CompanySearchNow.WHEN_DUE).new_boards == 0
-        assert discovery.discover(db, off, NOW, CompanySearchNow.NOW).new_boards == 1
+        assert discovery.discover(db, off, NOW, Finding(CompanySearchNow.WHEN_DUE)).new_boards == 0
+        assert discovery.discover(db, off, NOW, Finding(CompanySearchNow.NOW)).new_boards == 1
         assert boards.last_search(db) == NOW
     assert len(searches) == 1
 
@@ -112,3 +112,14 @@ def test_finding_companies_starts_a_run_that_searches_now_unless_one_is_going(
     call(paths, companies.POST, "/companies/find")
     assert started[0].companies
     assert "--find-companies" in runs.command(started[0])
+
+
+def test_checking_the_web_archive_starts_a_run_that_reads_it_now(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started: list[runs.Choice] = []
+    monkeypatch.setattr(runs, "_launch", lambda _paths, choice: started.append(choice))
+    call(paths, companies.POST, "/companies/archive")
+    assert started[0].archive
+    assert "--check-archive" in runs.command(started[0])
+    assert "--find-companies" not in runs.command(started[0])

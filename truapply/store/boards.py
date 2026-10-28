@@ -16,6 +16,7 @@ INSERT_BOARD = """
 insert or ignore into boards (ats, slug, company, origin, added_at) values (?, ?, ?, ?, ?)
 """
 SELECT_ACTIVE = "select ats, slug, company from boards where dead = 0 order by ats, slug"
+SELECT_KEYS = "select ats, slug from boards"
 SELECT_BY_ORIGIN = "select ats, slug, company from boards where origin = ? order by ats, slug"
 SELECT_LISTED = """
 select ats, slug, company, origin, added_at, checked_at, dead from boards
@@ -30,6 +31,7 @@ class BoardOrigin(StrEnum):
     SEARCH = "search"
     LINK = "link"
     NAME = "name"
+    ARCHIVE = "archive"
 
 
 def _board(row: sqlite3.Row) -> Board:
@@ -48,6 +50,10 @@ def add_many(
 
 def active(db: sqlite3.Connection) -> list[Board]:
     return [_board(row) for row in db.execute(SELECT_ACTIVE)]
+
+
+def known_keys(db: sqlite3.Connection) -> set[str]:
+    return {f"{row['ats']}/{row['slug']}".lower() for row in db.execute(SELECT_KEYS)}
 
 
 def by_origin(db: sqlite3.Connection, origin: BoardOrigin) -> list[Board]:

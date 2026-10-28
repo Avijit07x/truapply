@@ -11,7 +11,7 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { useFindCompanies } from "../../api/mutations";
+import { useCheckArchive, useFindCompanies } from "../../api/mutations";
 import { queries } from "../../api/queries";
 import type { CompanyOrigin, CompanyRow, CompanySearch } from "../../api/types";
 import { cx } from "../../lib/cx";
@@ -21,7 +21,7 @@ import { Ago } from "../../ui/Ago";
 import { PageHeader } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { ExternalLink } from "../../ui/ExternalLink";
-import { ChevronDown, Search } from "../../ui/icons";
+import { ChevronDown, Inbox, Search } from "../../ui/icons";
 import { SearchBox } from "../../ui/SearchBox";
 import { toast } from "../../ui/toasts";
 import styles from "../jobs/Jobs.module.css";
@@ -45,13 +45,14 @@ const ORIGIN: Record<CompanyOrigin, string> = {
   search: "Web search",
   link: "Your job link",
   name: "You named it",
+  archive: "Web archive",
 };
 const EVERY: Record<CompanySearch, string> = {
   off: "Web search is off",
   daily: "Searches every day",
   weekly: "Searches every week",
 };
-const SHOWS = ["all", "search", "shared", "link", "name", "closed"] as const;
+const SHOWS = ["all", "search", "archive", "shared", "link", "name", "closed"] as const;
 type Show = (typeof SHOWS)[number];
 const SHOW_LABEL: Record<Show, string> = { all: "All", closed: "Closed", ...ORIGIN };
 
@@ -161,6 +162,27 @@ function FindMore({ running }: { running: boolean }) {
   );
 }
 
+function CheckArchive({ running }: { running: boolean }) {
+  const check = useCheckArchive();
+  return (
+    <Button
+      icon={<Inbox size={14} />}
+      busy={check.isPending}
+      disabled={running}
+      title={running ? "Wait for the run that's going to finish." : undefined}
+      onClick={() => {
+        check.mutate(undefined, {
+          onSuccess: () => {
+            toast("Checking the web archive for new companies. Follow it on the Run page.");
+          },
+        });
+      }}
+    >
+      Check the web archive
+    </Button>
+  );
+}
+
 function searchNote(search: { every: CompanySearch; last: string | null; next: string | null }) {
   const parts: string[] = [EVERY[search.every]];
   if (search.last) parts.push(`last ${when(search.last)}`);
@@ -205,6 +227,7 @@ export default function CompaniesPage() {
               }}
             />
             <AddNames />
+            <CheckArchive running={summary.run.running} />
             <FindMore running={summary.run.running} />
           </>
         }

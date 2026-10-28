@@ -1,12 +1,11 @@
 import re
-from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from truapply.core.models import Ats, Board, normalize
 from truapply.core.profile import Profile
-from truapply.sources.ats import poll
+from truapply.sources.ats import PollResult, poll
 from truapply.sources.filters import in_country
 
 WEBSITE = re.compile(r"(?:https?://)?(?:[\w-]+\.)+[a-z]{2,}(?:/\S*)?", re.IGNORECASE)
@@ -41,18 +40,18 @@ def entries_in(text: str) -> list[str]:
     return list(dict.fromkeys(part for part in parts if part))
 
 
+def with_local_jobs(result: PollResult, profile: Profile) -> set[str]:
+    return {job.board.key for job in result.jobs if job.board and in_country(job.location, profile)}
+
+
 def look_up(entries: Sequence[str], profile: Profile) -> Lookup:
     tries = {
         entry: [Board(ats, slug, _company(entry)[0]) for slug in slugs(entry) for ats in Ats]
         for entry in entries
     }
-    result = poll([board for tried in tries.values() for board in tried])
-    local: defaultdict[str, bool] = defaultdict(bool)
-    for job in result.jobs:
-        if job.board:
-            local[job.board.key] |= in_country(job.location, profile)
+    local = with_local_jobs(poll([board for tried in tries.values() for board in tried]), profile)
     found = {
-        entry: next((board for board in tried if local[board.key]), None)
+        entry: next((board for board in tried if board.key in local), None)
         for entry, tried in tries.items()
     }
     return Lookup(

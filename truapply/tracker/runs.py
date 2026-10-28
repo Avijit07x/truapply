@@ -49,6 +49,7 @@ class Choice:
     find: bool = True
     score: tuple[int, ...] = ()
     companies: bool = False
+    archive: bool = False
     only: RunStage | None = None
 
 
@@ -87,8 +88,10 @@ def command(choice: Choice) -> list[str]:
     search = [] if choice.search else ["--no-search"]
     find = [] if choice.find else ["--no-find"]
     companies = ["--find-companies"] if choice.companies else []
+    archive = ["--check-archive"] if choice.archive else []
     only = ["--only", str(choice.only)] if choice.only else []
-    return [*COMMAND_PREFIX, "--limit", str(choice.limit), *search, *find, *companies, *only]
+    picked = [*search, *find, *companies, *archive, *only]
+    return [*COMMAND_PREFIX, "--limit", str(choice.limit), *picked]
 
 
 def _spawn(arguments: list[str], log: Path) -> subprocess.Popen[bytes]:
