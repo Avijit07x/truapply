@@ -39,8 +39,8 @@ function withSites(sources: readonly string[]): NavItem[] {
 }
 
 function section(nav: readonly NavItem[], path: string): string {
-  const match = nav.find((item) => item.to !== "/" && path.startsWith(item.to));
-  return match?.to ?? "/";
+  const match = nav.find((item) => (item.to === "/" ? path === "/" : path.startsWith(item.to)));
+  return match?.to ?? "";
 }
 
 function useFresh(nav: readonly NavItem[], active: string): Record<string, number> {

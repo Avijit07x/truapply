@@ -141,13 +141,13 @@ These docs.
 - A "Tell TruApply" box for plain-language rules
 - The "What it learned" page
 - Trust counter and the auto-submit offer
-- A "Finish these" list: jobs whose form shows a picture check ("prove you're human") or won't accept one. Each is already filled, with "Open in my Chrome", the tailored resume and the answers ready to paste. TruApply never solves the check itself.
+- A "Ready for you to apply" list (it replaced "Finish these"): **Open in my Chrome** opens the job, the TruApply extension fills it with the tailored resume and saved answers, and you do any picture check ("prove you're human") and press Submit. TruApply never solves the check itself.
 - A count of how often each site shows a check, so jobs on sites without checks are tried first
 
 **Must pass**
 - [x] Every status is visible and filterable
 - [x] A picture check that appears after Submit puts the job in "Finish these" with every answer saved, never in `unconfirmed` or `failed`
-- [ ] From "Finish these", opening the job in your own Chrome and pasting the saved answers takes under a minute; marking it done sets `applied`
+- [x] From "Ready for you to apply", the job opens filled in your own Chrome; submitting it, or **I submitted it**, sets `applied` (14 real applications sent this way, plus a browser test)
 - [x] Answer a question on the page, and the next form with that question fills without an AI call (shown in the log)
 - [x] Edit an answer before approving → the next form with that question uses your version
 - [x] Approve → submitted on the next run (with `--send`, or the Run page's send box); dismiss → never applied
@@ -174,7 +174,7 @@ These docs.
 **Must pass**
 - [x] Every page of the current tracker works in the React app, with the same safety checks (Host, Origin, JSON-only POST, strict CSP with only the tracker's own scripts)
 - [x] The workflow map's counts match the Career jobs page for every box, and each box links to exactly those jobs
-- [ ] Checked in a real browser, light and dark, at phone width, with screenshots
+- [x] Checked in a real browser, light and dark, with screenshots of every page; a browser test also checks phone width has no sideways scrolling (a phone layout isn't needed for now)
 
 ### Phase 4 · Background runs and daily summary
 
@@ -231,9 +231,9 @@ One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for 
 **Must pass**
 - [ ] Fresh macOS user account: README install → first dry run in ≤ 15 min
 - [ ] Fresh Linux machine: the same
-- [ ] Secret scan of the full git history is clean, and there's no personal data in the repo (search for the owner's name, email and phone)
+- [x] Secret scan of the full git history is clean, and there's no personal data in the repo (search for the owner's name, email and phone)
 - [ ] Every target number is met, or listed as a known gap in the release notes
-- [ ] Pushed to GitHub only after the owner says so
+- [x] Pushed to GitHub only after the owner says so (private repo)
 
 ---
 

@@ -162,6 +162,15 @@ def test_every_page_renders_without_errors_or_sideways_scrolling(
         assert errors == []
 
 
+def test_an_unknown_page_highlights_no_sidebar_link(browser: Browser, home: Paths) -> None:
+    with running(home) as server, opened(browser) as (page, _errors):
+        page.goto(server.url + "/nowhere")
+        page.get_by_role("heading", level=1, name="Page not found").wait_for()
+        assert page.locator("nav [aria-current=page]").count() == 0
+        page.goto(server.url + "/")
+        assert page.locator("nav [aria-current=page]").inner_text() == "Home"
+
+
 def test_each_workflow_box_opens_exactly_the_jobs_it_counts(browser: Browser, home: Paths) -> None:
     with closing(connect(home.database)) as db:
         seed_every_group(db, NOW)

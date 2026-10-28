@@ -251,8 +251,10 @@ export default function CompaniesPage() {
         </table>
       </div>
       <p className={styles.keys}>
-        Jobs for you counts the jobs it listed from that company, not counting skipped or closed
-        ones. Change how often it searches in <Link to="/settings?tab=search">Settings</Link>.
+        <span>
+          Jobs for you counts the jobs it listed from that company, not counting skipped or closed
+          ones. Change how often it searches in <Link to="/settings?tab=search">Settings</Link>.
+        </span>
       </p>
     </div>
   );
