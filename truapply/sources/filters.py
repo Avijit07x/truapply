@@ -146,7 +146,7 @@ def _city_names(city: str) -> tuple[str, ...]:
     return (city, *CITY_ALIASES.get(normalize(city), ()))
 
 
-def _in_country(location: str, profile: Profile) -> bool:
+def in_country(location: str, profile: Profile) -> bool:
     places = (profile.country, *COUNTRY_PLACES.get(normalize(profile.country), ()))
     return any(mentions(place, location) for place in places)
 
@@ -174,14 +174,14 @@ def _in_home_region(location: str, profile: Profile) -> bool:
 def _place_fits(place: str, profile: Profile) -> bool:
     places = profile.work_places
     home_city = any(mentions(name, place) for name in _city_names(profile.city))
-    in_country = home_city or _in_country(place, profile)
+    domestic = home_city or in_country(place, profile)
     if REMOTE.search(place) or _is_anywhere(place):
-        if in_country or _in_home_region(place, profile):
+        if domestic or _in_home_region(place, profile):
             return places.remote_country
         return _is_anywhere(place) and (places.remote_country or places.remote_abroad)
     if home_city:
         return places.onsite_city
-    return in_country and _relocation_fits(place, profile)
+    return domestic and _relocation_fits(place, profile)
 
 
 def location_fits(location: str, profile: Profile) -> bool:

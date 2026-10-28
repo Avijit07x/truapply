@@ -11,7 +11,7 @@ from tests.unit.tracker_api import post, running
 from truapply.core.models import Ats, Board
 from truapply.core.paths import Paths
 from truapply.core.profile import save
-from truapply.sources import intake
+from truapply.sources import intake, lookup
 from truapply.sources.ats import PollResult
 from truapply.sources.intake import NOT_A_BOARD
 from truapply.store import boards, records
@@ -60,3 +60,25 @@ def test_a_pasted_job_link_adds_its_company_and_keeps_that_job(tracker: TrackerS
 @pytest.mark.parametrize("link", ["https://www.linkedin.com/jobs/view/123", "not a link", ""])
 def test_links_from_other_sites_are_refused(tracker: TrackerServer, link: str) -> None:
     assert post(tracker, "/api/boards/link", {"link": link}) == (400, {"error": NOT_A_BOARD})
+
+
+def test_pasted_names_add_the_companies_found_with_their_jobs(
+    tracker: TrackerServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def tried(boards_tried: Sequence[Board]) -> PollResult:
+        hit = [board for board in boards_tried if board.key == "greenhouse/northwindcareers"]
+        jobs = [samples.job(external_id=f"{board.key}/111") for board in hit]
+        return PollResult([replace(job, location="Bengaluru") for job in jobs], hit, [], [])
+
+    monkeypatch.setattr(lookup, "poll", tried)
+    code, named = post(tracker, "/api/boards/names", {"names": "Northwind Careers\nNobody Here"})
+    assert (code, named) == (
+        200,
+        {"added": ["Northwind Careers"], "known": [], "missing": ["Nobody Here"], "jobs": 1},
+    )
+    with closing(connect(tracker.paths.database)) as db:
+        assert [board.slug for board in boards.by_origin(db, BoardOrigin.NAME)] == [
+            "northwindcareers"
+        ]
+    again = post(tracker, "/api/boards/names", {"names": "Northwind Careers"})
+    assert again == (200, {"added": [], "known": ["Northwind Careers"], "missing": [], "jobs": 0})

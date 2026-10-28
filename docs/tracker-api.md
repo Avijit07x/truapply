@@ -152,6 +152,7 @@ Each one answers with the updated `JobDetail`, and is refused with `400` if the 
 | Method and path | Body | Answer |
 |---|---|---|
 | `POST /api/boards/link` | `{ link }`, a Greenhouse, Lever or Ashby job or careers link | `{ company, open, kept, added, gone }`. The company's board is saved and checked now and on every run. The linked job is kept even if your filters would skip it. Any other link is `400`. |
+| `POST /api/boards/names` | `{ names }`, company names or websites, one per line or separated by commas | `{ added, known, missing, jobs }`. Each is tried on Greenhouse, Lever and Ashby, and found only when its board has a job in your country. New boards are saved with origin `name` and checked now; `known` were already checked, `missing` weren't found, `jobs` counts the new jobs for you. Up to 50 at a time. |
 
 ### What it learned
 
@@ -172,7 +173,7 @@ Each one answers with the updated `Learned`.
 
 | Method and path | Body | Answer |
 |---|---|---|
-| `GET /api/companies` | | `{ companies: { key, company, site, url, origin: "shared" \| "search" \| "link", addedAt, checkedAt, closed, jobs }[], search: { every, last, next } }`. `jobs` counts that company's listed jobs that aren't skipped or closed. |
+| `GET /api/companies` | | `{ companies: { key, company, site, url, origin: "shared" \| "search" \| "link" \| "name", addedAt, checkedAt, closed, jobs }[], search: { every, last, next } }`. `jobs` counts that company's listed jobs that aren't skipped or closed. |
 | `POST /api/companies/find` | `{}` | `RunState`: starts a run that searches the web for new companies now, whatever **companySearch** says. `400` if a run is going. |
 | `GET /api/runs` | | `RunState` |
 | `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `truapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |

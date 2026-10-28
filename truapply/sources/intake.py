@@ -8,10 +8,12 @@ from truapply.core.models import Board, Job
 from truapply.core.profile import Profile
 from truapply.sources.ats import boards_in, poll
 from truapply.sources.filters import in_your_field, why_skipped
+from truapply.sources.lookup import entries_in, look_up
 from truapply.store import boards, jobs
 from truapply.store.boards import BoardOrigin
 
 NOT_A_BOARD = "That link isn't a Greenhouse, Lever or Ashby job or board."
+MOST_NAMES = 50
 
 
 Wanted = Callable[[Job], bool]
@@ -31,6 +33,14 @@ class Intake:
     added: int
     dead: int
     unreachable: int
+
+
+@dataclass(frozen=True)
+class Named:
+    added: list[Board]
+    known: list[Board]
+    missing: list[str]
+    jobs: int
 
 
 def _linked(job: Job, link: str) -> bool:
@@ -72,3 +82,13 @@ def take_in_link(
     usual = fits(profile, now)
     wants = Wants(lambda job: None if _linked(job, link) else usual.skip(job), usual.keep)
     return found[0], take_in(db, found[:1], wants, now)
+
+
+def take_in_names(db: sqlite3.Connection, text: str, profile: Profile, now: datetime) -> Named:
+    found = look_up(entries_in(text)[:MOST_NAMES], profile)
+    known = {item.board.key for item in boards.listed(db)}
+    new = [board for board in found.found if board.key not in known]
+    boards.add_many(db, new, BoardOrigin.NAME, now)
+    intake = take_in(db, new, fits(profile, now), now)
+    old = [board for board in found.found if board.key in known]
+    return Named(new, old, found.missing, intake.added)

@@ -29,6 +29,7 @@ class BoardOrigin(StrEnum):
     SHARED = "shared"
     SEARCH = "search"
     LINK = "link"
+    NAME = "name"
 
 
 def _board(row: sqlite3.Row) -> Board:

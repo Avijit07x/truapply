@@ -82,8 +82,8 @@ A phase is **done only when every must-pass box is ticked**. Nothing is submitte
 
 ```mermaid
 flowchart LR
-  P0[0 Plan] --> P1[1 Foundation] --> P2[2 Career pages] --> P3[3 Tracker] --> P4[4 Background]
-  P4 --> P5[5 Logged-in sites] --> P7[7 Release]
+  P0[0 Plan] --> P1[1 Foundation] --> P2[2 Career pages] --> P3[3 Tracker] --> P4[4 Background] --> P4b[4b More companies]
+  P4b --> P5[5 Logged-in sites] --> P7[7 Release]
 ```
 
 ### Phase 0 · Plan ✅
@@ -188,6 +188,24 @@ These docs.
 - [x] The daily limit and the LinkedIn limit stop applying at exactly the limit
 - [x] The summary notification shows once a day
 - [x] `doctor` names each broken piece and its fix (tested by breaking each one)
+
+### Phase 4b · More companies
+
+Most Indian startups don't use Greenhouse, Lever or Ashby. A check of 975 Bengaluru startups' careers pages found Keka on 41, Google Forms on 30, Darwinbox on 27, Greenhouse, Lever and Ashby together on 28, Wellfound on 17, Zoho Recruit on 15 and Workday on 14; the rest load their links with JavaScript or post only on job sites. The measure is **relevant open jobs found per week**. In order, each its own change:
+
+1. **Companies by name.** Paste company names or websites on the Companies page; each is tried on Greenhouse, Lever and Ashby, and kept only when it has jobs in your country, so a same-named company abroad isn't added.
+2. **Companies from every job.** Any job whose apply link or description points to a Greenhouse, Lever or Ashby board adds that company.
+3. **Many small web searches.** One search per role, place and job system instead of one per job system, within the daily Claude budget.
+4. **Keka and Darwinbox.** Only if their job lists can be read without signing in. Then Zoho Recruit.
+
+SmartRecruiters and Workday stay out (dropped on 28 Oct 2026).
+
+**Must pass**
+- [x] The built-in list has the 17 Bengaluru companies found on Greenhouse, Lever and Ashby
+- [x] Pasting a name that matches a board with jobs in your country adds it; one with jobs only abroad is not added
+- [ ] A Wellfound or pasted job linking to a Greenhouse, Lever or Ashby board adds that company
+- [ ] The weekly web search finds more new companies than before, and stays within the daily Claude budget
+- [ ] Keka and Darwinbox: a read-only test shows whether jobs can be listed without signing in
 
 ### Phase 5 · Logged-in sites
 

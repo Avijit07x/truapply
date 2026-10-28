@@ -25,6 +25,7 @@ import { ChevronDown, Search } from "../../ui/icons";
 import { SearchBox } from "../../ui/SearchBox";
 import { toast } from "../../ui/toasts";
 import styles from "../jobs/Jobs.module.css";
+import { AddNames } from "./AddNames";
 import own from "./Companies.module.css";
 
 const features = tableFeatures({
@@ -43,13 +44,14 @@ const ORIGIN: Record<CompanyOrigin, string> = {
   shared: "Came with the app",
   search: "Web search",
   link: "Your job link",
+  name: "You named it",
 };
 const EVERY: Record<CompanySearch, string> = {
   off: "Web search is off",
   daily: "Searches every day",
   weekly: "Searches every week",
 };
-const SHOWS = ["all", "search", "shared", "link", "closed"] as const;
+const SHOWS = ["all", "search", "shared", "link", "name", "closed"] as const;
 type Show = (typeof SHOWS)[number];
 const SHOW_LABEL: Record<Show, string> = { all: "All", closed: "Closed", ...ORIGIN };
 
@@ -202,6 +204,7 @@ export default function CompaniesPage() {
                 navigate(href(show, next), true);
               }}
             />
+            <AddNames />
             <FindMore running={summary.run.running} />
           </>
         }

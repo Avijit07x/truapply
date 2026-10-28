@@ -1,15 +1,19 @@
 ats,slug,company,tags
-ashby,SigNoz,Signoz,india;remote
+ashby,airbound,Airbound,india
 ashby,airbyte,Airbyte,remote
+ashby,aspora,Aspora,india
 ashby,atlan,Atlan,india;remote
 ashby,bidgely-inc,Bidgely,india;remote
 ashby,bolna,Bolna,india
 ashby,broccoli,Broccoli,india;remote
 ashby,browserbase,Browserbase,
+ashby,bureau,Bureau,india
 ashby,cartesia,Cartesia,india
 ashby,clerk,Clerk,remote
 ashby,clickup,Clickup,remote
+ashby,clueso,Clueso,india
 ashby,cohere,Cohere,remote
+ashby,cynlr,CynLr,india
 ashby,e2b,E2B,
 ashby,elevenlabs,Elevenlabs,india;remote
 ashby,flagright.com,Flagright.Com,remote
@@ -19,8 +23,10 @@ ashby,graphite,Graphite,
 ashby,halliday,Halliday,remote
 ashby,hirehangar,Hirehangar,india;remote
 ashby,inngest,Inngest,remote
+ashby,interview-kickstart,Interview Kickstart,india;remote
 ashby,lovable,Lovable,remote
 ashby,menlosecurity,Menlosecurity,india;remote
+ashby,metaforms,Metaforms AI,india
 ashby,mintlify,Mintlify,
 ashby,modal,Modal,remote
 ashby,neon,Neon,remote
@@ -33,6 +39,7 @@ ashby,resend,Resend,remote
 ashby,sardine,Sardine,india;remote
 ashby,sarvam,Sarvam,india
 ashby,sensor-tower,Sensor Tower,india;remote
+ashby,SigNoz,Signoz,india;remote
 ashby,spotdraft,Spotdraft,india;remote
 ashby,spoton,Spoton,india;remote
 ashby,supabase,Supabase,remote
@@ -84,6 +91,7 @@ greenhouse,faire,Faire,remote
 greenhouse,figma,Figma,india
 greenhouse,flexport,Flexport,india;remote
 greenhouse,gitlab,GitLab,india;remote
+greenhouse,glance,Glance,india
 greenhouse,gleanwork,Glean,india;remote
 greenhouse,globalhealthcareexchangeinc,GHX,india;remote
 greenhouse,grafanalabs,Grafana Labs,india;remote
@@ -102,7 +110,9 @@ greenhouse,mongodb,MongoDB,india
 greenhouse,mozilla,Mozilla,remote
 greenhouse,narvar,Narvar,india;remote
 greenhouse,netlify,Netlify,remote
+greenhouse,netradyne,Netradyne,india
 greenhouse,neweratech,New Era Technology,india;remote
+greenhouse,observeai,Observe.AI,india
 greenhouse,okta,Okta,india
 greenhouse,openfx,OpenFX,india;remote
 greenhouse,particle41llc,Particle41,india;remote
@@ -112,6 +122,7 @@ greenhouse,poppulo,Poppulo,india;remote
 greenhouse,reddit,Reddit,remote
 greenhouse,robinhood,Robinhood,
 greenhouse,rubrik,Rubrik Job Board,india;remote
+greenhouse,sahajsoftware,Sahaj Software,india
 greenhouse,samsara,Samsara,india;remote
 greenhouse,scaleai,Scale AI,india
 greenhouse,scopely,Scopely,india
@@ -125,21 +136,27 @@ greenhouse,stripe,Stripe,india;remote
 greenhouse,supplyhouse,SupplyHouse.com,india;remote
 greenhouse,toast,Toast,india;remote
 greenhouse,tradingco,MiQ Job Board ,india
+greenhouse,truefoundry,TrueFoundry,india
 greenhouse,twilio,Twilio,india;remote
 greenhouse,twitch,Twitch,
 greenhouse,vercel,Vercel,india;remote
 greenhouse,wikimedia,Wikimedia Foundation,remote
 greenhouse,workatbackbase,Backbase,india
 greenhouse,yipitdata,YipitData,india;remote
+greenhouse,zinier,Zinier,india
 greenhouse,zscaler,Zscaler,india;remote
 lever,acceldata,Acceldata,india;remote
 lever,cred,Cred,india
 lever,doola,Doola,remote
+lever,fampay,FamPay,india
 lever,jumpcloud,Jumpcloud,india;remote
+lever,kenko,Kenko,india
 lever,mable,Mable,remote
 lever,meesho,Meesho,india
 lever,mindtickle,Mindtickle,india;remote
+lever,pocketfm,Pocket FM,india
 lever,smarsh,Smarsh,india;remote
 lever,spotify,Spotify,india;remote
 lever,valgenesis,Valgenesis,india
+lever,zeta,Zeta,india
 lever,zimperium,Zimperium,india;remote

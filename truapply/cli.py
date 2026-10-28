@@ -33,6 +33,7 @@ Handler = Callable[[argparse.Namespace, Paths], int]
 JOB_ID_CHARS = 12
 EXIT_USAGE = 2
 EXIT_INTERRUPTED = 130
+FOUND_ORIGINS = (BoardOrigin.SEARCH, BoardOrigin.LINK, BoardOrigin.NAME)
 
 
 def _setup(args: argparse.Namespace, paths: Paths) -> int:
@@ -194,7 +195,7 @@ def _tracker(args: argparse.Namespace, paths: Paths) -> int:
 def _boards(_args: argparse.Namespace, paths: Paths) -> int:
     shared = {board.key for board in shared_boards()}
     with closing(connect(paths.database)) as db:
-        found = boards.by_origin(db, BoardOrigin.SEARCH) + boards.by_origin(db, BoardOrigin.LINK)
+        found = [board for origin in FOUND_ORIGINS for board in boards.by_origin(db, origin)]
     new = [board for board in found if board.key not in shared]
     if not new:
         print("No new boards yet. They're found during `truapply run`.")

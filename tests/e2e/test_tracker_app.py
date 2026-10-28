@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import closing, contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -24,10 +24,12 @@ from playwright.sync_api import (
 from tests.unit import samples
 from tests.unit.tracker_api import get, ids_in, running, seed_every_group
 from truapply.core import autorun
-from truapply.core.models import Source, Status
+from truapply.core.models import Board, Source, Status
 from truapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
 from truapply.core.paths import Paths
 from truapply.core.profile import load, save
+from truapply.sources import intake, lookup
+from truapply.sources.ats import PollResult
 from truapply.store import feedback, jobs, records, rules
 from truapply.store.db import connect
 from truapply.store.feedback import FeedbackKind
@@ -358,6 +360,27 @@ def test_an_info_button_explains_its_setting(browser: Browser, home: Paths) -> N
         page.get_by_role("button", name="About Oldest job to consider, in days").click()
         expect(page.get_by_text("Jobs with no posting date are always kept.")).to_be_visible()
         expect(page.get_by_label("Oldest job to consider, in days", exact=True)).to_have_value("30")
+        assert errors == []
+
+
+def test_pasted_company_names_are_looked_up_and_added(
+    browser: Browser, home: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def polled(tried: Sequence[Board]) -> PollResult:
+        hit = [board for board in tried if board.key == "greenhouse/northwind"]
+        found = [samples.job(external_id=f"{board.key}/7") for board in hit]
+        return PollResult([replace(job, location="Bengaluru") for job in found], hit, [], [])
+
+    monkeypatch.setattr(lookup, "poll", polled)
+    monkeypatch.setattr(intake, "poll", polled)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/companies")
+        page.get_by_role("button", name="Add companies").click()
+        page.get_by_label("Company names or websites, one per line").fill("Northwind\nNobody")
+        with answered(page, "/api/boards/names"):
+            page.get_by_role("button", name="Add", exact=True).click()
+        expect(page.get_by_text("Added Northwind, with 1 new job for you.")).to_be_visible()
+        expect(page.get_by_role("cell", name="You named it")).to_be_visible()
         assert errors == []
 
 

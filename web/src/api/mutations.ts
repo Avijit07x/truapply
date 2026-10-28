@@ -5,6 +5,7 @@ import type {
   Action,
   Dismissed,
   Linked,
+  Named,
   JobDetail,
   Learned,
   Automatic,
@@ -111,4 +112,8 @@ export function useScoreMany() {
 
 export function useAddLink() {
   return useChange<Linked, string>((link) => ["/api/boards/link", { link }]);
+}
+
+export function useAddNames() {
+  return useChange<Named, string>((names) => ["/api/boards/names", { names }]);
 }

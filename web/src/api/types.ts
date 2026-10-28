@@ -76,6 +76,7 @@ export type JobList = {
 export type Dismissed = { dismissed: number; skipped: number };
 export type Scoring = { scoring: number; skipped: number };
 export type Linked = { company: string; open: number; kept: number; added: number; gone: boolean };
+export type Named = { added: string[]; known: string[]; missing: string[]; jobs: number };
 export type Column = { status: Status; total: number; jobs: JobRow[] };
 export type Board = { columns: Column[]; dismissReasons: string[] };
 export type Workflow = {
@@ -132,7 +133,7 @@ export type Learned = {
 };
 
 export type CompanySearch = "off" | "daily" | "weekly";
-export type CompanyOrigin = "shared" | "search" | "link";
+export type CompanyOrigin = "shared" | "search" | "link" | "name";
 export type CompanyRow = {
   key: string;
   company: string;
