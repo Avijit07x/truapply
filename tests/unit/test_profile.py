@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.codec import encode
-from satyaapply.core.errors import ProfileInvalidError, ProfileMissingError
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import Salary, Settings, load, problems, save
 from tests.unit import samples
+from truapply.core.codec import encode
+from truapply.core.errors import ProfileInvalidError, ProfileMissingError
+from truapply.core.paths import Paths
+from truapply.core.profile import Salary, Settings, load, problems, save
 
 
 @pytest.fixture

@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.models import Board, Job, Status
-from satyaapply.core.notes import OUTSIDE_SEARCH_NOTE, WRONG_TITLE_NOTE
-from satyaapply.sources import intake
-from satyaapply.sources.ats import PollResult
-from satyaapply.store import jobs, records
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import StatusChange
 from tests.unit import samples
+from truapply.core.models import Board, Job, Status
+from truapply.core.notes import OUTSIDE_SEARCH_NOTE, WRONG_TITLE_NOTE
+from truapply.sources import intake
+from truapply.sources.ats import PollResult
+from truapply.store import jobs, records
+from truapply.store.db import connect
+from truapply.store.jobs import StatusChange
 
 NOW = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 FRONTEND = samples.job(external_id="greenhouse/northwind/1")

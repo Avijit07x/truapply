@@ -10,7 +10,7 @@ export const RULE_LIMIT = 300;
 
 const COPY: Record<RuleKind, { label: string; hint: string; button: string; saved: string }> = {
   rule: {
-    label: "Tell SatyaApply",
+    label: "Tell TruApply",
     hint: "Plain words, like “no staffing agencies” or “Pune is fine, Mumbai is not”. It changes how jobs are scored. It can't add facts to your resume.",
     button: "Add rule",
     saved: "Rule added. It's used from the next run.",

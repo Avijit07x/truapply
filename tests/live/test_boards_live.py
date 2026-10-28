@@ -1,8 +1,8 @@
 import pytest
 
-from satyaapply.core.models import Ats
-from satyaapply.sources.ats import poll
-from satyaapply.sources.discover import shared_boards
+from truapply.core.models import Ats
+from truapply.sources.ats import poll
+from truapply.sources.discover import shared_boards
 
 pytestmark = pytest.mark.network
 

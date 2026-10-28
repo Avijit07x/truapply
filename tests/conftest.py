@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core import schedule
-from satyaapply.tracker import automatic
+from truapply.core import schedule
+from truapply.tracker import automatic
 
 HARMLESS = "/usr/bin/true"
 

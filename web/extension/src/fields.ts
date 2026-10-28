@@ -1,8 +1,8 @@
 import type { Field, Kind } from "./messages";
 import { SITE_SEARCH_BOXES } from "./sites";
 
-export const FIELD_ATTR = "data-satya-field";
-export const OPTION_ATTR = "data-satya-option";
+export const FIELD_ATTR = "data-truapply-field";
+export const OPTION_ATTR = "data-truapply-option";
 const CONTROLS = "input, select, textarea, [contenteditable='true']";
 const TOGGLES = "button[aria-pressed]";
 const SKIPPED_TYPES = new Set([

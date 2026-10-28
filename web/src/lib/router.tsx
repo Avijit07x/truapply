@@ -10,7 +10,7 @@ import {
   useTransition,
 } from "react";
 
-const NAVIGATED = "satyaapply:navigated";
+const NAVIGATED = "truapply:navigated";
 
 export type PageProps = { params: readonly string[] };
 

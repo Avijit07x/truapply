@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply import cli
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import Profile, save
-from satyaapply.resume.contract import Rendered, Resume
-from satyaapply.resume.tailor import Tailored, TailorRequest
-from satyaapply.store import rules
-from satyaapply.store.db import connect
-from satyaapply.store.rules import NewRule, RuleKind, RuleState
 from tests.unit import samples
 from tests.unit.test_master import CountingResume
+from truapply import cli
+from truapply.core.paths import Paths
+from truapply.core.profile import Profile, save
+from truapply.resume.contract import Rendered, Resume
+from truapply.resume.tailor import Tailored, TailorRequest
+from truapply.store import rules
+from truapply.store.db import connect
+from truapply.store.rules import NewRule, RuleKind, RuleState
 
 NOW = datetime(2026, 10, 26, tzinfo=UTC)
 NOTE = "Don't change my headline."
@@ -42,7 +42,7 @@ def test_a_tailoring_preview_follows_your_tailoring_notes(
     def resume(_profile: Profile) -> Resume:
         return CountingResume()
 
-    monkeypatch.setenv("SATYAAPPLY_HOME", str(paths.root))
+    monkeypatch.setenv("TRUAPPLY_HOME", str(paths.root))
     monkeypatch.setattr(cli, "load_resume", resume)
     monkeypatch.setattr(cli, "master_pdf", master)
     monkeypatch.setattr(cli, "tailor", preview)

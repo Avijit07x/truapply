@@ -7,16 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import load, save
-from satyaapply.store import jobs, rules
-from satyaapply.store.answers import AnswerSource, SavedAnswer, save_many
-from satyaapply.store.db import connect
-from satyaapply.store.rules import NewRule, RuleKind, RuleState
-from satyaapply.tracker.learning import refresh_suggestions, suggested_word
-from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import get, post, running
+from truapply.core.paths import Paths
+from truapply.core.profile import load, save
+from truapply.store import jobs, rules
+from truapply.store.answers import AnswerSource, SavedAnswer, save_many
+from truapply.store.db import connect
+from truapply.store.rules import NewRule, RuleKind, RuleState
+from truapply.tracker.learning import refresh_suggestions, suggested_word
+from truapply.tracker.server import TrackerServer
 
 NOW = datetime(2026, 10, 26, 9, 0, tzinfo=UTC)
 

@@ -8,19 +8,19 @@ from typing import Any
 
 import pytest
 
-from satyaapply.core.models import Ats, Board, Status
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import CompanySearch, Profile, save
-from satyaapply.run import discovery
-from satyaapply.run.discovery import CompanySearchNow
-from satyaapply.run.lock import run_lock
-from satyaapply.sources.intake import Intake
-from satyaapply.store import boards, jobs
-from satyaapply.store.boards import BoardOrigin
-from satyaapply.store.db import connect
-from satyaapply.tracker import companies, runs
-from satyaapply.tracker.routes import Incoming, Route, dispatch
 from tests.unit import samples
+from truapply.core.models import Ats, Board, Status
+from truapply.core.paths import Paths
+from truapply.core.profile import CompanySearch, Profile, save
+from truapply.run import discovery
+from truapply.run.discovery import CompanySearchNow
+from truapply.run.lock import run_lock
+from truapply.sources.intake import Intake
+from truapply.store import boards, jobs
+from truapply.store.boards import BoardOrigin
+from truapply.store.db import connect
+from truapply.tracker import companies, runs
+from truapply.tracker.routes import Incoming, Route, dispatch
 
 NOW = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 

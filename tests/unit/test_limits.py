@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.models import Job, Source, Status
-from satyaapply.core.profile import Profile
-from satyaapply.run.tailoring import allowance, within_site_caps
-from satyaapply.store import jobs
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import StatusChange
 from tests.unit import samples
+from truapply.core.models import Job, Source, Status
+from truapply.core.profile import Profile
+from truapply.run.tailoring import allowance, within_site_caps
+from truapply.store import jobs
+from truapply.store.db import connect
+from truapply.store.jobs import StatusChange
 
 NOW = datetime(2026, 10, 26, 10, 0, tzinfo=UTC)
 

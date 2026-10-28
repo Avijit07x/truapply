@@ -12,12 +12,12 @@ from typing import Any
 
 import pytest
 
-from satyaapply.core.models import RunStage
-from satyaapply.core.paths import Paths
-from satyaapply.run.lock import run_lock
-from satyaapply.tracker import automatic, runs
-from satyaapply.tracker.body import Body
-from satyaapply.tracker.routes import Incoming, dispatch
+from truapply.core.models import RunStage
+from truapply.core.paths import Paths
+from truapply.run.lock import run_lock
+from truapply.tracker import automatic, runs
+from truapply.tracker.body import Body
+from truapply.tracker.routes import Incoming, dispatch
 
 PRINT = (sys.executable, "-c", "print('scoring 1 of 2')")
 SLEEP = (sys.executable, "-c", "import time; time.sleep(5)")

@@ -6,18 +6,18 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.models import Ats, Board
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import save
-from satyaapply.sources import intake
-from satyaapply.sources.ats import PollResult
-from satyaapply.sources.intake import NOT_A_BOARD
-from satyaapply.store import boards, records
-from satyaapply.store.boards import BoardOrigin
-from satyaapply.store.db import connect
-from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import post, running
+from truapply.core.models import Ats, Board
+from truapply.core.paths import Paths
+from truapply.core.profile import save
+from truapply.sources import intake
+from truapply.sources.ats import PollResult
+from truapply.sources.intake import NOT_A_BOARD
+from truapply.store import boards, records
+from truapply.store.boards import BoardOrigin
+from truapply.store.db import connect
+from truapply.tracker.server import TrackerServer
 
 NOW = datetime(2026, 10, 26, 12, 0, tzinfo=UTC)
 LINK = "https://job-boards.greenhouse.io/northwindcareers/jobs/4707747006?gh_jid=4707747006"

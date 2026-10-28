@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core import notify
-from satyaapply.core.models import Status
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import Settings
-from satyaapply.report.summary import QUIET, day_of, headline, markdown, summarize
-from satyaapply.store import jobs, usage
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import AttemptRecord, StatusChange
 from tests.unit import samples
+from truapply.core import notify
+from truapply.core.models import Status
+from truapply.core.paths import Paths
+from truapply.core.profile import Settings
+from truapply.report.summary import QUIET, day_of, headline, markdown, summarize
+from truapply.store import jobs, usage
+from truapply.store.db import connect
+from truapply.store.jobs import AttemptRecord, StatusChange
 
 EVENING = datetime(2026, 10, 26, 20, 30).astimezone()
 MORNING = EVENING.replace(hour=9)

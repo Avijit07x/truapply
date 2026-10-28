@@ -7,22 +7,22 @@ from pathlib import Path
 
 import pytest
 
-import satyaapply.run as run_module
-from satyaapply.ai.replies import Score
-from satyaapply.core.models import Job, RunStage, Status
-from satyaapply.core.notes import WRONG_TITLE_NOTE
-from satyaapply.core.paths import Paths
-from satyaapply.resume.contract import Rendered
-from satyaapply.run import rescoring, scoring
-from satyaapply.run.context import RunContext
-from satyaapply.store import jobs
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import StatusChange
-from satyaapply.tracker import runs
-from satyaapply.tracker.server import TrackerServer
+import truapply.run as run_module
 from tests.unit import samples
 from tests.unit.test_master import CountingResume
 from tests.unit.tracker_api import get, post, running
+from truapply.ai.replies import Score
+from truapply.core.models import Job, RunStage, Status
+from truapply.core.notes import WRONG_TITLE_NOTE
+from truapply.core.paths import Paths
+from truapply.resume.contract import Rendered
+from truapply.run import rescoring, scoring
+from truapply.run.context import RunContext
+from truapply.store import jobs
+from truapply.store.db import connect
+from truapply.store.jobs import StatusChange
+from truapply.tracker import runs
+from truapply.tracker.server import TrackerServer
 
 NOW = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 SENIOR = replace(

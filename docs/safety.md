@@ -35,7 +35,7 @@ Even in "best guess" mode, these come **only** from the profile or your saved an
 **Blockers.** These are never filled in, solved or got past:
 
 - CAPTCHAs and "verify you're human" checks: the job goes to **Finish these** (`finish`), with whatever was filled in saved. The filled-in browser opens it as a tab, filled in and stopped before Submit; you do the check and press Submit yourself. It's marked applied only when the site confirms.
-- consent and agreement boxes ("I agree", "I consent to the processing of my data", privacy policy, terms): never ticked by SatyaApply. You tick them yourself in the filled-in browser. A send that meets one, required or not, stops before Submit and the job goes to **Finish these**
+- consent and agreement boxes ("I agree", "I consent to the processing of my data", privacy policy, terms): never ticked by TruApply. You tick them yourself in the filled-in browser. A send that meets one, required or not, stops before Submit and the job goes to **Finish these**
 - email or SMS verification codes ("enter the code we emailed you to confirm you're human"): the job goes to **Finish these**, and you enter the code yourself
 - creating an account or entering a password: the job goes to `needs_input`
 
@@ -48,11 +48,11 @@ Even in "best guess" mode, these come **only** from the profile or your saved an
 - **Never sent twice.** The job is marked as being sent before Submit is pressed. If the site doesn't confirm, it isn't tried again, and its note says to check your email before applying yourself.
 - **Marked as auto-submitted.** A confirmed send shows **Auto-submitted** as its status, with every answer it sent saved on the job.
 - **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, auto-submit turns off.
-- **What it learns from you stays inside these rules.** It can't override this page, add facts to your resume, or raise a limit. A **Tell SatyaApply** rule is passed to scoring as your preference, never as a fact. Everything it has learned is listed on the "What it learned" page, where you can edit or delete it.
+- **What it learns from you stays inside these rules.** It can't override this page, add facts to your resume, or raise a limit. A **Tell TruApply** rule is passed to scoring as your preference, never as a fact. Everything it has learned is listed on the "What it learned" page, where you can edit or delete it.
 
 ## 4. Employer "no AI" rules
 
-Some employers say they don't accept AI-assisted applications. SatyaApply respects that:
+Some employers say they don't accept AI-assisted applications. TruApply respects that:
 
 - Scoring reads the job post for statements like "applications written with AI will be rejected". If it finds one, the job is **skipped** (`skipped: employer does not accept AI-assisted applications`).
 - The form filler treats any attestation like "I confirm I did not use AI to prepare this application" as a **skip**. It **never ticks it**, because that would be a false statement in your name.
@@ -83,7 +83,7 @@ Automating LinkedIn, Indeed, Naukri and Wellfound breaks their terms of service,
 
 | Data | Where it goes |
 |---|---|
-| Profile, resume, answers, history | Only `~/.satyaapply/` on your machine. Never in the repo. |
+| Profile, resume, answers, history | Only `~/.truapply/` on your machine. Never in the repo. |
 | Email password | macOS Keychain / Linux secret store. Never in `profile.json`, never sent to Claude. |
 | Resume, profile answers, job text | Sent to Claude (Anthropic) for scoring, tailoring and answering forms |
 | Job emails (first 3,000 characters) | Sent to Claude to classify the reply. Non-job emails are never read past the headers. |
@@ -102,4 +102,4 @@ Automating LinkedIn, Indeed, Naukri and Wellfound breaks their terms of service,
 
 ## README disclaimer (draft)
 
-> SatyaApply submits job applications in your name. You are responsible for everything it sends. Automating LinkedIn, Indeed, Naukri or Wellfound may break their terms of service and can get your account restricted. Start with the review queue and a dry run, and check what it does before you turn on automatic mode.
+> TruApply submits job applications in your name. You are responsible for everything it sends. Automating LinkedIn, Indeed, Naukri or Wellfound may break their terms of service and can get your account restricted. Start with the review queue and a dry run, and check what it does before you turn on automatic mode.

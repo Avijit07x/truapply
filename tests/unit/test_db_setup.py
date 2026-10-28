@@ -2,8 +2,8 @@ import threading
 from contextlib import closing
 from pathlib import Path
 
-from satyaapply.store.db import connect, schema_version
-from satyaapply.store.migrations import MIGRATIONS
+from truapply.store.db import connect, schema_version
+from truapply.store.migrations import MIGRATIONS
 
 OPENERS = 8
 

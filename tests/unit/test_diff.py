@@ -1,4 +1,4 @@
-from satyaapply.resume.diff import changed_lines
+from truapply.resume.diff import changed_lines
 
 
 def test_only_changed_lines_are_listed() -> None:

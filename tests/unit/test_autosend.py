@@ -9,19 +9,19 @@ from typing import Any
 
 import pytest
 
-from satyaapply.core.models import Source, Status
-from satyaapply.core.notes import AUTO_SENT_NOTE, UNCONFIRMED_NOTE
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import load, save
-from satyaapply.run.lock import run_lock
-from satyaapply.store import autosend, jobs
-from satyaapply.store.autosend import SendState
-from satyaapply.store.db import connect
-from satyaapply.tracker import actions, extension
-from satyaapply.tracker import autosend as routes
-from satyaapply.tracker.body import Body
-from satyaapply.tracker.routes import Incoming, Route, dispatch
 from tests.unit import samples
+from truapply.core.models import Source, Status
+from truapply.core.notes import AUTO_SENT_NOTE, UNCONFIRMED_NOTE
+from truapply.core.paths import Paths
+from truapply.core.profile import load, save
+from truapply.run.lock import run_lock
+from truapply.store import autosend, jobs
+from truapply.store.autosend import SendState
+from truapply.store.db import connect
+from truapply.tracker import actions, extension
+from truapply.tracker import autosend as routes
+from truapply.tracker.body import Body
+from truapply.tracker.routes import Incoming, Route, dispatch
 
 NOW = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 BEFORE = NOW - timedelta(hours=1)

@@ -8,21 +8,21 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai.replies import Posting
-from satyaapply.core.forms import RESUME_FILE, Answer, Field, FormAnswers, FormContext, Unknown
-from satyaapply.core.models import Job, Source, Status
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import save
-from satyaapply.store import answers, feedback, jobs, records
-from satyaapply.store.answers import AnswerSource, SavedAnswer
-from satyaapply.store.db import connect
-from satyaapply.store.feedback import FeedbackKind
-from satyaapply.store.jobs import AttemptRecord
-from satyaapply.tracker import extension
-from satyaapply.tracker.extension import EXTENSION_ID, EXTENSION_ORIGIN, NO_JOB
-from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import JSON_TYPE, Reply, fetch, get, running
+from truapply.ai.replies import Posting
+from truapply.core.forms import RESUME_FILE, Answer, Field, FormAnswers, FormContext, Unknown
+from truapply.core.models import Job, Source, Status
+from truapply.core.paths import Paths
+from truapply.core.profile import save
+from truapply.store import answers, feedback, jobs, records
+from truapply.store.answers import AnswerSource, SavedAnswer
+from truapply.store.db import connect
+from truapply.store.feedback import FeedbackKind
+from truapply.store.jobs import AttemptRecord
+from truapply.tracker import extension
+from truapply.tracker.extension import EXTENSION_ID, EXTENSION_ORIGIN, NO_JOB
+from truapply.tracker.server import TrackerServer
 
 NOW = datetime(2026, 10, 27, 12, 0, tzinfo=UTC)
 MANIFEST = Path(__file__).resolve().parents[2] / "web" / "extension" / "manifest.json"
@@ -239,7 +239,7 @@ def test_settings_say_where_the_extension_folder_is(paths: Paths) -> None:
     with running(paths) as server:
         status, body = get(server, "/api/settings")
     assert status == 200
-    assert body["extension"]["folder"].endswith("satyaapply/extension")
+    assert body["extension"]["folder"].endswith("truapply/extension")
 
 
 def test_profile_facts_fill_the_usual_fields_without_the_ai(

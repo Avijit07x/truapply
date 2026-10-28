@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. This guide is how we build SatyaApply: the engineering standards, the code style, tests, and how to add a job site, an ATS or a company.
+Thanks for helping. This guide is how we build TruApply: the engineering standards, the code style, tests, and how to add a job site, an ATS or a company.
 
 ## Principles
 
@@ -16,21 +16,21 @@ Thanks for helping. This guide is how we build SatyaApply: the engineering stand
 ## Dev setup
 
 ```bash
-git clone <repo-url> satyaapply && cd satyaapply
+git clone <repo-url> truapply && cd truapply
 python3.11 -m venv .venv && source .venv/bin/activate   # 3.11 or newer
 pip install -e ".[dev]"
 pre-commit install
 playwright install chromium            # only if Google Chrome isn't installed
 (cd web && npm ci && npm run build)    # the tracker app; needs Node 22.12 or newer
-export SATYAAPPLY_HOME=/tmp/satyaapply-dev # never develop against your real profile
-satyaapply setup
+export TRUAPPLY_HOME=/tmp/truapply-dev # never develop against your real profile
+truapply setup
 ```
 
 To work on the tracker app with instant reloads, run the tracker and the Vite dev server side by side. The dev server sends API calls on to the tracker:
 
 ```bash
-satyaapply tracker --port 8765
-cd web && npm run dev                  # SATYAAPPLY_TRACKER=http://127.0.0.1:<port> for another port
+truapply tracker --port 8765
+cd web && npm run dev                  # TRUAPPLY_TRACKER=http://127.0.0.1:<port> for another port
 ```
 
 Users never need Node: the built app ships inside the package. Rebuild it (`npm run build`) before running the end-to-end tests.
@@ -102,7 +102,7 @@ How a senior engineer works on this codebase.
 
 - Type hints everywhere; `mypy --strict` passes.
 - Frozen dataclasses for values (`Job`, `Field`, `Score`); `StrEnum` and `Literal` for fixed sets; `pathlib` for paths; `logging` for logs.
-- **One error hierarchy** in `core/errors.py`: `SatyaApplyError` → `AIError`, `UsageLimitError`, `SiteBlockedError`, `LoggedOutError`, `SiteUnreachableError`, `FormStuckError`, `ProfileInvalidError`. Raise the specific one. Only the run loop catches broadly, and it records the error and moves on to the next job.
+- **One error hierarchy** in `core/errors.py`: `TruApplyError` → `AIError`, `UsageLimitError`, `SiteBlockedError`, `LoggedOutError`, `SiteUnreachableError`, `FormStuckError`, `ProfileInvalidError`. Raise the specific one. Only the run loop catches broadly, and it records the error and moves on to the next job.
 - Context managers for every resource (browser, database transaction, IMAP connection).
 - No mutable default arguments. `print` only in `cli` and `onboarding`.
 
@@ -117,7 +117,7 @@ How a senior engineer works on this codebase.
 - Icons are drawn in `src/ui/icons.tsx` on a 16 px grid with round ends and soft corners. No icon library.
 - Motion stays small: things rise in once when a page opens, numbers count up, cards lift on hover. Everything stops when the system asks for less motion.
 - One folder per page in `src/features/`. A part used by two pages moves to `src/components/` or `src/ui/`.
-- The page's text is plain words for job seekers, the same voice as the rest of SatyaApply.
+- The page's text is plain words for job seekers, the same voice as the rest of TruApply.
 
 ### Do and don't
 
@@ -232,7 +232,7 @@ These run in `pre-commit` on your machine and in GitHub Actions on every pull re
 |---|---|
 | `ruff format` | One formatting style |
 | `ruff check` | Bugs, naming, security, complexity, performance anti-patterns, exception handling, commented-out code, magic numbers (config below) |
-| `mypy --strict` | Types across `satyaapply/` |
+| `mypy --strict` | Types across `truapply/` |
 | `tools/check_no_comments.py` | No comments or docstrings outside the allowed tool directives |
 | `tests/test_architecture.py` | Layers only import downward; no cycles |
 | `pytest` + `pytest-cov` | All tests pass; **≥ 80 % line coverage** on `store`, `resume`, `ai`, `apply` and `inbox` |
@@ -263,14 +263,14 @@ max-statements = 40
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "PLR2004"]
-"satyaapply/cli.py" = ["T20"]
-"satyaapply/doctor.py" = ["T20"]
-"satyaapply/onboarding/*" = ["T20"]
+"truapply/cli.py" = ["T20"]
+"truapply/doctor.py" = ["T20"]
+"truapply/onboarding/*" = ["T20"]
 "tools/*" = ["T20"]
 
 [tool.mypy]
 strict = true
-files = ["satyaapply", "tools", "tests"]
+files = ["truapply", "tools", "tests"]
 ```
 
 ## Checked in review
@@ -368,10 +368,10 @@ The tests and runs that prove it.
 
 ## Adding a job site
 
-1. Create `satyaapply/sites/<name>.py` with one `Site` value following [the site contract](architecture.md#the-site-contract), and register it in `satyaapply/sites/__init__.py`.
+1. Create `truapply/sites/<name>.py` with one `Site` value following [the site contract](architecture.md#the-site-contract), and register it in `truapply/sites/__init__.py`.
 2. Save `search.html`, `job.html`, `blocked.html` and `logged_out.html` to `tests/fixtures/<name>/`, with names, emails, phone numbers and photos removed.
 3. Add tests: links found, job parsed, block and logout detected.
-4. Watch it read-only: `satyaapply run --site <name> --dry-run --limit 3 --show`.
+4. Watch it read-only: `truapply run --site <name> --dry-run --limit 3 --show`.
 5. Record the site's rules in the sources table in [architecture.md](architecture.md#finding-jobs): does Apply submit straight away (`submits_on_open`)? Does it send its own stored resume?
 6. Open the PR with the dry-run log and screenshots.
 
@@ -379,25 +379,25 @@ A site isn't merged without block detection, logout detection and a daily cap.
 
 ## Adding an ATS
 
-1. Create `satyaapply/sources/ats/<name>.py` exposing `board_of(url) -> Board | None` and `poll(slug) -> list[Job]`, and register it in `satyaapply/sources/ats/__init__.py`.
+1. Create `truapply/sources/ats/<name>.py` exposing `board_of(url) -> Board | None` and `poll(slug) -> list[Job]`, and register it in `truapply/sources/ats/__init__.py`.
 2. Add a recorded API response to `tests/fixtures/ats/<name>.json` and test the parsing.
 3. Dry run on 3 real boards; attach the log.
 
 ## Adding companies to the shared list
 
-- Add rows to `satyaapply/sources/companies.csv`: `ats,slug,company,tags`. Tags come from where the board's jobs are: `india`, `remote`.
+- Add rows to `truapply/sources/companies.csv`: `ats,slug,company,tags`. Tags come from where the board's jobs are: `india`, `remote`.
 - Only **public** boards with at least one open job.
 - Keep it sorted by `ats`, then `slug`. A test fails on duplicates or a wrong order.
-- `satyaapply boards --new` prints the boards you've found that aren't listed yet, already formatted.
+- `truapply boards --new` prints the boards you've found that aren't listed yet, already formatted.
 
 ## Reporting a broken site
 
 Open a **"Site broken"** issue with:
 
 - the site, and what broke (search, job page or a form step)
-- `satyaapply doctor` output
-- the matching lines from `~/.satyaapply/run.log` (it holds no personal data)
-- a screenshot from `~/.satyaapply/shots/`, **with personal data blurred**
+- `truapply doctor` output
+- the matching lines from `~/.truapply/run.log` (it holds no personal data)
+- a screenshot from `~/.truapply/shots/`, **with personal data blurred**
 
 Never paste your `profile.json`, saved answers, emails or resume.
 

@@ -11,6 +11,6 @@ export const useSeen = create<SeenState>()(
         set((state) => ({ seen: { ...state.seen, [tab]: new Date().toISOString() } }));
       },
     }),
-    { name: "satyaapply-seen" },
+    { name: "truapply-seen" },
   ),
 );

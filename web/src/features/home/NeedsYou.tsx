@@ -9,7 +9,7 @@ import { toast } from "../../ui/toasts";
 import styles from "./Home.module.css";
 import { QueueItem } from "./QueueItem";
 
-const WAKE_EXTENSION = "satyaapply:send";
+const WAKE_EXTENSION = "truapply:send";
 
 function sentNote({ queued, below, score }: SendQueued): string {
   const kept = below ? ` ${plural(below, "job")} under ${String(score)} stay for you.` : "";
@@ -53,7 +53,7 @@ export function NeedsYou({ columns }: { columns: readonly Column[] }) {
       {ready && total > 0 ? (
         <>
           <p className={styles.hint}>
-            Open one in your Chrome. The SatyaApply extension fills it in; you check it and press
+            Open one in your Chrome. The TruApply extension fills it in; you check it and press
             Submit.
           </p>
           <SendThese />

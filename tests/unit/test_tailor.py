@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.errors import AIError, UsageLimitError
-from satyaapply.core.models import Job
-from satyaapply.resume.contract import Draft, Rendered
-from satyaapply.resume.tailor import TailorRequest, file_name_for, tailor
 from tests.unit import samples
+from truapply.core.errors import AIError, UsageLimitError
+from truapply.core.models import Job
+from truapply.resume.contract import Draft, Rendered
+from truapply.resume.tailor import TailorRequest, file_name_for, tailor
 
 ORIGINAL = "Built 40 components with React.\nCut load time by 30%."
 REORDERED = "Cut load time by 30%.\nBuilt 40 components with React."

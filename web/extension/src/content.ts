@@ -21,7 +21,7 @@ const CONFIRMED =
   /application (was |has been )?(successfully )?(submitted|sent|received)|thank(s| you) for (applying|your application|submitting)|successfully (applied|submitted)|we('ve| have) received your application|you('ve| have) (successfully )?applied/i;
 const FORM_WAIT_MS = 20_000;
 const POLL_MS = 300;
-const BUSY = "data-satyaapply-busy";
+const BUSY = "data-truapply-busy";
 const SAVE_START_MS = 60;
 const SAVE_WAIT_MS = 4000;
 const QUIET_MS = 120;
@@ -61,8 +61,8 @@ let shown: { state: State; report: string } = { state: "loading", report: "" };
 
 const restore = () => {
   const root = document.documentElement.dataset;
-  if (root.satyaapply !== shown.state) root.satyaapply = shown.state;
-  if (shown.report && root.satyaapplyReport !== shown.report) root.satyaapplyReport = shown.report;
+  if (root.truapply !== shown.state) root.truapply = shown.state;
+  if (shown.report && root.truapplyReport !== shown.report) root.truapplyReport = shown.report;
 };
 
 const mark = (state: State, report?: object) => {
@@ -247,12 +247,12 @@ async function savedAnswers(job: Job): Promise<SentItem[]> {
 async function markApplied(job: Job, panel: Panel, sent: SentItem[]): Promise<void> {
   const reply = await ask<object>({ type: "applied", jobId: job.id, sent });
   if (failed(reply)) {
-    panel.say(`Sent, but SatyaApply didn't save it: ${reply.error}`);
+    panel.say(`Sent, but TruApply didn't save it: ${reply.error}`);
     return;
   }
   void chrome.storage.local.remove(sentKey(job));
   mark("applied");
-  panel.say("Sent. Saved as applied in SatyaApply.");
+  panel.say("Sent. Saved as applied in TruApply.");
   panel.list([]);
 }
 
@@ -390,7 +390,7 @@ async function fill(job: Job, panel: Panel, sending = false): Promise<void> {
     const problem = await fillRound(job, fields, resume, panel);
     if (problem) {
       mark("broken", { error: problem });
-      panel.say(problem === "offline" ? "SatyaApply isn't running." : `Couldn't fill: ${problem}`);
+      panel.say(problem === "offline" ? "TruApply isn't running." : `Couldn't fill: ${problem}`);
       if (sending)
         await ask<object>({ type: "held", jobId: job.id, why: `couldn't fill: ${problem}` });
       return;
@@ -477,7 +477,7 @@ async function show(job: Job, panel: Panel, sending = false): Promise<void> {
   const said: Record<string, string> = {
     ready: "Ready. Your tailored resume is saved. Open the application form to fill it.",
     applied: `You applied to this job on ${day(job.updatedAt)}.`,
-    skipped: "SatyaApply skipped this job. See why in your tracker.",
+    skipped: "TruApply skipped this job. See why in your tracker.",
     dismissed: "You dismissed this job.",
     closed: "This job is closed.",
   };
@@ -490,7 +490,7 @@ async function show(job: Job, panel: Panel, sending = false): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  if (document.documentElement.dataset.satyaapply) return;
+  if (document.documentElement.dataset.truapply) return;
   mark("loading");
   stayOnPage(restore);
   for (const name of ["input", "change", "pointerdown"]) {
@@ -499,14 +499,14 @@ async function main(): Promise<void> {
   const found = await lookUp();
   if (failed(found)) {
     mark("offline");
-    openPanel(null).say("SatyaApply isn't running. Start it, then reload this page.");
+    openPanel(null).say("TruApply isn't running. Start it, then reload this page.");
     return;
   }
   if (!found.job) {
     mark("unknown");
     const panel = openPanel(null);
-    panel.say("This job isn't in SatyaApply yet.");
-    panel.offer("Add to SatyaApply", () => void add(panel));
+    panel.say("This job isn't in TruApply yet.");
+    panel.offer("Add to TruApply", () => void add(panel));
     return;
   }
   const asked = await ask<Sending>({ type: "sending" });

@@ -6,14 +6,14 @@ from typing import Any
 
 import pytest
 
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import load, save
-from satyaapply.store.db import connect
-from satyaapply.tracker import settings
-from satyaapply.tracker.body import Body
-from satyaapply.tracker.routes import Route
-from satyaapply.tracker.settings_fields import MAX_ITEMS
 from tests.unit import samples
+from truapply.core.paths import Paths
+from truapply.core.profile import load, save
+from truapply.store.db import connect
+from truapply.tracker import settings
+from truapply.tracker.body import Body
+from truapply.tracker.routes import Route
+from truapply.tracker.settings_fields import MAX_ITEMS
 
 VALID: dict[str, object] = {
     "name": "Asha Rao",
@@ -205,5 +205,5 @@ def test_missing_profile_asks_for_setup(tmp_path: Path) -> None:
     for routes in (settings.GET, settings.POST):
         status, answer = call(routes, paths, VALID)
         assert status == HTTPStatus.CONFLICT
-        assert "satyaapply setup" in answer["error"]
+        assert "truapply setup" in answer["error"]
     assert not paths.profile.exists()

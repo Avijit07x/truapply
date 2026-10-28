@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.errors import LatexFailedError
-from satyaapply.resume import packages
-from satyaapply.resume.contract import Rendered
-from satyaapply.resume.packages import render_installing, tlmgr
+from truapply.core.errors import LatexFailedError
+from truapply.resume import packages
+from truapply.resume.contract import Rendered
+from truapply.resume.packages import render_installing, tlmgr
 
 SEARCH_OUTPUT = (
     "tlmgr: package repository https://example.org (not verified)\n"

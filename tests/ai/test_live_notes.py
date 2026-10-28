@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.documents import ResumeData, ResumeEntry, ResumeSection
-from satyaapply.core.models import Job
-from satyaapply.resume.structured import StructuredResume, from_json
-from satyaapply.resume.tailor import Tailored, TailorRequest, tailor
 from tests.unit import samples
+from truapply.core.documents import ResumeData, ResumeEntry, ResumeSection
+from truapply.core.models import Job
+from truapply.resume.structured import StructuredResume, from_json
+from truapply.resume.tailor import Tailored, TailorRequest, tailor
 
 pytestmark = pytest.mark.ai
 

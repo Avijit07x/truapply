@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai import prompts, tasks
-from satyaapply.ai.client import Model, Request, ask
+from truapply.ai import prompts, tasks
+from truapply.ai.client import Model, Request, ask
 
 pytestmark = pytest.mark.ai
 

@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from satyaapply.core.documents import ResumeData, ResumeEntry, ResumeFormat, ResumeSection
-from satyaapply.core.models import Job, Source
-from satyaapply.core.profile import (
+from truapply.core.documents import ResumeData, ResumeEntry, ResumeFormat, ResumeSection
+from truapply.core.models import Job, Source
+from truapply.core.profile import (
     CoverLetter,
     Profile,
     ResumeRef,

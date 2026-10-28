@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai import tasks
-from satyaapply.core.forms import Field, FieldKind, FormContext
-from satyaapply.core.profile import WorkPlaces
 from tests.unit import samples
+from truapply.ai import tasks
+from truapply.core.forms import Field, FieldKind, FormContext
+from truapply.core.profile import WorkPlaces
 
 pytestmark = pytest.mark.ai
 

@@ -6,19 +6,19 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.models import Source, Status
-from satyaapply.core.notes import WELLFOUND_NOTE
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import save
-from satyaapply.store import groups, jobs
-from satyaapply.store.browse import PAGE_SIZE
-from satyaapply.store.db import connect
-from satyaapply.store.groups import Group
-from satyaapply.store.jobs import ScoreUpdate, StatusChange
-from satyaapply.tracker.listing import CARDS_PER_COLUMN, COLUMNS
-from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import SEEDED, get, ids_in, running, seed_every_group
+from truapply.core.models import Source, Status
+from truapply.core.notes import WELLFOUND_NOTE
+from truapply.core.paths import Paths
+from truapply.core.profile import save
+from truapply.store import groups, jobs
+from truapply.store.browse import PAGE_SIZE
+from truapply.store.db import connect
+from truapply.store.groups import Group
+from truapply.store.jobs import ScoreUpdate, StatusChange
+from truapply.tracker.listing import CARDS_PER_COLUMN, COLUMNS
+from truapply.tracker.server import TrackerServer
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 

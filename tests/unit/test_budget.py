@@ -10,12 +10,12 @@ from typing import NoReturn
 
 import pytest
 
-from satyaapply.ai.budget import Budget, charge, metered
-from satyaapply.ai.client import Request, ask
-from satyaapply.ai.replies import Pong
-from satyaapply.core.errors import DailyBudgetError, UsageLimitError
-from satyaapply.store import usage
-from satyaapply.store.db import connect
+from truapply.ai.budget import Budget, charge, metered
+from truapply.ai.client import Request, ask
+from truapply.ai.replies import Pong
+from truapply.core.errors import DailyBudgetError, UsageLimitError
+from truapply.store import usage
+from truapply.store.db import connect
 
 TODAY = date(2026, 10, 26)
 

@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.apply.answering import answer_form
-from satyaapply.apply.claims import made_up_numbers, without
-from satyaapply.apply.options import as_number, best_option, is_truthy
-from satyaapply.core.forms import Answer, Field, FieldKind, FormAnswers, FormContext
 from tests.unit import samples
+from truapply.apply.answering import answer_form
+from truapply.apply.claims import made_up_numbers, without
+from truapply.apply.options import as_number, best_option, is_truthy
+from truapply.core.forms import Answer, Field, FieldKind, FormAnswers, FormContext
 
 
 def field(kind: FieldKind, label: str, options: tuple[str, ...] = ()) -> Field:

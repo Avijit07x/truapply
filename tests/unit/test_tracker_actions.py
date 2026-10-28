@@ -6,18 +6,18 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.forms import Sent
-from satyaapply.core.models import Status
-from satyaapply.core.paths import Paths
-from satyaapply.store import feedback, jobs, records
-from satyaapply.store.db import connect
-from satyaapply.store.feedback import FeedbackKind
-from satyaapply.store.jobs import AttemptRecord, StatusChange
-from satyaapply.tracker.actions import BULK_LIMIT, MOVED_ON, NO_RESUME
-from satyaapply.tracker.detail import CLOSED_REASON
-from satyaapply.tracker.server import TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import get, post, running
+from truapply.core.forms import Sent
+from truapply.core.models import Status
+from truapply.core.paths import Paths
+from truapply.store import feedback, jobs, records
+from truapply.store.db import connect
+from truapply.store.feedback import FeedbackKind
+from truapply.store.jobs import AttemptRecord, StatusChange
+from truapply.tracker.actions import BULK_LIMIT, MOVED_ON, NO_RESUME
+from truapply.tracker.detail import CLOSED_REASON
+from truapply.tracker.server import TrackerServer
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 SENT = (

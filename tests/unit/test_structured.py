@@ -1,9 +1,9 @@
 from dataclasses import replace
 
-from satyaapply.core.documents import ResumeEntry, ResumeSection
-from satyaapply.resume.contract import Draft
-from satyaapply.resume.structured import StructuredResume, to_html, to_json
 from tests.unit import samples
+from truapply.core.documents import ResumeEntry, ResumeSection
+from truapply.resume.contract import Draft
+from truapply.resume.structured import StructuredResume, to_html, to_json
 
 
 def test_html_escapes_everything() -> None:

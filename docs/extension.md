@@ -4,7 +4,7 @@ Status: **planned**, not built yet.
 
 ## Goal
 
-Fill job applications in **your own Chrome**, not in a separate browser. SatyaApply still finds, scores and tailors. The extension fills the form in your tab and attaches the tailored resume. You check it and press Submit.
+Fill job applications in **your own Chrome**, not in a separate browser. TruApply still finds, scores and tailors. The extension fills the form in your tab and attaches the tailored resume. You check it and press Submit.
 
 Why:
 
@@ -17,12 +17,12 @@ What stays the same: nothing is ever submitted without you pressing Submit. No C
 ## What you'll see
 
 1. In the tracker, a job has **Open in my Chrome**. It opens the application page in a new tab.
-2. The extension shows a small SatyaApply panel on the page: the job, its score, and **Fill this form**. Opened from the tracker, it fills right away.
+2. The extension shows a small TruApply panel on the page: the job, its score, and **Fill this form**. Opened from the tracker, it fills right away.
 3. Fields fill in, the tailored resume is attached, and the panel says what's left for you: "Tick the consent box", "Answer 1 question". Those fields get a yellow outline.
 4. You check the form and press Submit.
 5. When the site shows its confirmation, the job becomes **Applied** in the tracker. The panel offers **Next job**, which opens the next one waiting for you.
 
-On a job page SatyaApply doesn't know yet, the panel offers **Add and fill**. It adds the job, scores it, and fills it with your resume: tailored (about a minute) or your original (right away), your pick.
+On a job page TruApply doesn't know yet, the panel offers **Add and fill**. It adds the job, scores it, and fills it with your resume: tailored (about a minute) or your original (right away), your pick.
 
 ## How it works
 
@@ -30,7 +30,7 @@ On a job page SatyaApply doesn't know yet, the panel offers **Add and fill**. It
 flowchart LR
   tab["Job page in your Chrome"] --> content["Extension page script<br/>reads and fills fields"]
   content <--> worker["Extension background worker"]
-  worker <-->|"127.0.0.1 only,<br/>paired with a code"| app["SatyaApply app<br/>(tracker server)"]
+  worker <-->|"127.0.0.1 only,<br/>paired with a code"| app["TruApply app<br/>(tracker server)"]
   app --> db[(your data)]
   app --> ai["Claude, for answers<br/>it doesn't know yet"]
 ```
@@ -88,7 +88,7 @@ Each step ends with checks that must pass.
 
 ### 1. The link (half a day)
 
-- Extension skeleton: Manifest V3, TypeScript, built with the same tools as the tracker into `satyaapply/extension/`, so users load a ready folder. No Node needed for users.
+- Extension skeleton: Manifest V3, TypeScript, built with the same tools as the tracker into `truapply/extension/`, so users load a ready folder. No Node needed for users.
 - Pairing, the token check, and the job lookup endpoint.
 - **Must pass:** a request without the token is refused; the extension finds the job for a tracker job's page.
 
@@ -119,7 +119,7 @@ About **3 days** in total.
 
 ## LinkedIn
 
-On a LinkedIn job page you open yourself, the panel can add that one job to SatyaApply. Nothing more: it never reads search pages on its own and never applies on LinkedIn, because LinkedIn's rules ban automation and could restrict your account.
+On a LinkedIn job page you open yourself, the panel can add that one job to TruApply. Nothing more: it never reads search pages on its own and never applies on LinkedIn, because LinkedIn's rules ban automation and could restrict your account.
 
 ## Testing
 

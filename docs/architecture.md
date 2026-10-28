@@ -23,10 +23,10 @@
 Package by feature. Each package has one job, and each module stays small (about 300 lines at most).
 
 ```
-satyaapply/
+truapply/
   __main__.py
   cli.py                 command-line entry
-  doctor.py              health checks behind `satyaapply doctor`
+  doctor.py              health checks behind `truapply doctor`
   run/                   one run: discovery.py · scoring.py · applying.py · submitting.py · context.py
                          · lock.py (one run at a time)
   core/
@@ -34,8 +34,8 @@ satyaapply/
     documents.py         ResumeData (built-in design), ResumeDocument, ResumeFormat
     profile.py           Profile and its parts; load, validate, save
     codec.py             dataclass ⇄ JSON and JSON Schema, with exact error paths
-    errors.py            SatyaApplyError and its subclasses, each with a hint
-    paths.py             the ~/.satyaapply layout
+    errors.py            TruApplyError and its subclasses, each with a hint
+    paths.py             the ~/.truapply layout
     schedule.py          the launchd job (macOS) or the cron line (Linux) for background runs
     files.py             atomic, private (0600) file writes
     numbers.py           the number check shared by resumes and form answers
@@ -96,7 +96,7 @@ satyaapply/
     listing.py           summary, job lists, the board and the workflow counts
     detail.py            one job as JSON, and which actions its status allows
     actions.py           job actions: approve, edit, dismiss, 👍/👎, answers, Finish these, revert
-    learning.py          Tell SatyaApply, tailoring notes, suggestions, What it learned
+    learning.py          Tell TruApply, tailoring notes, suggestions, What it learned
     trust.py · runs.py · settings.py   auto-submit, runs from the page, settings
     static.py            serves the built app (static/, made by `npm run build`, not in git)
     plain.py             readable resume changes, with LaTeX commands stripped
@@ -140,15 +140,15 @@ flowchart TD
 
 ## User data (never in the repo)
 
-Everything personal lives in `~/.satyaapply/`, or wherever `SATYAAPPLY_HOME` points:
+Everything personal lives in `~/.truapply/`, or wherever `TRUAPPLY_HOME` points:
 
 ```
-~/.satyaapply/
+~/.truapply/
   profile.json          setup answers (validated on every load)
   resume/master.tex     or master.json (built-in design): the original, the only source of facts
   resume/master.pdf     built once per version of the master; used whenever tailoring fails
-  previews/<job>/       resumes made with `satyaapply tailor`
-  satyaapply.db           jobs, answers, feedback, rules, emails, health, settings
+  previews/<job>/       resumes made with `truapply tailor`
+  truapply.db           jobs, answers, feedback, rules, emails, health, settings
   browser/              Chrome profile holding the site logins (headless runs)
   finish-browser/       profile of the filled-in browser, where you submit
   finish.lock           held while the filled-in browser is open
@@ -168,7 +168,7 @@ Everything personal lives in `~/.satyaapply/`, or wherever `SATYAAPPLY_HOME` poi
 sequenceDiagram
   autonumber
   participant S as Scheduler
-  participant R as satyaapply run
+  participant R as truapply run
   participant DB as SQLite
   participant W as Job sources
   participant AI as Claude Code
@@ -283,7 +283,7 @@ Two keys stop duplicates:
 
 Schema changes go through numbered migrations in `store/migrations.py`; SQLite's built-in `pragma user_version` records which ones have run. A database newer than the app is refused, never guessed at. Timestamps are ISO 8601 text in UTC.
 
-Migration 4 (the tracker, phase 3) adds `jobs.feedback`, `jobs.auto_submitted`, the `feedback` table (one row per action you take on the tracker) and the `rules` table (your **Tell SatyaApply** rules, tailoring notes and suggestions).
+Migration 4 (the tracker, phase 3) adds `jobs.feedback`, `jobs.auto_submitted`, the `feedback` table (one row per action you take on the tracker) and the `rules` table (your **Tell TruApply** rules, tailoring notes and suggestions).
 
 ### Job status
 
@@ -312,7 +312,7 @@ stateDiagram-v2
 
 `submitting` is written **before** Submit is clicked. If the process dies, the next run finds the job still in `submitting` at its start and marks it `unconfirmed`. It never submits it again (see [risks.md](risks.md)).
 
-`finish` means the site wants a human check (a CAPTCHA, "verify you're human", or a code it emailed you). SatyaApply never solves it: whatever it filled in is saved, and you finish the job yourself (see [Finish these](#finish-these)). A human check after Submit always leads to `finish`, never to `unconfirmed` or `failed`.
+`finish` means the site wants a human check (a CAPTCHA, "verify you're human", or a code it emailed you). TruApply never solves it: whatever it filled in is saved, and you finish the job yourself (see [Finish these](#finish-these)). A human check after Submit always leads to `finish`, never to `unconfirmed` or `failed`.
 
 Besides `ready` and `finish`, you can also dismiss a job that is `scored`, `needs_input`, `failed`, `unconfirmed` or `external`. A dismissed job is never applied to.
 
@@ -384,7 +384,7 @@ claude -p --safe-mode --tools "" --strict-mcp-config --no-session-persistence \
 | Answer form fields (and write the cover letter when needed) | sonnet | none | each form step with fields that have no saved answer |
 | Classify a reply email | haiku | none | each job email |
 
-**What you taught it goes in as data.** Every scoring call gets your active **Tell SatyaApply** rules as the candidate's preferences, and every tailoring call gets your tailoring notes. Neither can add a fact: facts still come only from the master resume and your notes from setup.
+**What you taught it goes in as data.** Every scoring call gets your active **Tell TruApply** rules as the candidate's preferences, and every tailoring call gets your tailoring notes. Neither can add a fact: facts still come only from the master resume and your notes from setup.
 
 **Budget:** that's about 4–6 calls per application, and fewer over time as saved answers build up. A daily call budget (default 300) stops runaway use. When Claude reports a usage limit, the run stops cleanly; queued jobs stay queued.
 
@@ -412,7 +412,7 @@ flowchart TD
 | Indeed | Search on the user's country site (`in.indeed.com` …) | Indeed Apply steps, with the tailored resume uploaded | Yes |
 | Wellfound | Its public role pages (`/role/l/<role>/<country>`, and `/role/r/<role>` when you'd work remote abroad) for **Wellfound roles to read** (or your roles), up to 5 pages each, 2 at a time, every run; no login. A 429 pauses Wellfound for an hour | Not applied by the app: jobs whose title has one of **Pull jobs whose title has** (or your roles and title keywords) and none of **Skip jobs whose title has**, that fit your years of experience (Wellfound's own minimum, with 1 year of stretch) and name skills on your resume, are listed as **Ready** on their own tab with no score and no tailored resume, and you apply on Wellfound yourself | No |
 
-**Shared company list** (`satyaapply/sources/companies.csv`): `ats,slug,company,tags`. It ships with the package, starts with 144 boards we verified ourselves (87 hire in India, 104 remote), and grows by pull requests. `satyaapply boards --new` prints boards you found that aren't in it yet.
+**Shared company list** (`truapply/sources/companies.csv`): `ats,slug,company,tags`. It ships with the package, starts with 144 boards we verified ourselves (87 hire in India, 104 remote), and grows by pull requests. `truapply boards --new` prints boards you found that aren't in it yet.
 
 **Fetching:** board APIs are read through Playwright's own network stack (so HTTPS works even where Python's certificate store is missing), at most 8 at a time. A board that returns 404 is marked dead; one that doesn't answer is just retried next run.
 
@@ -432,7 +432,7 @@ That way small site redesigns don't break it.
 
 ### The site contract
 
-Adding a logged-in site means adding one module in `satyaapply/sites/` that defines a `Site` (from `sites/base.py`):
+Adding a logged-in site means adding one module in `truapply/sites/` that defines a `Site` (from `sites/base.py`):
 
 ```python
 @dataclass(frozen=True)
@@ -501,7 +501,7 @@ flowchart TD
 - Each step is filled in up to **3 rounds**: a field that appears after an answer ("If other, please specify") is answered, and a value the page wiped is typed again.
 - **Search-as-you-type fields** (locations, schools): the filler types the answer, waits up to 5 s for suggestions (some load from a server), then picks the closest one ("Bengaluru, India" → "Bengaluru, Karnataka, India"). If none fits, it leaves the field and keeps the text only if the page does, so an empty field is never reported as filled. A choice the page shows next to the box instead of in it (Greenhouse's pickers) counts as filled.
 - **Truth check on answers:** every number in an AI-written text answer or cover letter must appear in the resume or the profile facts. If one doesn't, the AI is asked once more with the problem spelled out; if it still doesn't, that answer is left out.
-- "How did you hear about us?" is answered from where SatyaApply really found the job (the company's careers page, LinkedIn, Naukri …).
+- "How did you hear about us?" is answered from where TruApply really found the job (the company's careers page, LinkedIn, Naukri …).
 - Optional consent to texts, WhatsApp or marketing emails is left unticked.
 - Success is recognised from the page text: "application submitted", "thank you for applying", "your application was sent" …
 - Every answer submitted is stored in `jobs.sent`, so you can always see exactly what went out in your name.
@@ -528,7 +528,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 ## Background runs
 
-- `satyaapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.satyaapply.run.plist`) that runs `satyaapply run --scheduled` at set times of day, every `settings.run_every_minutes` (180, at least 15) minutes counted from midnight. A time missed while the Mac sleeps runs once when it wakes. The Run page shows the next set time. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `satyaapply unschedule` removes it.
+- `truapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.truapply.run.plist`) that runs `truapply run --scheduled` at set times of day, every `settings.run_every_minutes` (180, at least 15) minutes counted from midnight. A time missed while the Mac sleeps runs once when it wakes. The Run page shows the next set time. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `truapply unschedule` removes it.
 - A scheduled run writes its output to `runs/<time>.log`, so it shows on the tracker's Run page next to runs started there.
 - One run at a time: `run/lock.py` holds an `fcntl` lock on `run.lock` for the whole run. A second run, from the schedule, the tracker or the terminal, stops with "Another run is already running." The lock is released automatically if the process dies.
 - Crash recovery: a job left in `submitting` by a run that died is marked `unconfirmed` at the start of the next run, and never sent again.
@@ -539,7 +539,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 ## Tracker page (`tracker/`)
 
-- `satyaapply tracker` serves `http://127.0.0.1:8765` (or a free port if 8765 is taken). It's only reachable from your own machine.
+- `truapply tracker` serves `http://127.0.0.1:8765` (or a free port if 8765 is taken). It's only reachable from your own machine.
 - The Python side is a JSON API on `http.server`, described in [tracker-api.md](tracker-api.md). `server.py` does the checks, `views.py` and `routes.py` send each address to its handler, and each feature has its own module of routes.
 - The page is a React + TypeScript app in `web/`. It's built with Vite into `tracker/static/` and shipped inside the package, so users never need Node. Every API call goes through TanStack Query; drag state and the theme live in small zustand stores. The Career jobs grid uses TanStack Table for its columns, sorting and row selection, while paging, sorting, search and filters run on the server and live in the address, so Back and reload keep your place. Each page loads as its own chunk, and its data is fetched as soon as you point at its link.
 - The app follows your system's light or dark mode, or the one you pick at the bottom of the sidebar.
@@ -548,7 +548,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 | Page | Address | What's on it |
 |---|---|---|
-| **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Run now, the trust panel, the jobs waiting on you, and the **Tell SatyaApply** box. |
+| **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Run now, the trust panel, the jobs waiting on you, and the **Tell TruApply** box. |
 | **Workflow** | `/workflow` | A full-screen map of how every job is handled, with live counts. The step a run is on lights up, and each box shows what the latest run added. Click any box to change that step's settings, run just that step, or see its jobs. |
 | **Career jobs** | `/jobs` | Every job except listed-only sites, with every status as a filter and its count (e.g. `/jobs?status=finish`, or `/jobs?group=not_a_fit` from the workflow map) |
 | **Wellfound** | `/sites/wellfound` | Only while **Also list Wellfound jobs** is on: the same table for Wellfound jobs, without scores |
@@ -576,19 +576,19 @@ A button pressed on a stale page (the job's status changed after the page loaded
 
 ### Finish these
 
-A job lands in `finish` when the site wants a human check (a CAPTCHA, "verify you're human", or a code it emailed you), whether it shows up while filling or after Submit. SatyaApply never solves it, and it never presses Submit for you here.
+A job lands in `finish` when the site wants a human check (a CAPTCHA, "verify you're human", or a code it emailed you), whether it shows up while filling or after Submit. TruApply never solves it, and it never presses Submit for you here.
 
-- **The filled-in browser** (`satyaapply finish`, `run/handoff.py`) is one visible window with a tab for every job waiting for you: `finish` jobs and filled `ready` jobs. Each tab is filled from the saved answers with no AI call (the same filling code as a run), gets the tailored resume, and stops before Submit. You do any check and press Submit. When a tab shows the site's confirmation (and its Submit button is gone) that job becomes `applied` with "submitted by you in the filled-in window". It checks for new waiting jobs every 3 seconds and adds them as tabs, closes a tab whose job moved on (approved, dismissed, applied), and doesn't reopen a tab you closed until you ask for it again. Closing the window ends it; nothing changes.
+- **The filled-in browser** (`truapply finish`, `run/handoff.py`) is one visible window with a tab for every job waiting for you: `finish` jobs and filled `ready` jobs. Each tab is filled from the saved answers with no AI call (the same filling code as a run), gets the tailored resume, and stops before Submit. You do any check and press Submit. When a tab shows the site's confirmation (and its Submit button is gone) that job becomes `applied` with "submitted by you in the filled-in window". It checks for new waiting jobs every 3 seconds and adds them as tabs, closes a tab whose job moved on (approved, dismissed, applied), and doesn't reopen a tab you closed until you ask for it again. Closing the window ends it; nothing changes.
 - It uses its own browser profile and `finish.lock`, so it runs alongside runs and there's only ever one. It opens by itself after a run that leaves jobs waiting (`core/window.py`), and from **Open it filled in** on a job (`POST /api/jobs/<id>/handoff`), which also brings that job's tab to the front.
 - The job page still shows every answer with a copy button, and **I submitted it** (→ `applied`) for when you sent it some other way. **Dismiss** → `dismissed`.
 
 ### Adding a company by link
 
-Paste a Greenhouse, Lever or Ashby job or careers link (the **Add a job link** button on Career jobs, `POST /api/boards/link`, or `satyaapply add <link>`). Its board is saved with origin `link`, checked right away and on every run (`sources/intake.py`, the same intake the daily run uses). The job you pasted is kept even if your title or place filters would skip it; its other jobs go through the usual filters.
+Paste a Greenhouse, Lever or Ashby job or careers link (the **Add a job link** button on Career jobs, `POST /api/boards/link`, or `truapply add <link>`). Its board is saved with origin `link`, checked right away and on every run (`sources/intake.py`, the same intake the daily run uses). The job you pasted is kept even if your title or place filters would skip it; its other jobs go through the usual filters.
 
 ### Learning and trust
 
-- **Tell SatyaApply** rules (typed on the home page or What it learned) and tailoring notes (written on a job page or What it learned) are stored in the `rules` table and used as described in [AI calls](#ai-calls). Suggestions are stored there too, as `suggested`, and change nothing until you accept them. See [outcomes.md](outcomes.md#1-learning-from-you).
+- **Tell TruApply** rules (typed on the home page or What it learned) and tailoring notes (written on a job page or What it learned) are stored in the `rules` table and used as described in [AI calls](#ai-calls). Suggestions are stored there too, as `suggested`, and change nothing until you accept them. See [outcomes.md](outcomes.md#1-learning-from-you).
 - **The trust count** is your clean approvals in a row (approvals with no edits). An edit or a 👎 resets it. At 20, the home page suggests turning auto-submit on; **Turn on now** switches it on sooner. It's never switched on by itself.
 - **With auto-submit on,** a run sends `scored` jobs with a score of 80 or more without waiting, and marks them in `jobs.auto_submitted`. If 2 of the last 10 auto-submitted jobs get a 👎, auto-submit turns off and a desktop notification is sent (`osascript` on macOS, `notify-send` on Linux). See [safety.md](safety.md#3-trust-before-auto-submit).
 

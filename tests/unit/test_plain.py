@@ -1,4 +1,4 @@
-from satyaapply.tracker.plain import readable_changes
+from truapply.tracker.plain import readable_changes
 
 
 def test_skill_line_keeps_text_and_drops_layout() -> None:

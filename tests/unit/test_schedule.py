@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.errors import ScheduleError
-from satyaapply.core.paths import HOME_ENV, Paths
-from satyaapply.core.schedule import (
+from truapply.core.errors import ScheduleError
+from truapply.core.paths import HOME_ENV, Paths
+from truapply.core.schedule import (
     Installed,
     Plan,
     cron_line,
@@ -22,7 +22,7 @@ from satyaapply.core.schedule import (
     remove,
 )
 
-SCHEDULED_RUN = [sys.executable, "-m", "satyaapply", "run", "--scheduled"]
+SCHEDULED_RUN = [sys.executable, "-m", "truapply", "run", "--scheduled"]
 
 
 class Launchctl:

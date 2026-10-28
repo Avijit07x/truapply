@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Route, expect
 
-from satyaapply.core.models import Job, Source, Status
-from satyaapply.store import records
-from satyaapply.store.db import connect
 from tests.live.test_extension_live import BUILT, Guard, chrome_with_extension, seeded
 from tests.unit.tracker_api import running
+from truapply.core.models import Job, Source, Status
+from truapply.store import records
+from truapply.store.db import connect
 
 pytestmark = [
     pytest.mark.e2e,
@@ -47,7 +47,7 @@ def test_a_thank_you_page_on_its_own_address_marks_the_job_applied(tmp_path: Pat
         context.route(THANKS, thanks)
         page = context.new_page()
         page.goto(THANKS)
-        expect(page.locator("satyaapply-panel")).to_contain_text("Saved as applied")
+        expect(page.locator("truapply-panel")).to_contain_text("Saved as applied")
     with closing(connect(paths.database)) as db:
         record = records.find(db, 1)
     assert record is not None

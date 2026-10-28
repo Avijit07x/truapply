@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai import tasks
 from tests.ai.test_live_jobs import RESUME
 from tests.unit import samples
+from truapply.ai import tasks
 
 pytestmark = pytest.mark.ai
 

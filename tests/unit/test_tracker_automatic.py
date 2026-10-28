@@ -6,15 +6,15 @@ from typing import Any
 
 import pytest
 
-from satyaapply.core import schedule
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import save
-from satyaapply.store.db import connect
-from satyaapply.tracker import automatic, settings
-from satyaapply.tracker.body import Body
-from satyaapply.tracker.routes import Route
 from tests.unit import samples
 from tests.unit.test_tracker_settings import VALID
+from truapply.core import schedule
+from truapply.core.paths import Paths
+from truapply.core.profile import save
+from truapply.store.db import connect
+from truapply.tracker import automatic, settings
+from truapply.tracker.body import Body
+from truapply.tracker.routes import Route
 
 
 @pytest.fixture

@@ -15,7 +15,7 @@ export const useTheme = create<ThemeState>()(
         set({ theme });
       },
     }),
-    { name: "satyaapply-theme" },
+    { name: "truapply-theme" },
   ),
 );
 

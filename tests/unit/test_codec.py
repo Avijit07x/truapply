@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.codec import decode, encode, json_schema
-from satyaapply.core.errors import DecodeError
+from truapply.core.codec import decode, encode, json_schema
+from truapply.core.errors import DecodeError
 
 
 class Color(StrEnum):

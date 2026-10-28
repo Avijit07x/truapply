@@ -1,6 +1,6 @@
 # Tracker API
 
-The tracker page is a React app (`web/`) served by the Python tracker (`satyaapply tracker`). The app talks to the tracker only through this JSON API. Everything runs on `127.0.0.1`; nothing leaves your computer.
+The tracker page is a React app (`web/`) served by the Python tracker (`truapply tracker`). The app talks to the tracker only through this JSON API. Everything runs on `127.0.0.1`; nothing leaves your computer.
 
 The TypeScript shapes below are the same ones the app uses, in `web/src/api/types.ts`. Tests in `tests/unit/test_tracker*.py` check every endpoint.
 
@@ -9,7 +9,7 @@ The TypeScript shapes below are the same ones the app uses, in `web/src/api/type
 - Only `Host: 127.0.0.1:<port>` or `localhost:<port>` is answered (this blocks DNS-rebinding tricks). Anything else gets `403`.
 - Every `POST` needs `Origin: http://127.0.0.1:<port>` (or `localhost`) **and** `Content-Type: application/json`. Anything else gets `403`.
 - Bodies are JSON objects, at most 200 KB. A bigger body gets `403`; a body that isn't a JSON object gets `400`.
-- Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: run `satyaapply setup`).
+- Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: run `truapply setup`).
 - Times are ISO 8601 strings in UTC. The app shows them in local time.
 - Text from job posts and forms comes back as plain strings. The app renders it as text, never as HTML.
 - Links come back only when they are `http` or `https`; otherwise the field is `null`.
@@ -141,7 +141,7 @@ Each one answers with the updated `JobDetail`, and is refused with `400` if the 
 | `POST /api/jobs/<id>/retry` | `{}` | `needs_input` → `scored`, when its questions were answered on another job |
 | `POST /api/jobs/<id>/finished` | `{}` | `finish` → `applied`, after you sent it yourself |
 | `POST /api/jobs/<id>/revert` | `{}` | This job uses your original resume. The app then asks for a tailoring note. |
-| `POST /api/jobs/<id>/handoff` | `{}` | For `finish` and `ready`. Opens the job as a tab in the filled-in browser (starting `satyaapply finish` in the background if it isn't open), filled in and stopped before Submit, and brings its tab to the front. Answers with `JobDetail`. When the site confirms, the job becomes `applied`. |
+| `POST /api/jobs/<id>/handoff` | `{}` | For `finish` and `ready`. Opens the job as a tab in the filled-in browser (starting `truapply finish` in the background if it isn't open), filled in and stopped before Submit, and brings its tab to the front. Answers with `JobDetail`. When the site confirms, the job becomes `applied`. |
 | `POST /api/jobs/<id>/score` | `{}` | `JobDetail`. Starts a score-only run for a new or skipped job; a job saved without its description has it read from its job board first. If a run is going, it waits its turn. |
 | `POST /api/jobs/score` | `{ ids }` | `{ scoring, skipped }`. The same for several jobs; `JobList.scoring` lists the ids being scored or waiting. |
 | `POST /api/jobs/dismiss` | `{ ids: number[], reason }`, 1 to 200 ids, `reason` one of `dismissReasons` | Dismisses many at once, the same way as one by one, and answers `{ dismissed, skipped }`. Jobs that moved on to a status you can't dismiss from are skipped. |
@@ -175,7 +175,7 @@ Each one answers with the updated `Learned`.
 | `GET /api/companies` | | `{ companies: { key, company, site, url, origin: "shared" \| "search" \| "link", addedAt, checkedAt, closed, jobs }[], search: { every, last, next } }`. `jobs` counts that company's listed jobs that aren't skipped or closed. |
 | `POST /api/companies/find` | `{}` | `RunState`: starts a run that searches the web for new companies now, whatever **companySearch** says. `400` if a run is going. |
 | `GET /api/runs` | | `RunState` |
-| `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `satyaapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
+| `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `truapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
 | `POST /api/runs/stop` | `{}` | `RunState` |
 | `GET /api/runs/log/<name>` | | `RunLog & { lines: string[] }`, the last 200 lines |
 | `GET /api/settings` | | `SettingsView` |

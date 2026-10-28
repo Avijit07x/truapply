@@ -3,9 +3,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from satyaapply.ai import client
-from satyaapply.ai.client import Model, Request, ask, command, parse
-from satyaapply.core.errors import AIError, ClaudeUnavailableError, UsageLimitError
+from truapply.ai import client
+from truapply.ai.client import Model, Request, ask, command, parse
+from truapply.core.errors import AIError, ClaudeUnavailableError, UsageLimitError
 
 REQUEST = Request(prompt="hi", system="be safe", model=Model.HAIKU)
 
@@ -79,6 +79,6 @@ def test_usage_limit_is_never_retried(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_missing_claude_binary_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("satyaapply.ai.client.shutil.which", lambda _name: None)
+    monkeypatch.setattr("truapply.ai.client.shutil.which", lambda _name: None)
     with pytest.raises(ClaudeUnavailableError, match="isn't installed"):
         ask(Answer, REQUEST)

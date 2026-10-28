@@ -1,6 +1,6 @@
 # Plan
 
-> **SatyaApply**. *Satya* is Hindi and Sanskrit for "truth". Package and command: `satyaapply`.
+> **TruApply**, from "true". Package and command: `truapply`.
 
 ## Goal
 
@@ -17,7 +17,7 @@ Free tools today fall into two groups:
 
 None of them handle Naukri well, and none learn what actually leads to interviews.
 
-SatyaApply's place:
+TruApply's place:
 
 - **India-first.** Naukri, LinkedIn and company career pages, with Indian form fields (notice period, current CTC) handled properly.
 - **Auto-submit you can trust.** It starts by asking you to approve each application, and offers auto-submit only once it has earned that trust.
@@ -25,7 +25,7 @@ SatyaApply's place:
 
 ### Trust before auto-submit
 
-1. Everyone starts in the **review queue**, the project owner included. SatyaApply fills each application, and you approve it on the tracker page.
+1. Everyone starts in the **review queue**, the project owner included. TruApply fills each application, and you approve it on the tracker page.
 2. After **20 approvals in a row with no edits**, it offers to turn on auto-submit for strong matches (score 80 or more). You decide.
 3. An edit or a 👎 "bad match" resets the count.
 4. Once auto-submit is on, if 2 of the last 10 auto-submitted applications get a 👎, it switches back to the review queue and tells you.
@@ -54,17 +54,17 @@ What "good enough" means. Every number is measured, not guessed.
 
 | Command | What it does |
 |---|---|
-| `satyaapply setup` | Reads your resume, asks the [setup questions](setup-questions.md), and saves your profile |
-| `satyaapply login` | Opens Chrome so you can log in to LinkedIn, Naukri, Indeed and Wellfound once |
-| `satyaapply doctor` | Checks that everything works: Claude, Chrome, LaTeX, each login, email, schedule. Says how to fix anything broken. |
-| `satyaapply tailor JOB.txt --company … --title …` | Previews your resume tailored to one job description, with every check and the changed lines |
-| `satyaapply run` | One full pass: find, score, tailor, apply, check the inbox, write the summary. `--dry-run`, `--site`, `--limit`, `--show` |
-| `satyaapply tracker` | Opens the local tracker page |
-| `satyaapply finish` | Opens every job waiting for you in one browser, a tab each, filled in and stopped before Submit; you do any human check and press Submit |
-| `satyaapply add LINK` | Adds a company from a Greenhouse, Lever or Ashby job or careers link and checks it now and on every run |
-| `satyaapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd; prints a cron line on Linux) |
-| `satyaapply email` | Sets up reply tracking (also offered during setup) |
-| `satyaapply boards --new` | Prints the career boards you found that aren't in the shared list yet, ready to contribute |
+| `truapply setup` | Reads your resume, asks the [setup questions](setup-questions.md), and saves your profile |
+| `truapply login` | Opens Chrome so you can log in to LinkedIn, Naukri, Indeed and Wellfound once |
+| `truapply doctor` | Checks that everything works: Claude, Chrome, LaTeX, each login, email, schedule. Says how to fix anything broken. |
+| `truapply tailor JOB.txt --company … --title …` | Previews your resume tailored to one job description, with every check and the changed lines |
+| `truapply run` | One full pass: find, score, tailor, apply, check the inbox, write the summary. `--dry-run`, `--site`, `--limit`, `--show` |
+| `truapply tracker` | Opens the local tracker page |
+| `truapply finish` | Opens every job waiting for you in one browser, a tab each, filled in and stopped before Submit; you do any human check and press Submit |
+| `truapply add LINK` | Adds a company from a Greenhouse, Lever or Ashby job or careers link and checks it now and on every run |
+| `truapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd; prints a cron line on Linux) |
+| `truapply email` | Sets up reply tracking (also offered during setup) |
+| `truapply boards --new` | Prints the career boards you found that aren't in the shared list yet, ready to contribute |
 
 Job sources: **career pages** (Greenhouse, Lever, Ashby) and **LinkedIn Easy Apply, Naukri, Indeed, Wellfound**.
 
@@ -75,7 +75,7 @@ Job sources: **career pages** (Greenhouse, Lever, Ashby) and **LinkedIn Easy App
 | Workday, iCIMS, Taleo and other sites that need an account per company | Every company needs a separate account and password | Marked `external` with the link: apply yourself |
 | Solving CAPTCHAs or email/SMS codes | Getting past them is deceptive and breaks site rules | The job is flagged `needs_input` |
 | Outlook.com reply tracking | Microsoft no longer allows app passwords for this kind of email access | Use Gmail, iCloud, Yahoo, Fastmail or Zoho |
-| Windows scheduling | Different system; later | `satyaapply run` still works by hand |
+| Windows scheduling | Different system; later | `truapply run` still works by hand |
 | A hosted or cloud version | It's meant to stay on your machine | — |
 
 ---
@@ -115,7 +115,7 @@ These docs.
 ### Phase 2 · Career pages ✅
 
 **Builds**
-- The shared company list `satyaapply/sources/companies.csv` (seed of ≥ 100 companies)
+- The shared company list `truapply/sources/companies.csv` (seed of ≥ 100 companies)
 - Readers for the Greenhouse, Lever and Ashby public APIs
 - Board discovery by web search
 - Title filter and AI scoring
@@ -138,10 +138,10 @@ These docs.
 - "Needs your answer" and approvals. You can edit any answer before approving.
 - Resume change view, and a "what was sent" view per application
 - 👍 / 👎 buttons, dismiss reasons, and resume tailoring notes
-- A "Tell SatyaApply" box for plain-language rules
+- A "Tell TruApply" box for plain-language rules
 - The "What it learned" page
 - Trust counter and the auto-submit offer
-- A "Finish these" list: jobs whose form shows a picture check ("prove you're human") or won't accept one. Each is already filled, with "Open in my Chrome", the tailored resume and the answers ready to paste. SatyaApply never solves the check itself.
+- A "Finish these" list: jobs whose form shows a picture check ("prove you're human") or won't accept one. Each is already filled, with "Open in my Chrome", the tailored resume and the answers ready to paste. TruApply never solves the check itself.
 - A count of how often each site shows a check, so jobs on sites without checks are tried first
 
 **Must pass**
@@ -152,7 +152,7 @@ These docs.
 - [x] Edit an answer before approving → the next form with that question uses your version
 - [x] Approve → submitted on the next run (with `--send`, or the Run page's send box); dismiss → never applied
 - [x] Dismiss 3 jobs as "too senior" → a suggestion to add that title word to "skip titles" appears, and nothing changes until you accept it
-- [x] A rule typed in "Tell SatyaApply" ("no staffing agencies") changes the next scores, appears on "What it learned", and can be deleted there
+- [x] A rule typed in "Tell TruApply" ("no staffing agencies") changes the next scores, appears on "What it learned", and can be deleted there
 - [x] A tailoring note ("don't change my headline") is followed in the next 5 tailored resumes
 - [x] The auto-submit suggestion appears exactly after 20 clean approvals in a row; an edit or a 👎 resets the count; **Turn on now** switches it on sooner
 - [x] Two 👎 in the last 10 auto-submitted → auto-submit turns off and a notification is sent
@@ -241,7 +241,7 @@ One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for 
 
 | Question | Current answer |
 |---|---|
-| Name | **Decided: SatyaApply.** `satyaapply` was free on PyPI, npm, GitHub (organization) and Vercel, and `satyaapply.com` was unregistered, on 25 Oct 2026. Claim them before announcing. |
+| Name | **Decided: TruApply.** `truapply` was free on PyPI, npm, GitHub (organization) and Vercel, and `truapply.com` was unregistered, on 25 Oct 2026. Claim them before announcing. |
 | License | MIT |
 | Claude subscription inside a public tool | Each user runs their own Claude Code with their own login. Check Anthropic's terms before release. `ANTHROPIC_API_KEY` also works with no code change. |
 | Outlook.com email | Not in v1. Needs "sign in with Microsoft", which means a registered app. |

@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from satyaapply.browser.fetch import Response
-from satyaapply.core.models import Ats, Board, Source
-from satyaapply.sources import ats
-from satyaapply.sources.ats import board_of, boards_in, poll, still_open
-from satyaapply.sources.ats.ashby import READER as ASHBY
-from satyaapply.sources.ats.greenhouse import READER as GREENHOUSE
-from satyaapply.sources.ats.lever import READER as LEVER
+from truapply.browser.fetch import Response
+from truapply.core.models import Ats, Board, Source
+from truapply.sources import ats
+from truapply.sources.ats import board_of, boards_in, poll, still_open
+from truapply.sources.ats.ashby import READER as ASHBY
+from truapply.sources.ats.greenhouse import READER as GREENHOUSE
+from truapply.sources.ats.lever import READER as LEVER
 
 GREENHOUSE_DATA = {
     "jobs": [

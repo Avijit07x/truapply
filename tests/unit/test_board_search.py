@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai import tasks
-from satyaapply.ai.client import Request
-from satyaapply.ai.job_prompts import SEARCH_HOSTS
-from satyaapply.ai.replies import FoundPostings
-from satyaapply.core.errors import AIError, UsageLimitError
 from tests.unit import samples
+from truapply.ai import tasks
+from truapply.ai.client import Request
+from truapply.ai.job_prompts import SEARCH_HOSTS
+from truapply.ai.replies import FoundPostings
+from truapply.core.errors import AIError, UsageLimitError
 
 FOUND = {
     SEARCH_HOSTS[0]: ("https://job-boards.greenhouse.io/northwind/jobs/1",),

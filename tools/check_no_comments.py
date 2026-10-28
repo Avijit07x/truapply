@@ -7,7 +7,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 ALLOWED_DIRECTIVE = re.compile(r"#\s*(?:noqa\b|type:\s*ignore\b)")
-DEFAULT_ROOTS = ("satyaapply", "tools", "tests")
+DEFAULT_ROOTS = ("truapply", "tools", "tests")
 DOCSTRING_HOLDERS = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 
 

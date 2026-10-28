@@ -1,4 +1,4 @@
-from satyaapply.core.models import Job, Source, make_dupe_key, normalize_company
+from truapply.core.models import Job, Source, make_dupe_key, normalize_company
 
 
 def test_legal_suffixes_are_dropped_from_company_names() -> None:

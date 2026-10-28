@@ -13,6 +13,6 @@ export const useClock = create<ClockState>()(
         set({ clock });
       },
     }),
-    { name: "satyaapply-clock" },
+    { name: "truapply-clock" },
   ),
 );

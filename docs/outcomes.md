@@ -28,7 +28,7 @@ Every action you take on the tracker page teaches it something. It starts with y
 | Revert a tailored resume to the original | That tailoring went too far | Suggests a tailoring note for you to accept |
 | Press **I submitted it** or **Skip it** on a **Finish these** job | That you applied yourself, or didn't want it | The job becomes `applied` or `dismissed` |
 | Fix a reply's job or outcome | How to read your emails | Examples for email classification |
-| Type a rule in **Tell SatyaApply**: "no staffing agencies", "prefer product companies", "Pune is fine, Mumbai is not" | Your preferences, in your words | Every scoring call, as the candidate's preferences |
+| Type a rule in **Tell TruApply**: "no staffing agencies", "prefer product companies", "Pune is fine, Mumbai is not" | Your preferences, in your words | Every scoring call, as the candidate's preferences |
 
 Every tracker action is saved as a row in the `feedback` table. Rules, tailoring notes and suggestions are saved in the `rules` table (see [architecture.md](architecture.md#data-model)).
 
@@ -36,7 +36,7 @@ Every tracker action is saved as a row in the `feedback` table. Rules, tailoring
 
 - **Everything learned is visible.** The **What it learned** page (`/learned`) lists every rule, tailoring note, saved answer (from you or from the AI) and pending suggestion in plain words. Each can be edited or deleted.
 - **Suggestions change nothing until you accept them.** For example, after 3 dismissals as "too senior", a word their titles share is offered as a new skip word: "Add 'staff' to skip titles?" The title filter only uses it once you accept. The same goes for a higher minimum score or a tailoring note.
-- **Rules are preferences, not facts.** A **Tell SatyaApply** rule is passed to every scoring call as what you want. It can make a job score lower or higher, but it never adds anything to your resume or your answers.
+- **Rules are preferences, not facts.** A **Tell TruApply** rule is passed to every scoring call as what you want. It can make a job score lower or higher, but it never adds anything to your resume or your answers.
 - **Your input wins.** An answer or rule from you always beats one the AI came up with.
 - **It stays inside the safety rules.** Nothing learned can override [safety.md](safety.md), add a fact to your resume, or raise a daily limit. A rule like "say I know Kubernetes" is refused: facts come only from your resume and your "anything else" note.
 - **It's measured.** The tracker shows your edits per reviewed application. If learning works, that number falls week by week.
@@ -57,7 +57,7 @@ flowchart TD
 
 ### Setup
 
-`satyaapply email` (also offered during setup):
+`truapply email` (also offered during setup):
 
 1. Your email address (pre-filled from the resume). The server is detected from the address.
 2. Create an **app password**: a separate password just for this tool, which you can revoke at any time.
@@ -114,15 +114,15 @@ What it changes:
 Once a day, after the first run past 8 pm (`settings.summary_hour`):
 
 - a **notification** (macOS `osascript`, Linux `notify-send`)
-- a file, `~/.satyaapply/summaries/<date>.md`
+- a file, `~/.truapply/summaries/<date>.md`
 - a box at the top of the tracker page
 
 ```
-SatyaApply · Tue 27 Oct
+TruApply · Tue 27 Oct
 Applied 14 (career pages 9 · LinkedIn 5) · limit 20
 Replies: 1 interview (Northwind) · 2 rejections
 Needs you: 2 questions · 1 to finish yourself (human check) → open the tracker
-Problems: Indeed paused (logged out) → run `satyaapply login`
+Problems: Indeed paused (logged out) → run `truapply login`
 ```
 
 **Instant alerts** (not held until the summary): an interview, assessment or offer email; a site paused because of a block or logout; the Claude usage limit hit two runs in a row.

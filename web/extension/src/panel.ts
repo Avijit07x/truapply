@@ -67,7 +67,7 @@ const element = <K extends keyof HTMLElementTagNameMap>(tag: K, className = "") 
 };
 
 export function openPanel(job: Job | null): Panel {
-  const host = document.createElement("satyaapply-panel");
+  const host = document.createElement("truapply-panel");
   hosts.push(host);
   const root = host.attachShadow({ mode: "open" });
   const style = element("style");
@@ -75,13 +75,13 @@ export function openPanel(job: Job | null): Panel {
   const box = element("div", "panel");
   const top = element("div", "top");
   const name = element("p", "name");
-  name.textContent = "SatyaApply";
+  name.textContent = "TruApply";
   const score = element("span", "score");
   score.hidden = true;
   const close = element("button", "close");
   close.type = "button";
   close.textContent = "×";
-  close.setAttribute("aria-label", "Hide SatyaApply");
+  close.setAttribute("aria-label", "Hide TruApply");
   close.addEventListener("click", () => {
     hosts.splice(hosts.indexOf(host), 1);
     host.remove();

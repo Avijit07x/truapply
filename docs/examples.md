@@ -1,8 +1,8 @@
 # Examples
 
-Real shapes of the data SatyaApply works with. Every person, company and number here is made up.
+Real shapes of the data TruApply works with. Every person, company and number here is made up.
 
-## Profile — `~/.satyaapply/profile.json`
+## Profile — `~/.truapply/profile.json`
 
 ```json
 {
@@ -15,7 +15,7 @@ Real shapes of the data SatyaApply works with. Every person, company and number 
   "links": ["https://github.com/asharao", "https://linkedin.com/in/asharao"],
   "current_company": "Acme Analytics",
   "years_experience": 2.5,
-  "resume": { "format": "latex", "path": "~/.satyaapply/resume/master.tex" },
+  "resume": { "format": "latex", "path": "~/.truapply/resume/master.tex" },
   "roles": ["Frontend Engineer", "React Developer", "UI Engineer"],
   "title_keywords": ["frontend", "front-end", "react", "ui engineer", "javascript"],
   "title_exclude": ["senior", "staff", "principal", "lead", "manager", "intern"],
@@ -45,7 +45,7 @@ Real shapes of the data SatyaApply works with. Every person, company and number 
 }
 ```
 
-## Shared company list — `satyaapply/sources/companies.csv`
+## Shared company list — `truapply/sources/companies.csv`
 
 ```csv
 ats,slug,company,tags
@@ -65,7 +65,7 @@ Works: on-site/hybrid Bengaluru, remote India, relocate Hyderabad/Pune, remote a
 Visa: India only, needs sponsorship elsewhere · Expected ≥ 12 LPA
 Resume: …
 </candidate>
-<your rules>  (typed by you in "Tell SatyaApply")
+<your rules>  (typed by you in "Tell TruApply")
 - No staffing-agency jobs
 - Pune is fine, Mumbai is not
 </your rules>
@@ -166,11 +166,11 @@ Northwind · Frontend Engineer II                         checks: numbers ✔  n
 ## Tracker page
 
 ```
-┌ SatyaApply ───────────────────────────────────────────────────────────────┐
+┌ TruApply ───────────────────────────────────────────────────────────────┐
 │ Today 14 / 20 applied · LinkedIn 5 / 10 · Claude calls 61 / 300           │
 │ Replies this week: 1 interview · 4 rejections · reply rate 9 %            │
 │ Trust 12 / 20 clean approvals · auto-submit off                           │
-│ Tell SatyaApply: [ e.g. no staffing agencies             ] [Add]          │
+│ Tell TruApply: [ e.g. no staffing agencies             ] [Add]          │
 ├ Needs your answer (2) ────────────────────────────────────────────────────┤
 │ "Do you have a valid passport?"                         [ answer ] [Save] │
 │ "Expected joining date?"                                [ answer ] [Save] │
@@ -219,15 +219,15 @@ Candidates: [41] Northwind · Frontend Engineer II · applied 27 Oct
 ## Daily summary
 
 ```
-SatyaApply · Tue 27 Oct
+TruApply · Tue 27 Oct
 Applied 14 (career pages 9 · LinkedIn 5) · limit 20
 Replies: 1 interview (Northwind) · 2 rejections
 Needs you: 2 questions · 1 CAPTCHA → open the tracker
-Problems: Indeed paused (logged out) → run `satyaapply login`
+Problems: Indeed paused (logged out) → run `truapply login`
 Suggestion: jobs scoring 60–69 got 0 replies in 18 applications. Raise the minimum score to 70? (tracker)
 ```
 
-## Run log — `~/.satyaapply/run.log`
+## Run log — `~/.truapply/run.log`
 
 ```
 2026-10-27 15:00:02 run start · mode=review · limits 20/day, linkedin 10
@@ -239,19 +239,19 @@ Suggestion: jobs scoring 60–69 got 0 replies in 18 applications. Raise the min
 2026-10-27 15:12:04 run end · applied 0 · ready 7 · claude calls 23
 ```
 
-## `satyaapply doctor`
+## `truapply doctor`
 
 ```
-✔ Data folder: /Users/asha/.satyaapply
+✔ Data folder: /Users/asha/.truapply
 ✔ Database: 1,284 jobs saved
-✔ Profile: /Users/asha/.satyaapply/profile.json
+✔ Profile: /Users/asha/.truapply/profile.json
 ✔ Resume: latex resume builds (1 page)
 ✔ Claude budget: 37 of 300 calls used today
 ✔ Claude Code: installed and logged in
 ✔ Browser: chrome 141.0.7390.54
 ✔ Tracker page: built
 ✘ Schedule: The schedule runs /Users/asha/old-venv/bin/python, which no longer exists.
-   → Run `satyaapply schedule` again, or `satyaapply unschedule` to stop it.
+   → Run `truapply schedule` again, or `truapply unschedule` to stop it.
 ```
 
 Each check that fails names what's broken and the fix. The exit code is 1 when anything is broken. Logins and email are checked here once those phases land.

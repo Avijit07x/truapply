@@ -7,14 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.forms import Sent
-from satyaapply.core.models import Ats, Board, Source, Status
-from satyaapply.store import answers, boards, jobs, meta, records
-from satyaapply.store.answers import AnswerSource, SavedAnswer, question_key
-from satyaapply.store.boards import BoardOrigin
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import AttemptRecord, ScoreUpdate, StatusChange
 from tests.unit import samples
+from truapply.core.forms import Sent
+from truapply.core.models import Ats, Board, Source, Status
+from truapply.store import answers, boards, jobs, meta, records
+from truapply.store.answers import AnswerSource, SavedAnswer, question_key
+from truapply.store.boards import BoardOrigin
+from truapply.store.db import connect
+from truapply.store.jobs import AttemptRecord, ScoreUpdate, StatusChange
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 

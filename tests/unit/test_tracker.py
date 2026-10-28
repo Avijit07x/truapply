@@ -7,16 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.forms import Sent
-from satyaapply.core.models import Status
-from satyaapply.core.paths import Paths
-from satyaapply.store import jobs
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import AttemptRecord
-from satyaapply.tracker import static
-from satyaapply.tracker.server import FOREVER, MAX_BODY_BYTES, NO_STORE, TrackerServer
 from tests.unit import samples
 from tests.unit.tracker_api import JSON_TYPE, fetch, get, running
+from truapply.core.forms import Sent
+from truapply.core.models import Status
+from truapply.core.paths import Paths
+from truapply.store import jobs
+from truapply.store.db import connect
+from truapply.store.jobs import AttemptRecord
+from truapply.tracker import static
+from truapply.tracker.server import FOREVER, MAX_BODY_BYTES, NO_STORE, TrackerServer
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 INJECTED = "<script>alert(1)</script>"

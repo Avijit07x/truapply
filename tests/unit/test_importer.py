@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.errors import ResumeUnreadableError
-from satyaapply.resume.importer import read_document
+from truapply.core.errors import ResumeUnreadableError
+from truapply.resume.importer import read_document
 
 DOCUMENT_XML = (
     "<w:document><w:body>"

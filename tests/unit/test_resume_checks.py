@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.browser.pdf import count_pages
-from satyaapply.core.errors import ResumeUnreadableError
-from satyaapply.core.numbers import new_numbers
-from satyaapply.resume.contract import Draft
-from satyaapply.resume.latex import LatexResume, body_problems, split_document
-from satyaapply.resume.render import missing_file, page_count
+from truapply.browser.pdf import count_pages
+from truapply.core.errors import ResumeUnreadableError
+from truapply.core.numbers import new_numbers
+from truapply.resume.contract import Draft
+from truapply.resume.latex import LatexResume, body_problems, split_document
+from truapply.resume.render import missing_file, page_count
 
 PREAMBLE = "\\documentclass{article}\n\\newcommand{\\B}[1]{\\textbf{#1}}\n"
 BODY = "\\begin{document}\n\\B{React} for 2+ years, 1,600+ stars.\n\\end{document}\n"

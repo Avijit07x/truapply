@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.errors import DatabaseTooNewError
-from satyaapply.core.models import Source, Status
-from satyaapply.store import jobs
-from satyaapply.store.db import connect, migrate, schema_version
-from satyaapply.store.jobs import StatusChange
-from satyaapply.store.migrations import MIGRATIONS
 from tests.unit import samples
+from truapply.core.errors import DatabaseTooNewError
+from truapply.core.models import Source, Status
+from truapply.store import jobs
+from truapply.store.db import connect, migrate, schema_version
+from truapply.store.jobs import StatusChange
+from truapply.store.migrations import MIGRATIONS
 
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 

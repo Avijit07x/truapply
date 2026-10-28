@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply import cli
-from satyaapply.core.errors import RunAlreadyGoingError
-from satyaapply.core.paths import HOME_ENV, Paths
-from satyaapply.run import RunOptions, run
-from satyaapply.run.lock import run_lock
+from truapply import cli
+from truapply.core.errors import RunAlreadyGoingError
+from truapply.core.paths import HOME_ENV, Paths
+from truapply.run import RunOptions, run
+from truapply.run.lock import run_lock
 
 HOLD_THE_LOCK = (
     "import fcntl, sys, time\n"

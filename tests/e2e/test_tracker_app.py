@@ -21,21 +21,21 @@ from playwright.sync_api import (
     sync_playwright,
 )
 
-from satyaapply.core import schedule
-from satyaapply.core.models import Source, Status
-from satyaapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import load, save
-from satyaapply.store import feedback, jobs, records, rules
-from satyaapply.store.db import connect
-from satyaapply.store.feedback import FeedbackKind
-from satyaapply.store.groups import Group
-from satyaapply.store.jobs import AttemptRecord, StatusChange
-from satyaapply.tracker import automatic, runs
 from tests.unit import samples
 from tests.unit.tracker_api import get, ids_in, running, seed_every_group
+from truapply.core import schedule
+from truapply.core.models import Source, Status
+from truapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
+from truapply.core.paths import Paths
+from truapply.core.profile import load, save
+from truapply.store import feedback, jobs, records, rules
+from truapply.store.db import connect
+from truapply.store.feedback import FeedbackKind
+from truapply.store.groups import Group
+from truapply.store.jobs import AttemptRecord, StatusChange
+from truapply.tracker import automatic, runs
 
-BUILT = resources.files("satyaapply.tracker").joinpath("static", "index.html").is_file()
+BUILT = resources.files("truapply.tracker").joinpath("static", "index.html").is_file()
 pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(not BUILT, reason="build the app first: cd web && npm ci && npm run build"),
@@ -44,7 +44,7 @@ pytestmark = [
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 DESKTOP = ViewportSize(width=1440, height=900)
 PHONE = ViewportSize(width=390, height=844)
-THEME_KEY = "satyaapply-theme"
+THEME_KEY = "truapply-theme"
 Theme = Literal["light", "dark"]
 PAGES = (
     (

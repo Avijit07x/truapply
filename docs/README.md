@@ -1,14 +1,14 @@
-# SatyaApply docs
+# TruApply docs
 
-*Satya* means "truth" in Hindi and Sanskrit. SatyaApply never lies for you.
+*Tru* is for "true". TruApply never lies for you.
 
-SatyaApply is an open-source job-application assistant that runs on your own computer. It finds jobs that fit you, tailors your resume to each one using only true facts, fills in and submits the application, reads your inbox for replies, and learns from your answers, approvals, edits and replies. It starts by asking you to approve each application, and offers to submit on its own only once it has earned your trust. It uses **Claude Code** (installed on your machine, with your own login) as its AI. Nothing runs on a server we host.
+TruApply is an open-source job-application assistant that runs on your own computer. It finds jobs that fit you, tailors your resume to each one using only true facts, fills in and submits the application, reads your inbox for replies, and learns from your answers, approvals, edits and replies. It starts by asking you to approve each application, and offers to submit on its own only once it has earned your trust. It uses **Claude Code** (installed on your machine, with your own login) as its AI. Nothing runs on a server we host.
 
 ```mermaid
 flowchart LR
-  user([You]) -- "setup · login" --> cli[satyaapply]
+  user([You]) -- "setup · login" --> cli[truapply]
   sched[["Scheduler<br/>launchd / cron"]] -- "every 3 h" --> cli
-  cli <--> store[("SQLite<br/>~/.satyaapply")]
+  cli <--> store[("SQLite<br/>~/.truapply")]
   cli -- "prompts, no tools" --> ai["Claude Code<br/>claude -p"]
   cli -- "public APIs" --> api["Career-page job lists<br/>Greenhouse · Lever · Ashby"]
   cli --> browser["Chrome via Playwright<br/>saved logins"]
@@ -45,12 +45,12 @@ flowchart LR
 | **Board** | One company's job list on an ATS, e.g. `greenhouse/vercel` |
 | **Dry run** | Does everything except clicking the final Submit and uploading files |
 | **Review queue** | Mode where every filled application waits for you to approve it |
-| **Tracker page** | The local page at `127.0.0.1:8765` (`satyaapply tracker`) where you approve, answer, dismiss and teach SatyaApply |
+| **Tracker page** | The local page at `127.0.0.1:8765` (`truapply tracker`) where you approve, answer, dismiss and teach TruApply |
 | **Finish these** | Jobs whose site wants a human check (a CAPTCHA, a picture puzzle or an emailed code). They open in the filled-in browser, and you submit them yourself. |
 | **Filled-in browser** | One window with a tab for every job waiting for you, filled in and stopped before Submit. It opens after a run, or from **Open it filled in**. |
 | **Trust count** | Your approvals in a row with no edits. An edit or a 👎 resets it. |
 | **Auto-submit** | Sending strong matches (score 80 or more) without waiting for your OK. Suggested at a trust count of 20 (or turn it on sooner), and only on when you turn it on. |
-| **Tell SatyaApply** | A box on the tracker for rules in plain words, like "no staffing agencies". They change scoring, never your facts. |
+| **Tell TruApply** | A box on the tracker for rules in plain words, like "no staffing agencies". They change scoring, never your facts. |
 | **Master resume** | Your original resume. It's the only source of facts. |
 | **Outcome** | What happened after applying: confirmed, rejected, assessment, interview, offer, or ghosted (no reply) |
 | **Must-pass test** | A check a build phase has to pass before the next phase starts |

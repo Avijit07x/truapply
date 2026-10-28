@@ -1,6 +1,6 @@
 import type { ApiError } from "./types";
 
-const UNREACHABLE = "Can't reach the tracker. Is `satyaapply tracker` still running?";
+const UNREACHABLE = "Can't reach the tracker. Is `truapply tracker` still running?";
 
 export class RequestFailed extends Error {
   readonly status: number;

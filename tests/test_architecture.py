@@ -1,7 +1,7 @@
 import ast
 from pathlib import Path
 
-PACKAGE = "satyaapply"
+PACKAGE = "truapply"
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent / PACKAGE
 LAYERS = {
     "core": 0,

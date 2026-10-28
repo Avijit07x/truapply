@@ -3,9 +3,9 @@ from datetime import date
 
 import pytest
 
-from satyaapply.core.errors import SetupCancelledError
-from satyaapply.onboarding import ask
-from satyaapply.onboarding.ask import Option, parse_amount, parse_date
+from truapply.core.errors import SetupCancelledError
+from truapply.onboarding import ask
+from truapply.onboarding.ask import Option, parse_amount, parse_date
 
 OPTIONS = [Option("One", 1), Option("Two", 2), Option("Three", 3)]
 

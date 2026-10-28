@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
       },
     ],
     build: {
-      outDir: "../satyaapply/extension",
+      outDir: "../truapply/extension",
       emptyOutDir: entry === "content",
       minify: false,
       rollupOptions: {

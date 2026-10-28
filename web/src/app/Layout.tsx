@@ -89,7 +89,7 @@ export function Layout({ path, layout, children }: LayoutProps) {
             <span className={styles.mark} aria-hidden="true">
               S
             </span>
-            <span className={styles.brandName}>SatyaApply</span>
+            <span className={styles.brandName}>TruApply</span>
           </Link>
           <nav className={styles.nav} aria-label="Main">
             {nav.map(({ to, label, Icon, tab }) => (

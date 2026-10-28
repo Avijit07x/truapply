@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.models import Job
-from satyaapply.core.paths import Paths
-from satyaapply.resume.contract import Draft, Rendered
-from satyaapply.resume.master import cached_master, master_pdf
+from truapply.core.models import Job
+from truapply.core.paths import Paths
+from truapply.resume.contract import Draft, Rendered
+from truapply.resume.master import cached_master, master_pdf
 
 
 @dataclass

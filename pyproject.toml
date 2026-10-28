@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "satyaapply"
+name = "truapply"
 version = "0.1.0.dev0"
 description = "Local, honest job-application assistant powered by Claude Code"
 requires-python = ">=3.11"
@@ -14,13 +14,13 @@ dependencies = ["playwright>=1.50"]
 dev = ["ruff>=0.14", "mypy>=1.18", "pytest>=8.4", "pytest-cov>=7", "pre-commit>=4"]
 
 [project.scripts]
-satyaapply = "satyaapply.cli:main"
+truapply = "truapply.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["satyaapply*"]
+include = ["truapply*"]
 
 [tool.setuptools.package-data]
-satyaapply = ["resume/*.css", "apply/*.js", "sources/*.csv", "tracker/static/*", "tracker/static/assets/*", "extension/*"]
+truapply = ["resume/*.css", "apply/*.js", "sources/*.csv", "tracker/static/*", "tracker/static/assets/*", "extension/*"]
 
 [tool.ruff]
 line-length = 100
@@ -42,15 +42,15 @@ max-statements = 40
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "PLR2004"]
-"satyaapply/cli.py" = ["T20"]
-"satyaapply/doctor.py" = ["T20"]
-"satyaapply/onboarding/*" = ["T20"]
+"truapply/cli.py" = ["T20"]
+"truapply/doctor.py" = ["T20"]
+"truapply/onboarding/*" = ["T20"]
 "tools/*" = ["T20"]
 
 [tool.mypy]
 strict = true
 python_version = "3.11"
-files = ["satyaapply", "tools", "tests"]
+files = ["truapply", "tools", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -63,15 +63,15 @@ markers = [
 addopts = "-m 'not ai and not network'"
 
 [tool.coverage.run]
-source = ["satyaapply"]
+source = ["truapply"]
 
 [tool.coverage.report]
 include = [
-  "satyaapply/store/*",
-  "satyaapply/resume/*",
-  "satyaapply/ai/*",
-  "satyaapply/core/*",
+  "truapply/store/*",
+  "truapply/resume/*",
+  "truapply/ai/*",
+  "truapply/core/*",
 ]
-omit = ["satyaapply/resume/render.py"]
+omit = ["truapply/resume/render.py"]
 fail_under = 80
 show_missing = true

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from satyaapply.core import schedule
-from satyaapply.tracker import automatic
+from truapply.core import schedule
+from truapply.tracker import automatic
 
 
 def test_tests_never_reach_the_real_launch_agents_folder() -> None:

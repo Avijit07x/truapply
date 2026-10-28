@@ -13,7 +13,7 @@ export function NextStep({ job }: { job: JobDetail }) {
   if (job.status === "ready") {
     return (
       <Callout>
-        Open it in your Chrome. The SatyaApply extension fills it in; you check it and press Submit.
+        Open it in your Chrome. The TruApply extension fills it in; you check it and press Submit.
       </Callout>
     );
   }

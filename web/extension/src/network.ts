@@ -1,5 +1,5 @@
-const BUSY = "data-satyaapply-busy";
-const marker = "__satyaapplyNetwork";
+const BUSY = "data-truapply-busy";
+const marker = "__truapplyNetwork";
 
 type Watched = Window & { [marker]?: true };
 type Send = (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) => void;

@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai import tasks
-from satyaapply.core.documents import ResumeData, ResumeDocument, ResumeFormat
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import load, save
-from satyaapply.tracker import resume_upload
 from tests.unit import samples
 from tests.unit.tracker_api import JSON_TYPE, fetch, post, running
+from truapply.ai import tasks
+from truapply.core.documents import ResumeData, ResumeDocument, ResumeFormat
+from truapply.core.paths import Paths
+from truapply.core.profile import load, save
+from truapply.tracker import resume_upload
 
 URL = "/api/settings/resume"
 

@@ -4,14 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.notes import (
+from tests.unit import samples
+from truapply.core.notes import (
     SKIPPED_COMPANY_NOTE,
     TOO_OLD_NOTE,
     WRONG_PLACE_NOTE,
     WRONG_TITLE_NOTE,
 )
-from satyaapply.core.profile import Profile, WorkPlaces
-from satyaapply.sources.filters import (
+from truapply.core.profile import Profile, WorkPlaces
+from truapply.sources.filters import (
     company_skipped,
     in_your_field,
     is_fresh,
@@ -20,7 +21,6 @@ from satyaapply.sources.filters import (
     title_fits,
     why_skipped,
 )
-from tests.unit import samples
 
 NOW = datetime(2026, 10, 25, tzinfo=UTC)
 

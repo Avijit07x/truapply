@@ -9,8 +9,9 @@ from email.message import Message
 from typing import Any
 from urllib.error import HTTPError
 
-from satyaapply.core.models import Status
-from satyaapply.core.notes import (
+from tests.unit import samples
+from truapply.core.models import Status
+from truapply.core.notes import (
     AI_RULE_NOTE,
     DEALBREAKER_PREFIX,
     DUPLICATE_NOTE,
@@ -19,12 +20,11 @@ from satyaapply.core.notes import (
     WRONG_PLACE_NOTE,
     WRONG_TITLE_NOTE,
 )
-from satyaapply.core.paths import Paths
-from satyaapply.store import jobs
-from satyaapply.store.groups import Group
-from satyaapply.store.jobs import StatusChange
-from satyaapply.tracker.server import TrackerServer
-from tests.unit import samples
+from truapply.core.paths import Paths
+from truapply.store import jobs
+from truapply.store.groups import Group
+from truapply.store.jobs import StatusChange
+from truapply.tracker.server import TrackerServer
 
 JSON_TYPE = "application/json"
 Reply = tuple[int, Any]

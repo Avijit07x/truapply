@@ -7,24 +7,24 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.ai.job_prompts import scoring as scoring_prompt
-from satyaapply.ai.replies import Score
-from satyaapply.core.errors import AIError, UsageLimitError
-from satyaapply.core.models import Job, Source, Status
-from satyaapply.core.notes import AI_RULE_NOTE, DUPLICATE_NOTE
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import Profile
-from satyaapply.resume.contract import Rendered
-from satyaapply.resume.tailor import Tailored, TailorRequest
-from satyaapply.run import scoring, tailoring
-from satyaapply.run.context import RunContext
-from satyaapply.run.scoring import decide, score_pending
-from satyaapply.run.tailoring import prepare_one
-from satyaapply.store import jobs
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import StatusChange
 from tests.unit import samples
 from tests.unit.test_master import CountingResume
+from truapply.ai.job_prompts import scoring as scoring_prompt
+from truapply.ai.replies import Score
+from truapply.core.errors import AIError, UsageLimitError
+from truapply.core.models import Job, Source, Status
+from truapply.core.notes import AI_RULE_NOTE, DUPLICATE_NOTE
+from truapply.core.paths import Paths
+from truapply.core.profile import Profile
+from truapply.resume.contract import Rendered
+from truapply.resume.tailor import Tailored, TailorRequest
+from truapply.run import scoring, tailoring
+from truapply.run.context import RunContext
+from truapply.run.scoring import decide, score_pending
+from truapply.run.tailoring import prepare_one
+from truapply.store import jobs
+from truapply.store.db import connect
+from truapply.store.jobs import StatusChange
 
 NOW = datetime(2026, 10, 25, tzinfo=UTC)
 

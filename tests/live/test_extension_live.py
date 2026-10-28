@@ -13,24 +13,24 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import BrowserContext, Error, Page, Request, Route, sync_playwright
 
-from satyaapply.ai.replies import Posting
-from satyaapply.browser.fetch import fetch_json
-from satyaapply.core.forms import RESUME_FILE, Answer, Field, FieldKind, FormAnswers, FormContext
-from satyaapply.core.models import Ats, Board, Job, Status
-from satyaapply.core.notes import UNCONFIRMED_NOTE
-from satyaapply.core.paths import Paths
-from satyaapply.core.profile import load, save
-from satyaapply.sources.ats import poll
-from satyaapply.sources.discover import shared_boards
-from satyaapply.sources.text import items, mapping, text
-from satyaapply.store import autosend, jobs, records
-from satyaapply.store.db import connect
-from satyaapply.store.jobs import AttemptRecord
-from satyaapply.tracker import extension
 from tests.unit import samples
 from tests.unit.tracker_api import running
+from truapply.ai.replies import Posting
+from truapply.browser.fetch import fetch_json
+from truapply.core.forms import RESUME_FILE, Answer, Field, FieldKind, FormAnswers, FormContext
+from truapply.core.models import Ats, Board, Job, Status
+from truapply.core.notes import UNCONFIRMED_NOTE
+from truapply.core.paths import Paths
+from truapply.core.profile import load, save
+from truapply.sources.ats import poll
+from truapply.sources.discover import shared_boards
+from truapply.sources.text import items, mapping, text
+from truapply.store import autosend, jobs, records
+from truapply.store.db import connect
+from truapply.store.jobs import AttemptRecord
+from truapply.tracker import extension
 
-BUILT_FOLDER = str(resources.files("satyaapply").joinpath("extension"))
+BUILT_FOLDER = str(resources.files("truapply").joinpath("extension"))
 BUILT = (Path(BUILT_FOLDER) / "manifest.json").is_file()
 pytestmark = [
     pytest.mark.network,
@@ -156,11 +156,11 @@ def chrome_with_extension(
 def report(page: Page) -> dict[str, object]:
     page.wait_for_function(
         "['filled', 'offline', 'unknown', 'broken']"
-        ".includes(document.documentElement.dataset.satyaapply)",
+        ".includes(document.documentElement.dataset.truapply)",
         timeout=FILLED_TIMEOUT_MS,
     )
-    state = page.evaluate("document.documentElement.dataset.satyaapply")
-    raw = page.evaluate("document.documentElement.dataset.satyaapplyReport || '{}'")
+    state = page.evaluate("document.documentElement.dataset.truapply")
+    raw = page.evaluate("document.documentElement.dataset.truapplyReport || '{}'")
     return {"state": state, **json.loads(raw)}
 
 
@@ -195,7 +195,7 @@ def problems(page: Page, job: Job, guard: Guard) -> list[str]:
 
 
 def panel_fits(page: Page, job: Job) -> list[str]:
-    list_box = page.locator("satyaapply-panel").locator("ul").bounding_box()
+    list_box = page.locator("truapply-panel").locator("ul").bounding_box()
     tall = list_box is not None and list_box["height"] > MOST_LIST_PX
     return [f"{job.apply_url}: the list for you is {list_box} tall"] if tall else []
 
@@ -271,7 +271,7 @@ WORKABLE = "https://apply.workable.com/api/v1/widget/accounts/{}"
 WORKABLE_BOARDS = ("huggingface",)
 SMARTRECRUITERS = "https://api.smartrecruiters.com/v1/companies/{}/postings?limit=1"
 ADDED_TIMEOUT_MS = 180_000
-SETTLED = "['filled', 'shown', 'broken'].includes(document.documentElement.dataset.satyaapply)"
+SETTLED = "['filled', 'shown', 'broken'].includes(document.documentElement.dataset.truapply)"
 
 
 @dataclass(frozen=True)
@@ -327,9 +327,9 @@ def ready_soon(paths: Paths) -> Callable[[Paths, int], bool]:
 def added_from_the_panel(context: BrowserContext, paths: Paths, page_seen: RealPage) -> list[str]:
     page = context.new_page()
     page.goto(page_seen.url, wait_until="domcontentloaded")
-    page.get_by_role("button", name="Add to SatyaApply").click(timeout=FILLED_TIMEOUT_MS)
+    page.get_by_role("button", name="Add to TruApply").click(timeout=FILLED_TIMEOUT_MS)
     page.wait_for_function(SETTLED, timeout=ADDED_TIMEOUT_MS)
-    state = page.evaluate("document.documentElement.dataset.satyaapply")
+    state = page.evaluate("document.documentElement.dataset.truapply")
     with closing(connect(paths.database)) as db:
         added = [
             record.job for record in map(lambda n: records.find(db, n), range(1, 200)) if record
@@ -389,10 +389,10 @@ def test_the_panel_stays_when_the_page_redraws_itself(tmp_path: Path) -> None:
     ):
         page = context.new_page()
         page.goto(found[0].apply_url, wait_until="commit")
-        page.get_by_role("button", name="Add to SatyaApply").wait_for(timeout=FILLED_TIMEOUT_MS)
+        page.get_by_role("button", name="Add to TruApply").wait_for(timeout=FILLED_TIMEOUT_MS)
         page.wait_for_timeout(STAYS_MS)
-        assert page.locator("satyaapply-panel").count() == 1
-        assert page.evaluate("document.documentElement.dataset.satyaapply") == "unknown"
+        assert page.locator("truapply-panel").count() == 1
+        assert page.evaluate("document.documentElement.dataset.truapply") == "unknown"
 
 
 AUTO_JOBS_PER_SITE = 2

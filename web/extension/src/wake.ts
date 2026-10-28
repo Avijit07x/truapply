@@ -1,4 +1,4 @@
-const WAKE = "satyaapply:send";
+const WAKE = "truapply:send";
 
 window.addEventListener("message", (event) => {
   if (event.source === window && event.data === WAKE) {

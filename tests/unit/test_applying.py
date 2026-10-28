@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.core.paths import Paths
-from satyaapply.resume.contract import Rendered, Resume
-from satyaapply.resume.tailor import Tailored, TailorRequest
-from satyaapply.run import tailoring
-from satyaapply.run.context import RunContext
-from satyaapply.run.tailoring import tailor_all
-from satyaapply.store.db import connect
 from tests.unit import samples
 from tests.unit.test_master import CountingResume
+from truapply.core.paths import Paths
+from truapply.resume.contract import Rendered, Resume
+from truapply.resume.tailor import Tailored, TailorRequest
+from truapply.run import tailoring
+from truapply.run.context import RunContext
+from truapply.run.tailoring import tailor_all
+from truapply.store.db import connect
 
 NOW = datetime(2026, 10, 25, tzinfo=UTC)
 

@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from satyaapply.browser.fetch import Response
-from satyaapply.core.models import Source, Status
-from satyaapply.core.notes import DOESNT_FIT_NOTE, WELLFOUND_NOTE
-from satyaapply.core.profile import WorkPlaces
-from satyaapply.sources import wellfound
-from satyaapply.store import jobs
-from satyaapply.store.db import connect
 from tests.unit import samples
+from truapply.browser.fetch import Response
+from truapply.core.models import Source, Status
+from truapply.core.notes import DOESNT_FIT_NOTE, WELLFOUND_NOTE
+from truapply.core.profile import WorkPlaces
+from truapply.sources import wellfound
+from truapply.store import jobs
+from truapply.store.db import connect
 
 NOW = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 RESUME = "Skills: React, TypeScript, Node.js"

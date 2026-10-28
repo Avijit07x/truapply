@@ -1,11 +1,11 @@
 # Setup questions
 
-`satyaapply setup` asks every new user these questions in the terminal. Each one is either:
+`truapply setup` asks every new user these questions in the terminal. Each one is either:
 
 - multiple choice: type the number, or press Enter for the recommended option, or
 - a short typed answer.
 
-Anything the resume already answers is filled in first, and you just confirm it. The answers are validated and saved to `~/.satyaapply/profile.json`. You can run `satyaapply setup` again, or edit that file, at any time.
+Anything the resume already answers is filled in first, and you just confirm it. The answers are validated and saved to `~/.truapply/profile.json`. You can run `truapply setup` again, or edit that file, at any time.
 
 ```mermaid
 flowchart LR
@@ -87,7 +87,7 @@ If you choose to answer them:
 
 **"Track replies from your email?"** · **Yes** · Not now
 
-If yes, setup runs the `satyaapply email` steps from [outcomes.md](outcomes.md#setup): address, app password, test connection.
+If yes, setup runs the `truapply email` steps from [outcomes.md](outcomes.md#setup): address, app password, test connection.
 
 ---
 
@@ -109,9 +109,9 @@ These are in `profile.json` under `settings`. Every one of them, and every answe
 ## After setup
 
 ```
-satyaapply login            # log in to the job sites once
-satyaapply doctor           # check everything works
-satyaapply run              # try it: fills forms, submits nothing
-satyaapply tracker          # see what it did
-satyaapply schedule         # run it every 3 hours in the background (dry runs unless --send)
+truapply login            # log in to the job sites once
+truapply doctor           # check everything works
+truapply run              # try it: fills forms, submits nothing
+truapply tracker          # see what it did
+truapply schedule         # run it every 3 hours in the background (dry runs unless --send)
 ```

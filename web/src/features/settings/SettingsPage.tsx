@@ -46,7 +46,7 @@ function ExtensionSteps({ extension }: { extension: Extension }) {
           <CopyButton text={extension.folder} label="Copy the folder path" />
         </span>
       </li>
-      <li>Keep the SatyaApply app running while you apply.</li>
+      <li>Keep the TruApply app running while you apply.</li>
     </ol>
   );
 }
@@ -193,7 +193,7 @@ export default function SettingsPage() {
     <div className={styles.page}>
       <PageHeader
         title="Settings"
-        description="Everything SatyaApply uses. Changes are used from the next run."
+        description="Everything TruApply uses. Changes are used from the next run."
       />
       <SettingsForm view={data} />
     </div>
