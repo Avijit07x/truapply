@@ -6,6 +6,7 @@ import { sourceLabel } from "../domain/sources";
 import { cx } from "../lib/cx";
 import { useSeen } from "../lib/seen";
 import { Link, useLocation } from "../lib/router";
+import { Logo } from "../ui/Logo";
 import { Toaster } from "../ui/Toaster";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { PAGE_NAMES, sitePage } from "../lib/pages";
@@ -86,9 +87,7 @@ export function Layout({ path, layout, children }: LayoutProps) {
         </a>
         <aside className={styles.sidebar}>
           <Link to="/" className={styles.brand}>
-            <span className={styles.mark} aria-hidden="true">
-              S
-            </span>
+            <Logo />
             <span className={styles.brandName}>TruApply</span>
           </Link>
           <nav className={styles.nav} aria-label="Main">

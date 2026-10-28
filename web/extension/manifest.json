@@ -3,6 +3,12 @@
   "name": "TruApply",
   "version": "0.1.0",
   "description": "Fills job applications from your TruApply app. You press Submit, unless you turn on auto-submit.",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwmCG+cBgx8ZvTueKJMqy0352TaWLig+2zVlDcXGF+ndqOwu2lj+bHwa1hwauEb2i8DW+TFhuL0WxVfJ3U2vqJU52kNCIluGcC8oOsb9/dv2OBPoqYpnaTFUbYrd2KQZh/ebgshfbzME8HPBneHJYioCA4Yz3MZoAyE/IPbwUmNDmsg9prcrw/VWt4ItAtVXEezoCV9ppAZlzjzgTcaXmiX/iaFYE/0jgF+PwU80y1y4uRR43+PP/qXQd63ALcxr5hTAbgoj22A24droCusNe+F+MCxqaId+SkYYNL6br6sFwiuORO/jXKvEUyT67XJHk1TVleT0THB2EMQjWJZFjMwIDAQAB",
   "permissions": ["storage", "activeTab", "scripting", "alarms"],
   "host_permissions": ["http://127.0.0.1/*"],
@@ -44,6 +50,12 @@
     }
   ],
   "action": {
-    "default_title": "TruApply: add or fill this job"
+    "default_title": "TruApply: add or fill this job",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
   }
 }
