@@ -12,7 +12,6 @@ LAYERS = {
     "resume": 2,
     "sources": 2,
     "apply": 2,
-    "inbox": 2,
     "report": 2,
     "run": 3,
     "doctor": 3,

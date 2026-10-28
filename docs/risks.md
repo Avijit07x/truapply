@@ -24,7 +24,7 @@ Everything we expect to go wrong, how the tool notices, and what it does. **Rule
 | `claude` missing or logged out | Command fails, or an auth error | Run stops | `doctor` output with the fix |
 | Bad or empty reply | JSON doesn't match the schema | One retry, then that job is skipped this run | Note on the job |
 | Slow or stuck | Timeout (5 min) | Same as a bad reply | Note on the job |
-| Daily call budget used up | `meta.ai_calls_today` | Applying stops for the day; replies are still checked | Summary line |
+| Daily call budget used up | `meta.ai_calls_today` | Applying stops for the day | Summary line |
 | Hidden instructions in a job post | Can't be fully detected | Harmless by design: no tools, schema-checked replies | — |
 | A wrong guess in best-guess mode | Can't be detected automatically | Every answer is stored in `jobs.sent` | "What was sent" on the job page |
 
@@ -42,7 +42,7 @@ Everything we expect to go wrong, how the tool notices, and what it does. **Rule
 
 | What goes wrong | How it's noticed | What the tool does | What you see |
 |---|---|---|---|
-| Mac asleep or off at run time | — | launchd runs the missed job on wake | Nothing |
+| Computer asleep or off at run time | — | launchd or Task Scheduler runs the missed job on wake | Nothing |
 | Crash or power loss mid-run | Jobs still in `submitting` on the next start | **Marked `unconfirmed`, never re-submitted.** A confirmation email later turns it into `applied`. | `unconfirmed` jobs, so you can check them |
 | Two runs at once | Lock file is held | Second run exits: "already running" | Log line |
 | Chrome profile locked or corrupted | Launch error | Run stops | `doctor` explains (close the other Chrome window, or `truapply login` again) |
@@ -52,8 +52,6 @@ Everything we expect to go wrong, how the tool notices, and what it does. **Rule
 
 | What goes wrong | How it's noticed | What the tool does | What you see |
 |---|---|---|---|
-| App password revoked or wrong | IMAP login fails | Reply tracking paused; applying continues | Notification: "run `truapply email`" |
-| A reply matched to the wrong job | You notice it | — | Fix the outcome on the job page |
 | A reply that matches no application | No candidate found | Ignored | Nothing |
 | A non-job email looks job-related | Header filter | Only the first 3,000 characters go to Claude; it can answer "not a job email" | Nothing |
 

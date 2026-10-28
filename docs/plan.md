@@ -21,7 +21,7 @@ TruApply's place:
 
 - **India-first.** Naukri, LinkedIn and company career pages, with Indian form fields (notice period, current CTC) handled properly.
 - **Auto-submit you can trust.** It starts by asking you to approve each application, and offers auto-submit only once it has earned that trust.
-- **It learns from you.** Every answer, approval, dismissal, edit, rule and reply teaches it what you want (see [outcomes.md](outcomes.md)).
+- **It learns from you.** Every answer, approval, dismissal, edit and rule teaches it what you want (see [outcomes.md](outcomes.md)).
 
 ### Trust before auto-submit
 
@@ -41,12 +41,9 @@ What "good enough" means. Every number is measured, not guessed.
 | Your edits per reviewed application | **Falling** week over week | Tracker: edits ÷ reviews. This proves it learns from your input. |
 | Made-up facts in resumes or answers | **0** | Automatic resume checks, plus a hand review of 20 tailored resumes before each release |
 | Duplicate applications | **0** | Duplicate test plus a database check |
-| Reply emails matched to the right application | **≥ 95 %** | A hand-labelled set of 50 job emails |
-| Non-job emails sent to Claude | **0** | The log of everything sent |
 | Scheduled runs that finish without crashing | **≥ 95 %** | Run log |
 | Claude calls per application | **≤ 6** on average, falling over time | Usage counter in the database |
 | New user, from install to first dry run | **≤ 15 min** | Timed on a fresh macOS account |
-| Reply rate | Tracked; no target in v1 | Insights page. Learning should push it up over time. |
 
 ## Scope
 
@@ -56,14 +53,13 @@ What "good enough" means. Every number is measured, not guessed.
 |---|---|
 | `truapply setup` | Reads your resume, asks the [setup questions](setup-questions.md), and saves your profile |
 | `truapply login` | Opens Chrome so you can log in to LinkedIn, Naukri, Indeed and Wellfound once |
-| `truapply doctor` | Checks that everything works: Claude, Chrome, LaTeX, each login, email, schedule. Says how to fix anything broken. |
+| `truapply doctor` | Checks that everything works: Claude, Chrome, LaTeX, each login, schedule. Says how to fix anything broken. |
 | `truapply tailor JOB.txt --company … --title …` | Previews your resume tailored to one job description, with every check and the changed lines |
-| `truapply run` | One full pass: find, score, tailor, apply, check the inbox, write the summary. `--dry-run`, `--site`, `--limit`, `--show` |
+| `truapply run` | One full pass: find, score, tailor, apply, write the summary. `--dry-run`, `--site`, `--limit`, `--show` |
 | `truapply tracker` | Opens the local tracker page |
 | `truapply finish` | Opens every job waiting for you in one browser, a tab each, filled in and stopped before Submit; you do any human check and press Submit |
 | `truapply add LINK` | Adds a company from a Greenhouse, Lever or Ashby job or careers link and checks it now and on every run |
-| `truapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd; prints a cron line on Linux) |
-| `truapply email` | Sets up reply tracking (also offered during setup) |
+| `truapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd, Windows Task Scheduler; prints a cron line on Linux) |
 | `truapply boards --new` | Prints the career boards you found that aren't in the shared list yet, ready to contribute |
 
 Job sources: **career pages** (Greenhouse, Lever, Ashby) and **LinkedIn Easy Apply, Naukri, Indeed, Wellfound**.
@@ -74,7 +70,7 @@ Job sources: **career pages** (Greenhouse, Lever, Ashby) and **LinkedIn Easy App
 |---|---|---|
 | Workday, iCIMS, Taleo and other sites that need an account per company | Every company needs a separate account and password | Marked `external` with the link: apply yourself |
 | Solving CAPTCHAs or email/SMS codes | Getting past them is deceptive and breaks site rules | The job is flagged `needs_input` |
-| Outlook.com reply tracking | Microsoft no longer allows app passwords for this kind of email access | Use Gmail, iCloud, Yahoo, Fastmail or Zoho |
+| Reading your email | Dropped on 28 Oct 2026: an inbox password can read all your mail, and the risk isn't worth it | You mark what happened yourself |
 | Windows scheduling | Different system; later | `truapply run` still works by hand |
 | A hosted or cloud version | It's meant to stay on your machine | — |
 
@@ -87,7 +83,7 @@ A phase is **done only when every must-pass box is ticked**. Nothing is submitte
 ```mermaid
 flowchart LR
   P0[0 Plan] --> P1[1 Foundation] --> P2[2 Career pages] --> P3[3 Tracker] --> P4[4 Background]
-  P4 --> P5[5 Logged-in sites] --> P6[6 Replies + learning] --> P7[7 Release]
+  P4 --> P5[5 Logged-in sites] --> P7[7 Release]
 ```
 
 ### Phase 0 · Plan ✅
@@ -165,7 +161,7 @@ These docs.
 **Builds**
 - The tracker as a React + TypeScript app (`web/`, built with Vite and shipped prebuilt inside the package, so users don't need Node), talking to the Python tracker only through the JSON API in [tracker-api.md](tracker-api.md)
 - Inline answer editing, live run progress without reloads
-- **Workflow map** (`/workflow`): a live decision-flow chart of how every job is handled, in the style of a Notion decision diagram. Questions are nodes with YES / NO branches, outcomes are boxes with live job counts, and automatic steps (AI scoring, tailoring, form filling, reply tracking) are dashed purple lines. Clicking a box opens those jobs. The flow:
+- **Workflow map** (`/workflow`): a live decision-flow chart of how every job is handled, in the style of a Notion decision diagram. Questions are nodes with YES / NO branches, outcomes are boxes with live job counts, and automatic steps (AI scoring, tailoring, form filling) are dashed purple lines. Clicking a box opens those jobs. The flow:
   - Found on a career page → Title fits your keywords? → Location fits where you'll work? → Seen before? (duplicate) → AI score at least your minimum, with no deal-breaker? (no → Not a fit) → Employer bans AI-written applications? (yes → Skipped)
   - → Tailor the resume → Passes the fact check? (no → original resume used) → Fill the form → Legal question it can't answer? (yes → Needs your answer) → Picture check? (yes → Finish these)
   - → Auto-submit earned and score ≥ 80? (yes → Sent automatically) / (no → Waiting for your OK → Approve? yes → Sent on the next run, no → Dismissed) → Confirmation shown? (yes → Applied, no → Unconfirmed)
@@ -191,7 +187,6 @@ These docs.
 - [x] A run killed right after clicking Submit → the next run marks the job `unconfirmed` and does **not** submit again
 - [x] The daily limit and the LinkedIn limit stop applying at exactly the limit
 - [x] The summary notification shows once a day
-- [ ] An interview alert shows right away (needs the inbox, phase 6)
 - [x] `doctor` names each broken piece and its fix (tested by breaking each one)
 
 ### Phase 5 · Logged-in sites
@@ -207,18 +202,7 @@ One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for 
 
 ### Phase 6 · Replies and learning from results
 
-**Builds**
-- Email setup and a read-only IMAP reader
-- Matching each reply to its application, and outcomes (`ghosted` after 21 days)
-- Learning: past examples added to scoring, and threshold suggestions
-- Insights page
-
-**Must pass**
-- [ ] Reading leaves every email unread and unchanged (checked on a test email)
-- [ ] 50 hand-labelled job emails: ≥ 95 % matched to the right application and outcome
-- [ ] 0 non-job emails sent to Claude (checked from the sent log)
-- [ ] With ≥ 10 outcomes, scoring includes examples, and insights shows the reply rate by site, by score band and by resume type
-- [ ] A threshold suggestion appears only when there's enough data, and changes nothing until approved
+**Dropped on 28 Oct 2026.** Reading your inbox needs a password that can read all your mail, so TruApply never connects to email.
 
 ### Phase 7 · Open-source release
 
@@ -231,6 +215,7 @@ One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for 
 **Must pass**
 - [ ] Fresh macOS user account: README install → first dry run in ≤ 15 min
 - [ ] Fresh Linux machine: the same
+- [ ] Fresh Windows machine: the same
 - [x] Secret scan of the full git history is clean, and there's no personal data in the repo (search for the owner's name, email and phone)
 - [ ] Every target number is met, or listed as a known gap in the release notes
 - [x] Pushed to GitHub only after the owner says so (private repo)
@@ -241,7 +226,6 @@ One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for 
 
 | Question | Current answer |
 |---|---|
-| Name | **Decided: TruApply.** `truapply` was free on PyPI, npm, GitHub (organization) and Vercel, and `truapply.com` was unregistered, on 25 Oct 2026. Claim them before announcing. |
+| Name | **Decided: TruApply** (renamed from SatyaApply on 28 Oct 2026). Not yet checked: whether `truapply` is free on PyPI, npm and GitHub (organization), and `truapply.com`. Check and claim them before announcing. |
 | License | MIT |
 | Claude subscription inside a public tool | Each user runs their own Claude Code with their own login. Check Anthropic's terms before release. `ANTHROPIC_API_KEY` also works with no code change. |
-| Outlook.com email | Not in v1. Needs "sign in with Microsoft", which means a registered app. |

@@ -37,7 +37,6 @@ Real shapes of the data TruApply works with. Every person, company and number he
   "dob": null,
   "diversity": null,
   "extra_facts": "Speaks English, Hindi and Kannada.",
-  "email_tracking": { "address": "asha.rao@example.com", "imap_host": "imap.gmail.com" },
   "settings": {
     "min_score": 60, "linkedin_cap": 10, "run_every_minutes": 180, "summary_hour": 20,
     "ai_calls_per_day": 300, "max_job_age_days": 30, "jobs_per_run": 5, "scores_per_run": 40
@@ -168,7 +167,6 @@ Northwind · Frontend Engineer II                         checks: numbers ✔  n
 ```
 ┌ TruApply ───────────────────────────────────────────────────────────────┐
 │ Today 14 / 20 applied · LinkedIn 5 / 10 · Claude calls 61 / 300           │
-│ Replies this week: 1 interview · 4 rejections · reply rate 9 %            │
 │ Trust 12 / 20 clean approvals · auto-submit off                           │
 │ Tell TruApply: [ e.g. no staffing agencies             ] [Add]          │
 ├ Needs your answer (2) ────────────────────────────────────────────────────┤
@@ -195,25 +193,8 @@ Tailoring notes
 Saved answers (38)                                         [view all]
 Suggestions (change nothing until you accept)
   ✓ ✕  Add "staff" to skip titles: you dismissed 3 Staff roles as "too senior"
-  ✓ ✕  Raise the minimum score to 70: 60–69 got 0 replies in 18 applications
 Refused
   ✕    "Say I know Kubernetes": facts come only from your resume and notes
-```
-
-## Reply email
-
-**Input** (after the header filter):
-
-```
-From: no-reply@greenhouse-mail.example · Subject: Your application to Northwind
-Thanks for your interest in the Frontend Engineer II role. We'd love to set up a 30-minute call…
-Candidates: [41] Northwind · Frontend Engineer II · applied 27 Oct
-```
-
-**Reply:**
-
-```json
-{ "job_id": 41, "outcome": "interview", "summary": "Asks to schedule a 30-minute call." }
 ```
 
 ## Daily summary
@@ -221,10 +202,8 @@ Candidates: [41] Northwind · Frontend Engineer II · applied 27 Oct
 ```
 TruApply · Tue 27 Oct
 Applied 14 (career pages 9 · LinkedIn 5) · limit 20
-Replies: 1 interview (Northwind) · 2 rejections
 Needs you: 2 questions · 1 CAPTCHA → open the tracker
 Problems: Indeed paused (logged out) → run `truapply login`
-Suggestion: jobs scoring 60–69 got 0 replies in 18 applications. Raise the minimum score to 70? (tracker)
 ```
 
 ## Run log — `~/.truapply/run.log`
@@ -235,7 +214,6 @@ Suggestion: jobs scoring 60–69 got 0 replies in 18 applications. Raise the min
 2026-10-27 15:03:10 score · 31 scored · 9 good matches · 22 skipped
 2026-10-27 15:05:55 job 41 · tailored (numbers ✔ claims ✔ pages ✔) · 3 steps · ready
 2026-10-27 15:07:20 job 44 · needs_input · unknown legal question
-2026-10-27 15:12:03 inbox · 6 job emails · 1 interview · 2 rejected
 2026-10-27 15:12:04 run end · applied 0 · ready 7 · claude calls 23
 ```
 

@@ -2,19 +2,18 @@
 
 *Tru* is for "true". TruApply never lies for you.
 
-TruApply is an open-source job-application assistant that runs on your own computer. It finds jobs that fit you, tailors your resume to each one using only true facts, fills in and submits the application, reads your inbox for replies, and learns from your answers, approvals, edits and replies. It starts by asking you to approve each application, and offers to submit on its own only once it has earned your trust. It uses **Claude Code** (installed on your machine, with your own login) as its AI. Nothing runs on a server we host.
+TruApply is an open-source job-application assistant that runs on your own computer. It finds jobs that fit you, tailors your resume to each one using only true facts, fills in and submits the application, and learns from your answers, approvals, edits and ratings. It never reads your email. It starts by asking you to approve each application, and offers to submit on its own only once it has earned your trust. It uses **Claude Code** (installed on your machine, with your own login) as its AI. Nothing runs on a server we host.
 
 ```mermaid
 flowchart LR
   user([You]) -- "setup · login" --> cli[truapply]
-  sched[["Scheduler<br/>launchd / cron"]] -- "every 3 h" --> cli
+  sched[["Scheduler<br/>launchd · Task Scheduler · cron"]] -- "every 3 h" --> cli
   cli <--> store[("SQLite<br/>~/.truapply")]
   cli -- "prompts, no tools" --> ai["Claude Code<br/>claude -p"]
   cli -- "public APIs" --> api["Career-page job lists<br/>Greenhouse · Lever · Ashby"]
   cli --> browser["Chrome via Playwright<br/>saved logins"]
   browser --> sites["LinkedIn · Naukri<br/>Indeed · Wellfound"]
   browser --> forms["Company application forms"]
-  cli -- "IMAP, read-only" --> mail[("Your inbox")]
   cli --> tracker["Tracker page<br/>127.0.0.1:8765"]
   cli --> notify["Daily summary<br/>notification"]
   tracker --> user
@@ -28,7 +27,7 @@ flowchart LR
 |---|---|
 | [plan.md](plan.md) | Goal, target numbers, scope, and the build phases, each with must-pass tests |
 | [architecture.md](architecture.md) | How it's built: modules, data, diagrams, the AI calls, the form filler, the resume checks |
-| [outcomes.md](outcomes.md) | Learning from your input, reply tracking, learning from results, the daily summary |
+| [outcomes.md](outcomes.md) | Learning from your input, and the daily summary |
 | [setup-questions.md](setup-questions.md) | Every question a new user is asked, and the defaults |
 | [safety.md](safety.md) | No made-up experience, questions never guessed, trust before auto-submit, untrusted job pages, account risk, privacy |
 | [risks.md](risks.md) | The what-if list: everything that can go wrong and what the tool does about it |
@@ -52,5 +51,4 @@ flowchart LR
 | **Auto-submit** | Sending strong matches (score 80 or more) without waiting for your OK. Suggested at a trust count of 20 (or turn it on sooner), and only on when you turn it on. |
 | **Tell TruApply** | A box on the tracker for rules in plain words, like "no staffing agencies". They change scoring, never your facts. |
 | **Master resume** | Your original resume. It's the only source of facts. |
-| **Outcome** | What happened after applying: confirmed, rejected, assessment, interview, offer, or ghosted (no reply) |
 | **Must-pass test** | A check a build phase has to pass before the next phase starts |

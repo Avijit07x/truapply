@@ -51,7 +51,7 @@ How a senior engineer works on this codebase.
 ### While writing code
 
 5. **Fix the root cause, once.** Put the fix in the shared function every caller goes through, not in the one caller that was reported.
-6. **Design for failure.** Every site, AI call, email server and disk write can fail, hang or return garbage. Give every call a timeout, catch specific errors, and decide what the user sees. Prefer stopping loudly over guessing.
+6. **Design for failure.** Every site, AI call and disk write can fail, hang or return garbage. Give every call a timeout, catch specific errors, and decide what the user sees. Prefer stopping loudly over guessing.
 7. **Keep state consistent at every line.** If the process dies anywhere, the database must still be true. Write `submitting` before clicking Submit; never do it the other way round.
 8. **Separate decisions from effects.** Parsing, matching, scoring rules and resume checks are pure functions. The browser, AI, database and network are thin layers around them. The pure parts get unit tests.
 9. **Pass dependencies in.** Functions receive `db`, `page`, `clock` and `settings` as parameters. No globals, no singletons, no work at import time.
@@ -86,7 +86,7 @@ How a senior engineer works on this codebase.
 ### Structure
 
 - **Package by feature.** The layout and the layer rules are in [architecture.md](architecture.md#repo-layout).
-- **Layers only point down:** `cli` → `run` / `tracker` / `onboarding` → `resume` / `sources` / `apply` / `inbox` / `report` → `store` / `ai` / `browser` / `sites` → `core`. No cycles, and no lower layer imports a higher one. Enforced by `tests/test_architecture.py`.
+- **Layers only point down:** `cli` → `run` / `tracker` / `onboarding` → `resume` / `sources` / `apply` / `report` → `store` / `ai` / `browser` / `sites` → `core`. No cycles, and no lower layer imports a higher one. Enforced by `tests/test_architecture.py`.
 - **Small units.** A module does one job, and is about 300 lines at most. A function does one thing, has at most 4 parameters (more means a dataclass), and stays within ruff's complexity and statement limits.
 - **No private reach-ins.** Names starting with `_` are used only inside their own module.
 
@@ -103,7 +103,7 @@ How a senior engineer works on this codebase.
 - Type hints everywhere; `mypy --strict` passes.
 - Frozen dataclasses for values (`Job`, `Field`, `Score`); `StrEnum` and `Literal` for fixed sets; `pathlib` for paths; `logging` for logs.
 - **One error hierarchy** in `core/errors.py`: `TruApplyError` → `AIError`, `UsageLimitError`, `SiteBlockedError`, `LoggedOutError`, `SiteUnreachableError`, `FormStuckError`, `ProfileInvalidError`. Raise the specific one. Only the run loop catches broadly, and it records the error and moves on to the next job.
-- Context managers for every resource (browser, database transaction, IMAP connection).
+- Context managers for every resource (browser, database transaction).
 - No mutable default arguments. `print` only in `cli` and `onboarding`.
 
 ### TypeScript (the tracker app in `web/`)
@@ -235,7 +235,7 @@ These run in `pre-commit` on your machine and in GitHub Actions on every pull re
 | `mypy --strict` | Types across `truapply/` |
 | `tools/check_no_comments.py` | No comments or docstrings outside the allowed tool directives |
 | `tests/test_architecture.py` | Layers only import downward; no cycles |
-| `pytest` + `pytest-cov` | All tests pass; **≥ 80 % line coverage** on `store`, `resume`, `ai`, `apply` and `inbox` |
+| `pytest` + `pytest-cov` | All tests pass; **≥ 80 % line coverage** on `store`, `resume`, `ai` and `apply` |
 | `tsc`, `eslint`, `prettier` (`npm run check` in `web/`) | The tracker app's types, lint rules (typescript-eslint strict, React hooks, TanStack Query) and formatting |
 | `gitleaks` | No passwords, keys or tokens |
 | `pip-audit`, `npm audit` | No dependency with a known security hole |
@@ -287,7 +287,7 @@ files = ["truapply", "tools", "tests"]
 - [ ] The user sees what happened and what to do next
 
 **Security and privacy**
-- [ ] Text from sites, forms, emails and AI replies is checked before use, and never reaches a shell, a SQL string or a file path
+- [ ] Text from sites, forms and AI replies is checked before use, and never reaches a shell, a SQL string or a file path
 - [ ] New AI calls go through `ai/client.py`, with tools off and a JSON schema
 - [ ] No personal data in logs, tests, fixtures or PR screenshots
 - [ ] Secrets only in the OS keychain

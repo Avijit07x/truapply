@@ -11,12 +11,10 @@
 | Storage | SQLite (`sqlite3`) | One local file, no server, survives crashes |
 | AI | Claude Code CLI (`claude -p`) | Uses the user's own Claude login; no API key needed |
 | Resume PDF | `pdflatex` for `.tex` resumes; Chrome's print-to-PDF for the rest | No extra install unless the resume is LaTeX |
-| Email | `imaplib` + `email` | Built into Python; read-only access |
-| Secrets | macOS Keychain (`security`), Linux `secret-tool`, otherwise a file only the user can read | Email passwords are never kept in plain files |
 | Tracker page | `http.server` with a JSON API, serving a React app (`web/`) that's built once and shipped inside the package | No Python web framework, and users don't need Node |
 | Diff view | `difflib.HtmlDiff` | Built into Python |
-| Notifications | `osascript` (macOS), `notify-send` (Linux) | Built into the OS |
-| Scheduling | launchd (macOS), cron (Linux) | Built into the OS |
+| Notifications | `osascript` (macOS), a PowerShell toast (Windows), `notify-send` (Linux) | Built into the OS |
+| Scheduling | launchd (macOS), Task Scheduler (Windows), cron (Linux) | Built into the OS |
 
 ## Repo layout
 
@@ -37,6 +35,8 @@ truapply/
     errors.py            TruApplyError and its subclasses, each with a hint
     paths.py             the ~/.truapply layout
     schedule.py          the launchd job (macOS) or the cron line (Linux) for background runs
+    tasks.py             the Task Scheduler task (Windows) for background runs
+    autorun.py           picks launchd or Task Scheduler for this computer
     files.py             atomic, private (0600) file writes
     numbers.py           the number check shared by resumes and form answers
     logs.py              logging setup
@@ -102,7 +102,6 @@ truapply/
     plain.py             readable resume changes, with LaTeX commands stripped
   report/
     summary.py           the daily summary file and notification
-  inbox/                 (phase 6)
   onboarding/
     wizard.py            the setup flow
     steps.py             each group of setup questions
@@ -133,8 +132,8 @@ A package may only import from layers below it. `tests/test_architecture.py` enf
 ```mermaid
 flowchart TD
   cli --> run & tracker & onboarding
-  run & tracker & onboarding --> resume & sources & apply & inbox & report
-  resume & sources & apply & inbox & report --> store & ai & browser & sites
+  run & tracker & onboarding --> resume & sources & apply & report
+  resume & sources & apply & report --> store & ai & browser & sites
   store & ai & browser & sites --> core
 ```
 
@@ -192,7 +191,7 @@ sequenceDiagram
     B-->>R: confirmation text
     R->>DB: status, answers sent, resume used
   end
-  R->>R: check the inbox, update outcomes, write the daily summary
+  R->>R: write the daily summary
 ```
 
 ## Data model
@@ -201,7 +200,6 @@ sequenceDiagram
 erDiagram
   boards ||--o{ jobs : lists
   jobs ||--o{ questions : "asked in"
-  jobs ||--o{ emails : "replies to"
   jobs ||--o{ feedback : "your input on"
   jobs {
     int id PK
@@ -223,8 +221,6 @@ erDiagram
     text sent "JSON, every answer submitted"
     text resume_pdf
     text applied_at
-    text outcome
-    text outcome_at
     int feedback "-1, 0 or 1"
     int auto_submitted "1 if sent without waiting for you"
   }
@@ -243,12 +239,6 @@ erDiagram
   questions {
     text question PK
     int job_id FK
-  }
-  emails {
-    text msg_id PK
-    int job_id FK
-    text outcome
-    text received_at
   }
   feedback {
     int id PK
@@ -316,8 +306,6 @@ stateDiagram-v2
 
 Besides `ready` and `finish`, you can also dismiss a job that is `scored`, `needs_input`, `failed`, `unconfirmed` or `external`. A dismissed job is never applied to.
 
-The outcome (`confirmed`, `rejected`, `assessment`, `interview`, `offer`, `ghosted`) is a separate field, filled in by reply tracking. See [outcomes.md](outcomes.md).
-
 ---
 
 ## Module contracts
@@ -350,7 +338,7 @@ core.codec.decode(cls: type[T], data: object) -> T
 core.codec.json_schema(tp) -> dict[str, object]
 ```
 
-Phase 2 and later add `store.answers`, `store.records`, `store.feedback`, `store.rules`, `store.trust`, `ai.tasks.score_job` / `answer_fields` / `classify_email` / `find_boards`, `sources`, `apply.flow.apply`, `inbox` and `report`, following the same style.
+Phase 2 and later add `store.answers`, `store.records`, `store.feedback`, `store.rules`, `store.trust`, `ai.tasks.score_job` / `answer_fields` / `find_boards`, `sources`, `apply.flow.apply` and `report`, following the same style.
 
 `ai.client.ask` raises `AIError` (a bad reply after one retry), `UsageLimitError` (the run stops cleanly) or `ClaudeUnavailableError`.
 
@@ -528,9 +516,9 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 ## Background runs
 
-- `truapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.truapply.run.plist`) that runs `truapply run --scheduled` at set times of day, every `settings.run_every_minutes` (180, at least 15) minutes counted from midnight. A time missed while the Mac sleeps runs once when it wakes. The Run page shows the next set time. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `truapply unschedule` removes it.
+- `truapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.truapply.run.plist`) that runs `truapply run --scheduled` at set times of day, every `settings.run_every_minutes` (180, at least 15) minutes counted from midnight. A time missed while the computer sleeps runs once when it wakes. On Windows it's a Task Scheduler task (`TruApply`, saved as `%LOCALAPPDATA%\TruApply\truapply-task.xml`) with the same times, run with `pythonw` so no window opens. The Run page shows the next set time. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `truapply unschedule` removes it.
 - A scheduled run writes its output to `runs/<time>.log`, so it shows on the tracker's Run page next to runs started there.
-- One run at a time: `run/lock.py` holds an `fcntl` lock on `run.lock` for the whole run. A second run, from the schedule, the tracker or the terminal, stops with "Another run is already running." The lock is released automatically if the process dies.
+- One run at a time: `run/lock.py` holds a lock on `run.lock` (`fcntl` on macOS and Linux, `msvcrt` on Windows) for the whole run. A second run, from the schedule, the tracker or the terminal, stops with "Another run is already running." The lock is released automatically if the process dies.
 - Crash recovery: a job left in `submitting` by a run that died is marked `unconfirmed` at the start of the next run, and never sent again.
 - Limits: a daily total (`daily_cap`), LinkedIn ≤ `settings.linkedin_cap` (10) a day, counted separately, and the daily Claude call budget (`settings.ai_calls_per_day`, 300). Every Claude call is charged in `ai/client.py` before it starts. When the budget is spent the run stops cleanly and picks up again tomorrow. Calls are counted per local day in `meta` (`ai_calls:<date>`).
 - The daily summary: the first run after `settings.summary_hour` (20:00) writes `summaries/<date>.md` and shows one notification with what was applied and what waits for you. It's sent once a day (`meta.last_summary`).
@@ -557,7 +545,6 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 | **Run** | `/runs` | Start a run (how many jobs, search first, really send), a live log with Stop, the last run and recent run logs |
 | **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI, with a search box) and suggestions. Each can be edited or deleted. |
 | **Settings** | `/settings` | Titles, companies and places to look for, the minimum score, pay, notice period and the daily limit |
-| **Insights** | (phase 6) | Reply rate by site, by score band and by resume type |
 
 ### What you can do on a job page
 

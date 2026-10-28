@@ -181,7 +181,7 @@ Each one answers with the updated `Learned`.
 | `GET /api/settings` | | `SettingsView` |
 | `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
 | `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |
-| `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS only. |
+| `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS and Windows. |
 
 ### Chrome extension
 

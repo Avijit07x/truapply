@@ -83,13 +83,6 @@ If you choose to answer them:
 
 **"Is there anything true about you that isn't on your resume?"** Typed, optional: skills, older projects, certifications, languages spoken. Tailoring and form answers may use this as well as the resume, and **nothing else**.
 
-## 7. Reply tracking (optional, recommended)
-
-**"Track replies from your email?"** · **Yes** · Not now
-
-If yes, setup runs the `truapply email` steps from [outcomes.md](outcomes.md#setup): address, app password, test connection.
-
----
 
 ## Settings not asked (defaults)
 
