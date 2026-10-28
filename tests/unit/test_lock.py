@@ -40,12 +40,21 @@ def test_a_scheduled_run_writes_its_log_where_the_tracker_reads_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv(HOME_ENV, str(tmp_path))
+    assert cli.main(["run", "--scheduled"]) == 1
+    logs = list(Paths(tmp_path).runs.glob("*.log"))
+    assert len(logs) == 1
+    assert logs[0].read_text(encoding="utf-8").startswith("Automatic run\n✘ No profile yet.")
+
+
+def test_a_scheduled_run_leaves_no_log_while_another_run_is_going(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(HOME_ENV, str(tmp_path))
     paths = Paths(tmp_path)
     with run_lock(paths):
-        assert cli.main(["run", "--scheduled"]) == 1
-    logs = list(paths.runs.glob("*.log"))
-    assert len(logs) == 1
-    assert "already running" in logs[0].read_text(encoding="utf-8")
+        assert cli.main(["run", "--scheduled"]) == 0
+    assert list(paths.runs.glob("*.log")) == []
+    assert "already running" in capsys.readouterr().out
 
 
 def test_a_killed_run_frees_the_lock(tmp_path: Path) -> None:

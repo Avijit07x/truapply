@@ -36,6 +36,10 @@ const UNITS: readonly (readonly [Intl.RelativeTimeFormatUnit, number])[] = [
   ["year", Infinity],
 ];
 
+export function isPast(iso: string, now: number = Date.now()): boolean {
+  return Date.parse(iso) <= now;
+}
+
 export function ago(iso: string, now: number = Date.now()): string {
   let amount = (Date.parse(iso) - now) / 1000;
   for (const [unit, size] of UNITS) {

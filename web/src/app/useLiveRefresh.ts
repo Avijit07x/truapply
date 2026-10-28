@@ -12,7 +12,8 @@ export function useLiveRefresh(): boolean {
   useEffect(() => {
     if (running || wasRunning.current) {
       void client.invalidateQueries({
-        predicate: (query) => !SELF_REFRESHING.has(String(query.queryKey[0])),
+        predicate: (query) =>
+          query.queryKey.length > 1 || !SELF_REFRESHING.has(String(query.queryKey[0])),
       });
     }
     wasRunning.current = running;

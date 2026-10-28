@@ -5,6 +5,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from xml.parsers.expat import ExpatError
 
@@ -15,6 +16,7 @@ LABEL = "com.satyaapply.run"
 LAUNCHCTL = "/bin/launchctl"
 SECONDS_PER_MINUTE = 60
 MINUTES_PER_HOUR = 60
+MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 FALLBACK_PATH = "/usr/local/bin:/usr/bin:/bin"
 TIMEOUT_S = 30
 
@@ -55,7 +57,7 @@ def launch_agent(paths: Paths, plan: Plan) -> dict[str, object]:
     return {
         "Label": LABEL,
         "ProgramArguments": run_command(),
-        "StartInterval": plan.every_minutes * SECONDS_PER_MINUTE,
+        "StartCalendarInterval": times_of_day(plan),
         "EnvironmentVariables": {
             "PATH": os.environ.get("PATH", FALLBACK_PATH),
             HOME_ENV: str(paths.root),
@@ -65,6 +67,20 @@ def launch_agent(paths: Paths, plan: Plan) -> dict[str, object]:
         "ProcessType": "Background",
         "LowPriorityIO": True,
     }
+
+
+def times_of_day(plan: Plan) -> list[dict[str, int]]:
+    starts = range(0, MINUTES_PER_DAY, plan.every_minutes)
+    return [
+        {"Hour": start // MINUTES_PER_HOUR, "Minute": start % MINUTES_PER_HOUR} for start in starts
+    ]
+
+
+def next_run(plan: Plan, now: datetime) -> datetime:
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    gap = timedelta(minutes=plan.every_minutes)
+    upcoming = midnight + ((now - midnight) // gap + 1) * gap
+    return min(upcoming, midnight + timedelta(days=1))
 
 
 def every(minutes: int) -> str:
@@ -119,7 +135,29 @@ def installed(agents: Path) -> Installed | None:
     except (plistlib.InvalidFileException, ExpatError, ValueError) as error:
         raise ScheduleError(f"The schedule file is damaged: {target}") from error
     program = agent.get("ProgramArguments") if isinstance(agent, dict) else None
-    interval = agent.get("StartInterval") if isinstance(agent, dict) else None
-    if not isinstance(program, list) or not program or not isinstance(interval, int):
+    minutes = _every_minutes(agent) if isinstance(agent, dict) else None
+    if not isinstance(program, list) or not program or minutes is None:
         raise ScheduleError(f"The schedule file is damaged: {target}")
-    return Installed(interval // SECONDS_PER_MINUTE, Path(str(program[0])))
+    return Installed(minutes, Path(str(program[0])))
+
+
+def _minute_of_day(time: object) -> int | None:
+    if not isinstance(time, dict):
+        return None
+    hour, minute = time.get("Hour"), time.get("Minute")
+    if not isinstance(hour, int) or not isinstance(minute, int):
+        return None
+    return hour * MINUTES_PER_HOUR + minute
+
+
+def _every_minutes(agent: dict[str, object]) -> int | None:
+    interval = agent.get("StartInterval")
+    if isinstance(interval, int):
+        return interval // SECONDS_PER_MINUTE
+    times = agent.get("StartCalendarInterval")
+    if not isinstance(times, list) or not times:
+        return None
+    if len(times) == 1:
+        return MINUTES_PER_DAY
+    first, second = _minute_of_day(times[0]), _minute_of_day(times[1])
+    return second - first if first is not None and second is not None else None

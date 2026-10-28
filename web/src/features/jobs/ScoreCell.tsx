@@ -4,6 +4,7 @@ import type { JobRow, Status } from "../../api/types";
 import { Score } from "../../components/JobList";
 import { Spark } from "../../ui/icons";
 import { toast } from "../../ui/toasts";
+import { Spinner } from "../../ui/Spinner";
 import styles from "./Jobs.module.css";
 
 type Scoring = { scorable: ReadonlySet<Status>; scoring: ReadonlySet<number> };
@@ -17,7 +18,7 @@ export function ScoreCell({ job }: { job: JobRow }) {
   if (scoring.has(job.id) || (asked && ask.isPending)) {
     return (
       <span className={styles.scoring} role="status">
-        <span className={styles.spinner} aria-hidden="true" />
+        <Spinner />
         Scoring
       </span>
     );

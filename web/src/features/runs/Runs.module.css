@@ -8,7 +8,7 @@
 .console {
   display: grid;
   flex: 1;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 360px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--space-6);
   min-height: 0;
@@ -73,7 +73,7 @@
 
 .logRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto 12px;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto 12px;
   align-items: center;
   gap: var(--space-3);
   padding: 7px 4px;
@@ -104,6 +104,33 @@
 .automatic {
   background: var(--auto-bg);
   color: var(--auto);
+}
+
+.logRow time {
+  white-space: nowrap;
+}
+
+.runIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.logRow .done svg {
+  color: var(--good);
+}
+
+.logRow .failed svg {
+  color: var(--bad);
+}
+
+.next {
+  color: var(--muted);
+}
+
+.next:hover {
+  background: none;
 }
 
 .ago,

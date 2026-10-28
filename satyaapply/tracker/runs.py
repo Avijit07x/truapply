@@ -9,10 +9,14 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from satyaapply.core import schedule
 from satyaapply.core.clock import utc_now
 from satyaapply.core.errors import SatyaApplyError
-from satyaapply.core.paths import AUTOMATIC_RUN, MANUAL_RUN, Paths
+from satyaapply.core.locks import is_held
+from satyaapply.core.models import RunStage
+from satyaapply.core.paths import AUTOMATIC_RUN, MANUAL_RUN, RUN_LOG_STAMP, Paths
 from satyaapply.core.profile import MAX_JOBS_PER_RUN, Settings, load
+from satyaapply.tracker import automatic
 from satyaapply.tracker.body import Body, flag, number
 from satyaapply.tracker.detail import iso
 from satyaapply.tracker.responses import Response, bad_request, not_found, ok
@@ -27,6 +31,14 @@ STOP_WAIT_SECONDS = 10
 LOG_NAME = re.compile(r"^\d{8}-\d{6}-\d{6}\.log$")
 ALREADY_RUNNING = "A run is already going."
 RUN_KINDS = {AUTOMATIC_RUN: "automatic", MANUAL_RUN: "manual"}
+SUMMARY = "Summary"
+FAILED = "✘"
+STAGE_LINES = (
+    ("Checking company career pages", RunStage.FIND),
+    ("Checking Wellfound", RunStage.FIND),
+    ("Scoring ", RunStage.SCORE),
+    ("Tailoring your resume", RunStage.TAILOR),
+)
 
 
 @dataclass(frozen=True)
@@ -36,6 +48,8 @@ class Choice:
     job: int | None = None
     find: bool = True
     score: tuple[int, ...] = ()
+    companies: bool = False
+    only: RunStage | None = None
 
 
 @dataclass(frozen=True)
@@ -72,7 +86,9 @@ def command(choice: Choice) -> list[str]:
         return [*COMMAND_PREFIX, "--score", *(str(job_id) for job_id in choice.score)]
     search = [] if choice.search else ["--no-search"]
     find = [] if choice.find else ["--no-find"]
-    return [*COMMAND_PREFIX, "--limit", str(choice.limit), *search, *find]
+    companies = ["--find-companies"] if choice.companies else []
+    only = ["--only", str(choice.only)] if choice.only else []
+    return [*COMMAND_PREFIX, "--limit", str(choice.limit), *search, *find, *companies, *only]
 
 
 def _spawn(arguments: list[str], log: Path) -> subprocess.Popen[bytes]:
@@ -97,7 +113,7 @@ def _launch(paths: Paths, choice: Choice) -> Run:
 
 def start(paths: Paths, choice: Choice) -> Run | None:
     with REGISTRY.lock:
-        if REGISTRY.active() is not None:
+        if REGISTRY.active() is not None or is_held(paths.lock):
             return None
         return _launch(paths, choice)
 
@@ -170,6 +186,13 @@ def recent_logs(paths: Paths) -> list[Path]:
     return sorted(named, key=_finished_at, reverse=True)[:RECENT_LOGS]
 
 
+def outcome_of(log: Path) -> str:
+    text = log.read_text(encoding="utf-8", errors="replace")
+    if SUMMARY in text.splitlines():
+        return "done"
+    return "failed" if FAILED in text else "stopped"
+
+
 def kind_of(log: Path) -> str | None:
     with log.open(encoding="utf-8", errors="replace") as lines:
         first = lines.readline().strip()
@@ -180,14 +203,43 @@ def _finished_at(log: Path) -> datetime:
     return datetime.fromtimestamp(log.stat().st_mtime, UTC)
 
 
-def _current(run: Run | None) -> dict[str, object]:
+def _started_at(log: Path) -> datetime:
+    return datetime.strptime(log.stem, RUN_LOG_STAMP).replace(tzinfo=UTC)
+
+
+def _outside_run(paths: Paths) -> dict[str, object] | None:
+    logs = recent_logs(paths)
+    if not logs or not is_held(paths.lock):
+        return None
+    log = logs[0]
+    return {
+        "running": True,
+        "startedAt": iso(_started_at(log)),
+        "exitCode": None,
+        "log": tail(log),
+        "stoppable": False,
+    }
+
+
+def _current(paths: Paths, run: Run | None) -> dict[str, object]:
+    if run is None or not run.running:
+        outside = _outside_run(paths)
+        if outside is not None:
+            return outside
     if run is None:
-        return {"running": False, "startedAt": None, "exitCode": None, "log": []}
+        return {
+            "running": False,
+            "startedAt": None,
+            "exitCode": None,
+            "log": [],
+            "stoppable": False,
+        }
     return {
         "running": run.running,
         "startedAt": iso(run.started),
         "exitCode": run.process.returncode,
         "log": tail(run.log),
+        "stoppable": run.running,
     }
 
 
@@ -198,13 +250,55 @@ def _saved_limit(paths: Paths) -> int:
         return Settings().jobs_per_run
 
 
+def _going_log(paths: Paths, recent: list[Path]) -> str | None:
+    run = REGISTRY.active()
+    if run is not None:
+        return run.log.name
+    return recent[0].name if recent and is_held(paths.lock) else None
+
+
+def next_automatic() -> datetime | None:
+    every = automatic.current()["everyMinutes"]
+    if not isinstance(every, int):
+        return None
+    return schedule.next_run(schedule.Plan(every), utc_now().astimezone())
+
+
+def _shown_log(log: Path, going: str | None) -> dict[str, object]:
+    running = log.name == going
+    return {
+        "name": log.name,
+        "finishedAt": iso(_finished_at(log)),
+        "kind": kind_of(log),
+        "running": running,
+        "outcome": None if running else outcome_of(log),
+    }
+
+
+def _stage_now(current: dict[str, object]) -> str | None:
+    lines = current["log"]
+    if not current["running"] or not isinstance(lines, list):
+        return None
+    stage = stage_of([str(line) for line in lines])
+    return str(stage) if stage else None
+
+
+def latest_start(paths: Paths) -> datetime | None:
+    recent = recent_logs(paths)
+    return _started_at(recent[0]) if recent else None
+
+
 def state(paths: Paths) -> dict[str, object]:
-    logs = [
-        {"name": log.name, "finishedAt": iso(_finished_at(log)), "kind": kind_of(log)}
-        for log in recent_logs(paths)
-    ]
-    limits = {"min": MIN_LIMIT, "max": MAX_LIMIT, "default": _saved_limit(paths)}
-    return _current(REGISTRY.current) | {"logs": logs, "limits": limits}
+    recent = recent_logs(paths)
+    going = _going_log(paths, recent)
+    upcoming = next_automatic()
+    current = _current(paths, REGISTRY.current)
+    return current | {
+        "stage": _stage_now(current),
+        "logs": [_shown_log(log, going) for log in recent],
+        "nextAutomatic": iso(upcoming) if upcoming else None,
+        "limits": {"min": MIN_LIMIT, "max": MAX_LIMIT, "default": _saved_limit(paths)},
+    }
 
 
 def _show(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
@@ -220,12 +314,25 @@ def _log(_db: sqlite3.Connection, paths: Paths, match: re.Match[str], _body: Bod
     return ok({"name": name, "finishedAt": finished, "kind": kind_of(log), "lines": tail(log)})
 
 
+def _stage(body: Body) -> RunStage | None:
+    wanted = body.get("only")
+    return RunStage(wanted) if isinstance(wanted, str) and wanted in set(RunStage) else None
+
+
 def parse_choice(body: Body) -> Choice | None:
     limit = number(body, "limit")
     search = flag(body, "search")
     if limit is None or search is None:
         return None
-    return Choice(min(max(limit, MIN_LIMIT), MAX_LIMIT), search)
+    return Choice(min(max(limit, MIN_LIMIT), MAX_LIMIT), search, only=_stage(body))
+
+
+def stage_of(lines: list[str]) -> RunStage | None:
+    for line in reversed(lines):
+        for start, stage in STAGE_LINES:
+            if line.startswith(start):
+                return stage
+    return None
 
 
 def _start(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:

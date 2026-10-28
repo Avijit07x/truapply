@@ -377,7 +377,7 @@ claude -p --safe-mode --tools "" --strict-mcp-config --no-session-persistence \
 |---|---|---|---|
 | Read the resume into a profile draft | sonnet | Read (resume folder only) | setup |
 | Turn a non-LaTeX resume into a clean HTML resume | sonnet | none | setup |
-| Find company career boards | haiku | WebSearch | once a day |
+| Find company career boards | haiku | WebSearch | every week by default (**Search the web for new companies**: every day, every week or never), or right away from **Find more companies** |
 | Score a job | haiku | none | each new job that passes the title filter |
 | Tailor the resume | sonnet | none | before each application |
 | Check the tailored resume for new or stronger claims | sonnet | none | after tailoring (the last guard against made-up facts, so accuracy beats cost) |
@@ -395,7 +395,7 @@ claude -p --safe-mode --tools "" --strict-mcp-config --no-session-persistence \
 ```mermaid
 flowchart TD
   shared["companies.csv<br/>shared list"] --> boards[(boards)]
-  search["Web search, once a day<br/>roles × locations on ATS sites"] --> boards
+  search["Web search, weekly by default<br/>roles × locations on ATS sites"] --> boards
   links["'Apply on company site' links<br/>seen on LinkedIn, Naukri, Indeed"] --> boards
   boards --> poll["Poll each board's public API"]
   sitesearch["Logged-in site searches<br/>LinkedIn, Naukri, Indeed, Wellfound"] --> jobs
@@ -528,7 +528,7 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 
 ## Background runs
 
-- `satyaapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.satyaapply.run.plist`) that runs `satyaapply run --scheduled` every `settings.run_every_minutes` (180, at least 15) minutes, and catches up after the Mac wakes up. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `satyaapply unschedule` removes it.
+- `satyaapply schedule` writes a launchd job (`~/Library/LaunchAgents/com.satyaapply.run.plist`) that runs `satyaapply run --scheduled` at set times of day, every `settings.run_every_minutes` (180, at least 15) minutes counted from midnight. A time missed while the Mac sleeps runs once when it wakes. The Run page shows the next set time. It never sends anything; turn it on or off in **Settings → Automation**. On Linux it prints a cron line to add with `crontab -e`. `satyaapply unschedule` removes it.
 - A scheduled run writes its output to `runs/<time>.log`, so it shows on the tracker's Run page next to runs started there.
 - One run at a time: `run/lock.py` holds an `fcntl` lock on `run.lock` for the whole run. A second run, from the schedule, the tracker or the terminal, stops with "Another run is already running." The lock is released automatically if the process dies.
 - Crash recovery: a job left in `submitting` by a run that died is marked `unconfirmed` at the start of the next run, and never sent again.
@@ -549,11 +549,11 @@ When a check fails, the exact problems go back to the AI once, and it fixes only
 | Page | Address | What's on it |
 |---|---|---|
 | **Home** | `/` | Tiles: *Need your answer*, *Finish these*, *Waiting for your OK*, *Good matches to fill*, *Applied*. Run now, the trust panel, the jobs waiting on you, and the **Tell SatyaApply** box. |
-| **Board** | `/board` | Columns by status. Drag a job that's waiting for your OK to *Approved*, or to *Dismiss*. |
-| **Workflow** | `/workflow` | A full-screen map of how every job is handled, with live counts in each box. Click a box to see its jobs. |
+| **Workflow** | `/workflow` | A full-screen map of how every job is handled, with live counts. The step a run is on lights up, and each box shows what the latest run added. Click any box to change that step's settings, run just that step, or see its jobs. |
 | **Career jobs** | `/jobs` | Every job except listed-only sites, with every status as a filter and its count (e.g. `/jobs?status=finish`, or `/jobs?group=not_a_fit` from the workflow map) |
 | **Wellfound** | `/sites/wellfound` | Only while **Also list Wellfound jobs** is on: the same table for Wellfound jobs, without scores |
 | **Job** | `/jobs/<id>` | Status, score and "why this score", links to the job post and the form, the controls below, what was filled in, the resume PDF, a readable **What changed** view (LaTeX commands stripped, so you read words, not markup), the screenshot and the job text |
+| **Companies** | `/companies` | Every company whose job list is checked on each run: its site, how it was found (came with the app, web search or your job link), its jobs for you, when it was added and last checked, and closed ones. **Find more companies** starts a run that searches the web right away |
 | **Run** | `/runs` | Start a run (how many jobs, search first, really send), a live log with Stop, the last run and recent run logs |
 | **What it learned** | `/learned` | Your rules, tailoring notes, saved answers (from you or from the AI, with a search box) and suggestions. Each can be edited or deleted. |
 | **Settings** | `/settings` | Titles, companies and places to look for, the minimum score, pay, notice period and the daily limit |

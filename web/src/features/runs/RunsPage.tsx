@@ -3,11 +3,13 @@ import { useRunStop } from "../../api/mutations";
 import { queries } from "../../api/queries";
 import type { RunKind, RunLog, RunState } from "../../api/types";
 import { cx } from "../../lib/cx";
-import { ago, when } from "../../lib/format";
+import { when } from "../../lib/format";
+import { Ago } from "../../ui/Ago";
 import { Link } from "../../lib/router";
 import { PageHeader, Row } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
-import { ArrowRight, Stop } from "../../ui/icons";
+import { Alert, ArrowRight, Check, Clock, Stop } from "../../ui/icons";
+import { Spinner } from "../../ui/Spinner";
 import { toast } from "../../ui/toasts";
 import { LogView } from "./LogView";
 import { RunForm } from "./RunForm";
@@ -34,28 +36,70 @@ function Progress({ run }: { run: RunState }) {
         <span className={styles.pip} aria-hidden="true" />
         Started {when(run.startedAt)}
       </p>
-      <Row>
-        <Button
-          variant="danger"
-          icon={<Stop size={14} />}
-          busy={stop.isPending}
-          onClick={() => {
-            stop.mutate(undefined, {
-              onSuccess: () => {
-                toast("Run stopped.");
-              },
-            });
-          }}
-        >
-          Stop
-        </Button>
-      </Row>
+      {run.stoppable && (
+        <Row>
+          <Button
+            variant="danger"
+            icon={<Stop size={14} />}
+            busy={stop.isPending}
+            onClick={() => {
+              stop.mutate(undefined, {
+                onSuccess: () => {
+                  toast("Run stopped.");
+                },
+              });
+            }}
+          >
+            Stop
+          </Button>
+        </Row>
+      )}
     </section>
   );
 }
 
-function RecentRuns({ logs }: { logs: readonly RunLog[] }) {
-  if (logs.length === 0) {
+const ENDED: Record<NonNullable<RunLog["outcome"]>, { Icon: typeof Check; label: string }> = {
+  done: { Icon: Check, label: "Finished" },
+  failed: { Icon: Alert, label: "Ended with an error" },
+  stopped: { Icon: Stop, label: "Stopped before it finished" },
+};
+
+function RunIcon({ log }: { log: RunLog }) {
+  if (log.running || !log.outcome) {
+    return (
+      <span className={styles.runIcon} role="img" aria-label="Running now">
+        <Spinner />
+      </span>
+    );
+  }
+  const { Icon, label } = ENDED[log.outcome];
+  return (
+    <span className={cx(styles.runIcon, styles[log.outcome])} role="img" aria-label={label}>
+      <Icon size={12} />
+    </span>
+  );
+}
+
+function NextRun({ at }: { at: string }) {
+  return (
+    <li>
+      <div className={cx(styles.logRow, styles.next)}>
+        <span className={styles.runIcon} role="img" aria-label="Starts next">
+          <Clock size={12} />
+        </span>
+        <time dateTime={at}>{when(at)}</time>
+        <span className={cx(styles.kind, styles.automatic)}>{KIND_LABEL.automatic}</span>
+        <span className={styles.ago}>
+          <Ago iso={at} past="Starting soon" />
+        </span>
+        <span />
+      </div>
+    </li>
+  );
+}
+
+function RecentRuns({ logs, next }: { logs: readonly RunLog[]; next: string | null }) {
+  if (logs.length === 0 && !next) {
     return null;
   }
   return (
@@ -64,9 +108,11 @@ function RecentRuns({ logs }: { logs: readonly RunLog[] }) {
         Recent runs
       </h2>
       <ul className={styles.runs}>
+        {next && <NextRun at={next} />}
         {logs.map((log) => (
           <li key={log.name}>
             <Link to={`/runs/${log.name}`} className={styles.logRow}>
+              <RunIcon log={log} />
               <time dateTime={log.finishedAt}>{when(log.finishedAt)}</time>
               {log.kind ? (
                 <span className={cx(styles.kind, log.kind === "automatic" && styles.automatic)}>
@@ -75,7 +121,9 @@ function RecentRuns({ logs }: { logs: readonly RunLog[] }) {
               ) : (
                 <span />
               )}
-              <span className={styles.ago}>{ago(log.finishedAt)}</span>
+              <span className={styles.ago}>
+                {log.running ? "Running now" : <Ago iso={log.finishedAt} />}
+              </span>
               <ArrowRight size={12} />
             </Link>
           </li>
@@ -130,12 +178,12 @@ export default function RunsPage() {
     <div className={styles.page}>
       <PageHeader
         title="Run"
-        description="Finds new jobs, scores them and tailors your resume for the good ones. Nothing is sent."
+        description="Finds new jobs, scores them and tailors your resume for the good ones. Nothing is sent unless auto-submit is on."
       />
       <div className={styles.console}>
         <div className={styles.controls}>
           {run.running ? <Progress run={run} /> : <RunForm limits={run.limits} />}
-          <RecentRuns logs={run.logs} />
+          <RecentRuns logs={run.logs} next={run.nextAutomatic} />
         </div>
         <Output run={run} />
       </div>

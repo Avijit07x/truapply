@@ -5,14 +5,17 @@ import sys
 import time
 from collections.abc import Iterator
 from contextlib import closing
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from satyaapply.core.models import RunStage
 from satyaapply.core.paths import Paths
-from satyaapply.tracker import runs
+from satyaapply.run.lock import run_lock
+from satyaapply.tracker import automatic, runs
 from satyaapply.tracker.body import Body
 from satyaapply.tracker.routes import Incoming, dispatch
 
@@ -167,3 +170,80 @@ def test_recent_runs_say_how_they_started_newest_finish_first(paths: Paths) -> N
         (older.name, "automatic"),
         (old_log.name, None),
     ]
+
+
+def test_an_automatic_run_shows_as_running_with_its_log_but_cannot_be_stopped_here(
+    paths: Paths,
+) -> None:
+    paths.runs.mkdir(parents=True, exist_ok=True)
+    log = paths.runs / "20261027-144400-000000.log"
+    log.write_text("Automatic run\nChecking company career pages …\n", encoding="utf-8")
+    assert runs.state(paths)["running"] is False
+    with run_lock(paths):
+        going = runs.state(paths)
+    assert going["running"] is True
+    assert going["stoppable"] is False
+    assert going["startedAt"] == "2026-10-27T14:44:00+00:00"
+    assert going["log"] == ["Automatic run", "Checking company career pages …"]
+    assert runs.state(paths)["running"] is False
+
+
+def test_the_run_that_is_going_is_marked_in_recent_runs(paths: Paths) -> None:
+    paths.runs.mkdir(parents=True, exist_ok=True)
+    older = paths.runs / "20261027-100000-000000.log"
+    going = paths.runs / "20261027-110000-000000.log"
+    for log, finished in ((older, 1_000), (going, 2_000)):
+        log.write_text("Manual run\n", encoding="utf-8")
+        os.utime(log, (finished, finished))
+    with run_lock(paths):
+        shown = runs.state(paths)["logs"]
+    assert isinstance(shown, list)
+    assert [item["running"] for item in shown] == [True, False]
+    after = runs.state(paths)["logs"]
+    assert isinstance(after, list)
+    assert not any(item["running"] for item in after)
+
+
+def test_each_recent_run_says_how_it_ended(paths: Paths) -> None:
+    paths.runs.mkdir(parents=True, exist_ok=True)
+    endings = {
+        "20261027-100000-000000.log": ("Manual run\n\nSummary\nBoards: 1 checked\n", "done"),
+        "20261027-110000-000000.log": ("Automatic run\n✘ No profile yet.\n", "failed"),
+        "20261027-120000-000000.log": ("Manual run\nScoring 3 jobs with AI …\n", "stopped"),
+    }
+    for name, (text, _) in endings.items():
+        (paths.runs / name).write_text(text, encoding="utf-8")
+    shown = runs.state(paths)["logs"]
+    assert isinstance(shown, list)
+    assert {item["name"]: item["outcome"] for item in shown} == {
+        name: outcome for name, (_, outcome) in endings.items()
+    }
+
+
+def test_the_next_automatic_run_is_the_next_time_of_day_it_is_set_for(
+    paths: Paths, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    on = {"supported": True, "on": True, "everyMinutes": 30}
+    monkeypatch.setattr(automatic, "current", lambda: on)
+    now = datetime(2026, 10, 27, 10, 40, tzinfo=UTC)
+    monkeypatch.setattr(runs, "utc_now", lambda: now)
+    upcoming = runs.state(paths)["nextAutomatic"]
+    assert isinstance(upcoming, str)
+    assert datetime.fromisoformat(upcoming) - now <= timedelta(minutes=30)
+    assert datetime.fromisoformat(upcoming).astimezone().minute in {0, 30}
+    monkeypatch.setattr(automatic, "current", lambda: on | {"on": False, "everyMinutes": None})
+    assert runs.state(paths)["nextAutomatic"] is None
+
+
+def test_a_run_can_be_started_for_one_step() -> None:
+    choice = runs.parse_choice({"limit": 3, "search": True, "only": "score"})
+    assert choice == runs.Choice(3, True, only=RunStage.SCORE)
+    assert runs.command(choice)[-2:] == ["--only", "score"]
+    assert runs.parse_choice({"limit": 3, "search": True, "only": "x"}) == runs.Choice(3, True)
+
+
+def test_the_step_a_run_is_on_comes_from_its_latest_progress_line() -> None:
+    lines = ["Manual run", "Checking company career pages …", "  40 open jobs", "Scoring 3 jobs"]
+    assert runs.stage_of(lines) is RunStage.SCORE
+    assert runs.stage_of(lines[:3]) is RunStage.FIND
+    assert runs.stage_of(["Manual run"]) is None

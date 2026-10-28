@@ -11,7 +11,8 @@ from satyaapply import doctor
 from satyaapply.core import logs, schedule
 from satyaapply.core.clock import utc_now
 from satyaapply.core.errors import SatyaApplyError
-from satyaapply.core.models import Job, Source, normalize
+from satyaapply.core.locks import is_held
+from satyaapply.core.models import Job, RunStage, Source, normalize
 from satyaapply.core.paths import AUTOMATIC_RUN, MANUAL_RUN, Paths, default_paths
 from satyaapply.core.profile import MAX_EVERY_MINUTES, MIN_EVERY_MINUTES, load
 from satyaapply.onboarding import wizard
@@ -19,6 +20,7 @@ from satyaapply.resume.diff import changed_lines
 from satyaapply.resume.master import load_resume, master_pdf
 from satyaapply.resume.tailor import Tailored, TailorRequest, file_name_for, tailor
 from satyaapply.run import RunOptions, RunReport, run
+from satyaapply.run.lock import ALREADY_RUNNING as ALREADY_GOING
 from satyaapply.sources.discover import as_csv_rows, shared_boards
 from satyaapply.sources.intake import NOT_A_BOARD, take_in_link
 from satyaapply.store import boards, rules
@@ -122,14 +124,19 @@ def _run(args: argparse.Namespace, paths: Paths) -> int:
     options = RunOptions(
         limit=args.limit,
         search=not args.no_search,
+        search_now=args.find_companies,
         find=not args.no_find,
         job=args.job,
         score=tuple(args.score or ()),
+        only=RunStage(args.only) if args.only else None,
         progress=_say,
     )
     if not args.scheduled:
         print(MANUAL_RUN, flush=True)
         _print_run(run(paths, options))
+        return 0
+    if is_held(paths.lock):
+        print(ALREADY_GOING, flush=True)
         return 0
     log = paths.run_log(utc_now())
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -235,13 +242,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     runner = commands.add_parser("run", help="find and score jobs, and tailor your resume")
     runner.add_argument("--limit", type=int, help="resumes to tailor (default: your settings)")
-    runner.add_argument("--no-search", action="store_true", help="skip the daily web search")
+    runner.add_argument(
+        "--no-search", action="store_true", help="skip the web search for companies"
+    )
+    runner.add_argument(
+        "--find-companies", action="store_true", help="search the web for new companies now"
+    )
     runner.add_argument("--job", type=int, help="only score and tailor this one job")
     runner.add_argument(
         "--score", type=int, nargs="+", help="score these jobs, then tailor the good matches"
     )
     runner.add_argument(
         "--no-find", action="store_true", help="skip career pages; score jobs already added"
+    )
+    runner.add_argument(
+        "--only", choices=[str(stage) for stage in RunStage], help="run just this one step"
     )
     runner.add_argument("--scheduled", action="store_true", help=argparse.SUPPRESS)
     runner.set_defaults(handler=_run)
