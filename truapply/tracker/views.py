@@ -20,7 +20,7 @@ from truapply.tracker import (
     static,
 )
 from truapply.tracker.body import Body
-from truapply.tracker.detail import resume_pdf
+from truapply.tracker.detail import resume_to_send
 from truapply.tracker.responses import Response, not_found
 from truapply.tracker.routes import Incoming, Route, dispatch
 
@@ -47,7 +47,7 @@ POST_ROUTES: tuple[Route, ...] = tuple(item for module in FEATURES for item in m
 def _resume(paths: Paths, job_id: int) -> Response:
     with closing(connect(paths.database)) as db:
         record = records.find(db, job_id)
-    file = resume_pdf(paths, record) if record else None
+    file = resume_to_send(paths, record) if record else None
     return Response(HTTPStatus.OK, file.read_bytes(), PDF) if file else not_found()
 
 

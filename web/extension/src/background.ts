@@ -119,11 +119,16 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   return true;
 });
 
+const markClicked = () => {
+  (globalThis as { truapplyClicked?: boolean }).truapplyClicked = true;
+};
+
 chrome.action.onClicked.addListener((tab) => {
   if (tab.id === undefined) return;
   const target = { tabId: tab.id };
   void chrome.scripting
-    .executeScript({ target, files: ["network.js"], world: "MAIN" })
+    .executeScript({ target, func: markClicked })
+    .then(() => chrome.scripting.executeScript({ target, files: ["network.js"], world: "MAIN" }))
     .then(() => chrome.scripting.executeScript({ target, files: ["content.js"] }));
 });
 

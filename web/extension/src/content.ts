@@ -58,6 +58,7 @@ type State =
   | "applied";
 
 let shown: { state: State; report: string } = { state: "loading", report: "" };
+const clicked = (globalThis as { truapplyClicked?: boolean }).truapplyClicked === true;
 
 const restore = () => {
   const root = document.documentElement.dataset;
@@ -463,8 +464,9 @@ async function add(panel: Panel): Promise<void> {
 }
 
 async function show(job: Job, panel: Panel, sending = false): Promise<void> {
-  const page = job.status === "ready" ? await whatPage() : "other";
-  if (page === "form") {
+  const wanted = job.status === "ready" || (clicked && job.status !== "applied");
+  const page = wanted ? await whatPage() : "other";
+  if (page === "form" || (clicked && wanted && page === "other")) {
     await fill(job, panel, sending);
     return;
   }
@@ -505,12 +507,16 @@ async function main(): Promise<void> {
   if (!found.job) {
     mark("unknown");
     const panel = openPanel(null);
+    if (clicked) {
+      await add(panel);
+      return;
+    }
     panel.say("This job isn't in TruApply yet.");
     panel.offer("Add to TruApply", () => void add(panel));
     return;
   }
   const asked = await ask<Sending>({ type: "sending" });
-  const sending = !failed(asked) && asked.jobId === found.job.id;
+  const sending = !clicked && !failed(asked) && asked.jobId === found.job.id;
   await show(found.job, openPanel(found.job), sending);
 }
 

@@ -86,6 +86,10 @@ def resume_pdf(paths: Paths, record: JobRecord) -> Path | None:
     return inside(record.resume_pdf, paths.root)
 
 
+def resume_to_send(paths: Paths, record: JobRecord) -> Path | None:
+    return resume_pdf(paths, record) or (paths.master_pdf if paths.master_pdf.is_file() else None)
+
+
 def changes(paths: Paths, record: JobRecord) -> list[str] | None:
     try:
         resume = load_resume(load(paths))

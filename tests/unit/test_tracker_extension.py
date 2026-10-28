@@ -203,6 +203,16 @@ def test_fields_the_page_already_filled_are_left_alone(
     assert asked.labels == []
 
 
+def test_a_job_without_a_tailored_resume_sends_your_original_one(paths: Paths) -> None:
+    with running(paths) as server:
+        assert call(server, "/api/extension/job", {"url": ASHBY.url})[1]["job"]["resume"] is None
+        paths.master_pdf.write_bytes(b"%PDF-1.4 original")
+        job = call(server, "/api/extension/job", {"url": ASHBY.url})[1]["job"]
+        status, _, pdf = fetch(server, "/jobs/2/resume.pdf")
+    assert job["resume"] == paths.master_pdf.name
+    assert (status, pdf) == (200, b"%PDF-1.4 original")
+
+
 def test_submitting_marks_the_job_applied_and_learns_what_you_typed(paths: Paths) -> None:
     sent = [
         {"question": "Full name", "answer": "Asha Rao", "kind": "text", "yours": False},
@@ -239,7 +249,7 @@ def test_settings_say_where_the_extension_folder_is(paths: Paths) -> None:
     with running(paths) as server:
         status, body = get(server, "/api/settings")
     assert status == 200
-    assert body["extension"]["folder"].endswith("truapply/extension")
+    assert Path(body["extension"]["folder"]).parts[-2:] == ("truapply", "extension")
 
 
 def test_profile_facts_fill_the_usual_fields_without_the_ai(

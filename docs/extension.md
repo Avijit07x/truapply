@@ -22,7 +22,7 @@ What stays the same: nothing is ever submitted without you pressing Submit. No C
 4. You check the form and press Submit.
 5. When the site shows its confirmation, the job becomes **Applied** in the tracker. The panel offers **Next job**, which opens the next one waiting for you.
 
-On a job page TruApply doesn't know yet, the panel offers **Add and fill**. It adds the job, scores it, and fills it with your resume: tailored (about a minute) or your original (right away), your pick.
+**On any other job site**, open the application form and click the TruApply icon in Chrome's toolbar. If the job is new, it's added, scored and tailored (about a minute), then the form is filled. A job that isn't a good match is filled with your original resume. A form filled this way is **never submitted**, even with auto-submit on: you check it and press Submit.
 
 ## How it works
 
@@ -44,7 +44,7 @@ flowchart LR
 - The app listens on `127.0.0.1` only, as today.
 - **Pairing:** Settings in the tracker shows a one-time code. You paste it into the extension once. Both sides keep a token: the app in the OS keychain, the extension in its own storage.
 - Every extension request carries the token. Without it, the request is refused. The tracker's existing rules stay: no request from another website gets in.
-- The extension runs only on Greenhouse, Lever and Ashby job pages and on `127.0.0.1`. It reads nothing else.
+- The extension starts by itself only on Greenhouse, Lever and Ashby job pages and on `127.0.0.1`. On any other site it runs only in the tab where you click its icon, and reads nothing else.
 - No data leaves your computer except the application you send.
 
 ## Filling

@@ -26,7 +26,7 @@ from truapply.store.jobs import StatusChange
 from truapply.store.records import JobRecord
 from truapply.tracker import runs
 from truapply.tracker.body import Body, text
-from truapply.tracker.detail import job_row, resume_pdf
+from truapply.tracker.detail import job_row, resume_to_send
 from truapply.tracker.responses import Response, bad_request, not_found, ok
 from truapply.tracker.routes import Route, route
 
@@ -66,7 +66,7 @@ def _at(db: sqlite3.Connection, url: str) -> JobRecord | None:
 
 
 def _view(paths: Paths, record: JobRecord) -> dict[str, object]:
-    pdf = resume_pdf(paths, record)
+    pdf = resume_to_send(paths, record)
     return job_row(record) | {"resume": pdf.name if pdf else None}
 
 

@@ -29,11 +29,11 @@ declare namespace chrome {
     const onClicked: { addListener(listener: (tab: tabs.Tab) => void): void };
   }
   namespace scripting {
-    function executeScript(injection: {
-      target: { tabId: number };
-      files: string[];
-      world?: "MAIN" | "ISOLATED";
-    }): Promise<unknown[]>;
+    function executeScript(
+      injection:
+        | { target: { tabId: number }; files: string[]; world?: "MAIN" | "ISOLATED" }
+        | { target: { tabId: number }; func: () => void },
+    ): Promise<unknown[]>;
   }
   namespace storage {
     const session: {
