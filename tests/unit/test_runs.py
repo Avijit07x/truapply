@@ -90,7 +90,7 @@ def test_only_one_run_at_a_time_and_stop_ends_it(
     began = time.monotonic()
     status, stopped = call(paths, "/runs/stop", {})
     assert (status, stopped["running"]) == (HTTPStatus.OK, False)
-    assert stopped["exitCode"] < 0
+    assert stopped["exitCode"] != 0
     assert time.monotonic() - began < 5
     assert runs.REGISTRY.active() is None
 

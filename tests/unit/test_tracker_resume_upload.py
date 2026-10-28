@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit import samples
+from tests.unit import samples, tracker_api
 from tests.unit.tracker_api import JSON_TYPE, fetch, post, running
 from truapply.ai import tasks
 from truapply.core.documents import ResumeData, ResumeDocument, ResumeFormat
@@ -37,12 +37,18 @@ def claude(monkeypatch: pytest.MonkeyPatch) -> list[ResumeDocument]:
     return asked
 
 
+BROWSER_S = 60
+
+
 def upload(name: str, data: bytes) -> dict[str, object]:
     return {"name": name, "data": base64.b64encode(data).decode()}
 
 
 @pytest.mark.e2e
-def test_a_new_resume_replaces_the_old_one(paths: Paths, claude: list[ResumeDocument]) -> None:
+def test_a_new_resume_replaces_the_old_one(
+    paths: Paths, claude: list[ResumeDocument], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(tracker_api, "QUICK_S", BROWSER_S)
     with running(paths) as server:
         status, answer = post(server, URL, upload("Asha CV.md", b"# Asha Rao\nFrontend engineer"))
     assert status == 200

@@ -8,7 +8,7 @@ import pytest
 
 from tests.unit import samples
 from tests.unit.test_tracker_settings import VALID
-from truapply.core import schedule
+from truapply.core import autorun
 from truapply.core.paths import Paths
 from truapply.core.profile import save
 from truapply.store.db import connect
@@ -48,10 +48,10 @@ def test_turning_on_and_off(paths: Paths) -> None:
     status, shown = call(automatic.POST, paths, "/api/settings/automatic", {"on": True})
     assert status == HTTPStatus.OK
     assert shown == {"supported": True, "on": True, "everyMinutes": 180}
-    assert schedule.plist_path(automatic.agents()).is_file()
+    assert autorun.installed(automatic.agents()) is not None
     _, shown = call(automatic.POST, paths, "/api/settings/automatic", {"on": False})
     assert shown["on"] is False
-    assert not schedule.plist_path(automatic.agents()).exists()
+    assert autorun.installed(automatic.agents()) is None
 
 
 def test_changing_the_hours_moves_a_running_schedule(paths: Paths) -> None:

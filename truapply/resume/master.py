@@ -3,7 +3,6 @@ import json
 
 from truapply.core.codec import decode
 from truapply.core.documents import ResumeData, ResumeFormat
-from truapply.core.errors import LatexMissingError
 from truapply.core.files import write_private
 from truapply.core.paths import Paths
 from truapply.core.profile import Profile
@@ -17,10 +16,7 @@ def load_resume(profile: Profile) -> Resume:
     source = profile.resume.path.read_text(encoding="utf-8")
     if profile.resume.format is ResumeFormat.STRUCTURED:
         return StructuredResume(decode(ResumeData, json.loads(source)))
-    pdflatex = find_pdflatex()
-    if pdflatex is None:
-        raise LatexMissingError("Your resume is LaTeX, but pdflatex isn't installed.")
-    return LatexResume(source, pdflatex)
+    return LatexResume(source, find_pdflatex())
 
 
 def _digest(resume: Resume) -> str:

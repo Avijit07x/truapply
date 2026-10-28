@@ -4,10 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from tests.unit import samples
+from truapply.core.errors import LatexMissingError
 from truapply.core.models import Job
 from truapply.core.paths import Paths
+from truapply.resume import master
 from truapply.resume.contract import Draft, Rendered
-from truapply.resume.master import cached_master, master_pdf
+from truapply.resume.master import cached_master, load_resume, master_pdf
 
 
 @dataclass
@@ -64,3 +67,18 @@ def test_a_deleted_pdf_is_rebuilt(paths: Paths) -> None:
     paths.master_pdf.unlink()
     master_pdf(paths, resume)
     assert resume.renders == ["v1", "v1"]
+
+
+def test_a_latex_resume_is_read_without_latex_and_only_building_it_needs_latex(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "master.tex"
+    source.write_text(
+        "\\documentclass{article}\n\\begin{document}\nAsha Rao\n\\end{document}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(master, "find_pdflatex", lambda: None)
+    resume = load_resume(samples.profile(source))
+    assert "Asha Rao" in resume.readable(resume.source)
+    with pytest.raises(LatexMissingError, match="pdflatex isn't installed"):
+        resume.render(resume.source, tmp_path / "out.pdf")

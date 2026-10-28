@@ -23,7 +23,7 @@ from playwright.sync_api import (
 
 from tests.unit import samples
 from tests.unit.tracker_api import get, ids_in, running, seed_every_group
-from truapply.core import schedule
+from truapply.core import autorun
 from truapply.core.models import Source, Status
 from truapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
 from truapply.core.paths import Paths
@@ -348,7 +348,7 @@ def test_every_setting_is_changed_from_the_settings_page(
     assert saved.settings.jobs_per_run == 12
     assert saved.years_experience == 3.5
     assert saved.cover_letter == "never"
-    assert schedule.plist_path(agents).is_file()
+    assert autorun.installed(agents) is not None
 
 
 def test_the_learned_list_lines_up_with_its_heading(browser: Browser, home: Paths) -> None:

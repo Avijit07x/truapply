@@ -27,6 +27,7 @@ from truapply.store.jobs import StatusChange
 from truapply.tracker.server import TrackerServer
 
 JSON_TYPE = "application/json"
+QUICK_S = 5
 Reply = tuple[int, Any]
 SEEDED: tuple[tuple[Status, str, set[Group]], ...] = (
     (Status.NEW, "", {Group.WAITING_SCORE}),
@@ -86,7 +87,7 @@ def fetch(
         server.url + path, data=data, headers=dict(headers or {}), method=method
     )
     try:
-        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
+        with urllib.request.urlopen(request, timeout=QUICK_S) as response:  # noqa: S310
             return response.status, response.headers, response.read()
     except HTTPError as error:
         with error:

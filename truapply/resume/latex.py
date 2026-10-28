@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from truapply.ai.tasks import revise_latex, rewrite_latex
-from truapply.core.errors import ResumeUnreadableError
+from truapply.core.errors import LatexMissingError, ResumeUnreadableError
 from truapply.core.models import Job
 from truapply.resume.contract import Draft, Rendered
 from truapply.resume.packages import render_installing
@@ -37,7 +37,7 @@ def body_problems(original_body: str, tailored_body: str) -> list[str]:
 @dataclass(frozen=True)
 class LatexResume:
     source: str
-    pdflatex: Path
+    pdflatex: Path | None
     suffix: str = ".tex"
 
     @property
@@ -66,4 +66,6 @@ class LatexResume:
         return body_problems(self.body, draft.source[len(self.preamble) :])
 
     def render(self, source: str, target: Path) -> Rendered:
+        if self.pdflatex is None:
+            raise LatexMissingError("Your resume is LaTeX, but pdflatex isn't installed.")
         return render_installing(source, target, self.pdflatex)

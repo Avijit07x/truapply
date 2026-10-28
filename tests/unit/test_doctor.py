@@ -13,6 +13,7 @@ from playwright.sync_api import Error as PlaywrightError
 
 from truapply import doctor
 from truapply.browser import chrome
+from truapply.core import autorun
 from truapply.core.paths import Paths
 from truapply.core.schedule import Plan, install, plist_path
 from truapply.store.db import connect
@@ -93,7 +94,8 @@ def test_an_unbuilt_tracker_page_is_named(tmp_path: Path) -> None:
 def test_a_schedule_whose_python_is_gone_is_named(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(autorun, "SUPPORTED", True)
+    monkeypatch.setattr(autorun, "WINDOWS", False)
     install(Paths(tmp_path), Plan(3), tmp_path, accept)
     target = plist_path(tmp_path)
     agent = plistlib.loads(target.read_bytes())
@@ -103,7 +105,8 @@ def test_a_schedule_whose_python_is_gone_is_named(
 
 
 def test_no_schedule_is_not_a_problem(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(autorun, "SUPPORTED", True)
+    monkeypatch.setattr(autorun, "WINDOWS", False)
     check = doctor.attempt("Schedule", partial(doctor.schedule, tmp_path))
     assert check.ok
     assert "truapply schedule" in check.detail
