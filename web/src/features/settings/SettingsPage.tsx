@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { queries } from "../../api/queries";
-import type { Extension, SettingsView } from "../../api/types";
-import { CopyButton } from "../../components/CopyButton";
+import type { SettingsView } from "../../api/types";
+import { ExtensionStatus, ExtensionSteps } from "../../components/ExtensionSteps";
 import { PageHeader, Row } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Callout";
@@ -31,26 +31,6 @@ import {
 } from "./SettingsGroups";
 import styles from "./Settings.module.css";
 import { useSettingsDraft } from "./useSettingsDraft";
-
-function ExtensionSteps({ extension }: { extension: Extension }) {
-  if (!extension.built) {
-    return <Callout>Build it first: cd web && npm run build</Callout>;
-  }
-  return (
-    <ol className={styles.steps}>
-      <li>Open chrome://extensions in Chrome.</li>
-      <li>Turn on Developer mode.</li>
-      <li>
-        Click Load unpacked and pick this folder:
-        <span className={styles.folder}>
-          <code>{extension.folder}</code>
-          <CopyButton text={extension.folder} label="Copy the folder path" />
-        </span>
-      </li>
-      <li>Keep the TruApply app running while you apply.</li>
-    </ol>
-  );
-}
 
 type ShownProps = GroupProps & { view: SettingsView };
 type Tab = TabItem & { form: boolean; show: (props: ShownProps) => ReactNode };
@@ -119,6 +99,7 @@ const TABS: readonly Tab[] = [
           note="Fills in applications in your own Chrome. You check each one and press Submit."
         >
           <ExtensionSteps extension={view.extension} />
+          <ExtensionStatus />
         </Group>
       </>
     ),

@@ -43,6 +43,7 @@ from truapply.store.jobs import AttemptRecord, StatusChange
 from truapply.tracker import automatic, resume_upload, runs
 
 BUILT = resources.files("truapply.tracker").joinpath("static", "index.html").is_file()
+EXTENSION_PAGE_SCRIPT = Path(str(resources.files("truapply").joinpath("extension", "wake.js")))
 pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(not BUILT, reason="build the app first: cd web && npm ci && npm run build"),
@@ -708,6 +709,7 @@ def test_a_new_user_sets_up_from_the_page_and_nothing_else_opens_before(
     resume.write_bytes(b"%PDF-1.4 resume")
     _setup_without_claude(monkeypatch, tmp_path / "agents")
     with running(fresh) as server, opened(browser) as (page, errors):
+        page.add_init_script(path=EXTENSION_PAGE_SCRIPT)
         page.goto(server.url + "/runs")
         expect(page).to_have_url(server.url + "/setup")
         nav = page.get_by_role("navigation", name="Main")
@@ -724,11 +726,12 @@ def test_a_new_user_sets_up_from_the_page_and_nothing_else_opens_before(
         page.get_by_label("Lowest salary you'd accept").fill("1200000")
         page.get_by_label("Highest you'd ask for").fill("1800000")
         page.get_by_role("button", name="Next").click()
-        finish = page.get_by_role("button", name="Finish setup")
-        expect(finish).to_be_disabled()
+        expect(page.get_by_role("button", name="Next")).to_be_disabled()
         page.get_by_role("radio", name="Send it as it is").click()
         page.get_by_role("radio", name="Only when I press Run").click()
-        finish.click()
+        page.get_by_role("button", name="Next").click()
+        expect(page.get_by_role("status")).to_contain_text("installed in this Chrome")
+        page.get_by_role("button", name="Finish setup").click()
         expect(page).to_have_url(server.url + "/")
         expect(nav.get_by_role("link", name="Companies")).to_be_visible()
         assert errors == []

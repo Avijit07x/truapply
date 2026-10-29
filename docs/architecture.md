@@ -98,6 +98,7 @@ truapply/
     actions.py           job actions: approve, edit, dismiss, 👍/👎, answers, Finish these, revert
     learning.py          Tell TruApply, tailoring notes, suggestions, What it learned
     trust.py · runs.py · settings.py   auto-submit, runs from the page, settings
+    setup.py             first-run setup from the page: read the resume, ask the rest, save the profile
     static.py            serves the built app (static/, made by `npm run build`, not in git)
     plain.py             readable resume changes, with LaTeX commands stripped
   report/

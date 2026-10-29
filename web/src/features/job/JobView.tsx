@@ -21,8 +21,12 @@ export function JobView({ job, top, more, docked = false }: JobViewProps) {
         {top}
         <div className={styles.titleRow}>
           <div className={styles.heading}>
-            <h1 className={styles.title}>{job.title}</h1>
-            <p className={styles.place}>{place(job) || "Location not given"}</p>
+            <h1 className={styles.title} title={job.title}>
+              {job.title}
+            </h1>
+            <p className={styles.place} title={place(job)}>
+              {place(job) || "Location not given"}
+            </p>
           </div>
           <JobActions job={job} />
         </div>

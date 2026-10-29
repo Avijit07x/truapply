@@ -9,7 +9,7 @@ The TypeScript shapes below are the same ones the app uses, in `web/src/api/type
 - Only `Host: 127.0.0.1:<port>` or `localhost:<port>` is answered (this blocks DNS-rebinding tricks), plus your Tailscale address or a `--allow-host` name (see [other-devices.md](other-devices.md)). Anything else gets `403`.
 - Every `POST` needs `Origin: http://127.0.0.1:<port>` (or `localhost`, or `https://` plus an allowed name) **and** `Content-Type: application/json`. Anything else gets `403`.
 - Bodies are JSON objects, at most 200 KB. A bigger body gets `403`; a body that isn't a JSON object gets `400`.
-- Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: run `truapply setup`).
+- Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: finish setup).
 - Times are ISO 8601 strings in UTC. The app shows them in local time.
 - Text from job posts and forms comes back as plain strings. The app renders it as text, never as HTML.
 - Links come back only when they are `http` or `https`; otherwise the field is `null`.
@@ -57,6 +57,15 @@ type Summary = {
   total: number; counts: Partial<Record<Status, number>>;
   sites: { source: string; total: number; counts: Partial<Record<Status, number>> }[];
   run: RunState; suggestions: number;
+  setupNeeded: boolean; // no profile yet: the app shows only the setup page
+};
+
+type SetupView = {
+  needed: boolean;
+  draft: { name: string; email: string; phone: string; city: string; country: string;
+           roles: string[]; titleKeywords: string[]; currency: string; pages: number } | null;
+  noticePeriods: string[]; automatic: Automatic; extension: { folder: string; built: boolean };
+  warning?: string;
 };
 
 type Sort = "updated" | "score" | "title" | "company" | "location";
@@ -187,6 +196,9 @@ Each one answers with the updated `Learned`.
 | `GET /api/settings` | | `SettingsView` |
 | `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
 | `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |
+| `GET /api/setup` | | `SetupView`. `draft` is what Claude read from the resume, kept until setup finishes, so a reload carries on from step 2. |
+| `POST /api/setup/resume` | `{ name, data }`, like `/api/settings/resume` | `SetupView`. Claude reads the resume once for the details and, in parallel, stores it as the master resume. `409` once set up. |
+| `POST /api/setup` | the answers: name, email, phone, city, country, roles, titleKeywords, the four place flags, citizenship, workWithoutVisa, needsSponsorship (`true`/`false`, never guessed), noticePeriod, currency, expectedMin, expectedMax, tailorResume, jobsPerRun, runEveryMinutes (`null` = only when you press Run) | `SetupView`. Saves the profile with defaults for the rest, adds the built-in companies, and turns automatic runs on when a time was picked (`warning` says if that failed). `400` lists every missing answer. `409` once set up. |
 | `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS and Windows. |
 
 ### Chrome extension
