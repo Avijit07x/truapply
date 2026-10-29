@@ -82,7 +82,7 @@
 }
 
 .navLink[aria-current="page"] {
-  background: var(--surface);
+  background: var(--selected);
   box-shadow:
     0 0 0 1px var(--line),
     0 1px 2px var(--shadow-color);

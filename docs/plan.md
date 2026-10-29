@@ -12,23 +12,27 @@ Success is measured in **interviews**, not applications sent. A tool that sends 
 
 Free tools today fall into two groups:
 
-- **Some never submit.** You still open every form and click Submit yourself.
+- **Some never submit.** You still open every form and fill it in yourself.
 - **Others submit carelessly:** the same resume everywhere, no fact checks, LinkedIn only, or behind a paid plan.
 
-None of them handle Naukri well, and none learn what actually leads to interviews.
+Few handle Indian forms well, and none learn what you actually want.
 
 TruApply's place:
 
-- **India-first.** Naukri, LinkedIn and company career pages, with Indian form fields (notice period, current CTC) handled properly.
-- **Auto-submit you can trust.** It starts by asking you to approve each application, and offers auto-submit only once it has earned that trust.
-- **It learns from you.** Every answer, approval, dismissal, edit and rule teaches it what you want (see [outcomes.md](outcomes.md)).
+- **India-first.** Company career pages, with Indian form fields (notice period, current CTC) handled properly.
+- **You stay in control.** The Chrome extension fills each form in your own Chrome, and you press Submit. Auto-submit is off until you turn it on.
+- **It learns from you.** Every answer, dismissal, 👍 / 👎, tailoring note and rule teaches it what you want (see [outcomes.md](outcomes.md)).
 
-### Trust before auto-submit
+### Auto-submit
 
-1. Everyone starts in the **review queue**, the project owner included. TruApply fills each application, and you approve it on the tracker page.
-2. After **20 approvals in a row with no edits**, it offers to turn on auto-submit for strong matches (score 80 or more). You decide.
-3. An edit or a 👎 "bad match" resets the count.
-4. Once auto-submit is on, if 2 of the last 10 auto-submitted applications get a 👎, it switches back to the review queue and tells you.
+Changed. The first plan made you earn auto-submit: a review queue, then an offer after 20 approvals in a row with no edits. The review queue, approvals and trust count are gone. Auto-submit is now a plain setting (`auto_submit` in `profile.json`, Settings → Applying):
+
+1. Off until you turn it on.
+2. Sends only career-page jobs scoring at or above your chosen score (80 by default), and only when nothing on the form is left for you.
+3. Never past a human check ("prove you're human"), and never the same job twice.
+4. Turns itself off after 2 👎 in the last 10 auto-submitted applications.
+
+The extension does the sending, in a tab you can see. A run never sends anything.
 
 ## Target numbers
 
@@ -36,14 +40,14 @@ What "good enough" means. Every number is measured, not guessed.
 
 | What | Target | How it's measured |
 |---|---|---|
-| Forms that go through | **≥ 90 %** of attempts on supported sites | Insights page: last 50 attempts per site |
+| Forms that go through | **≥ 90 %** of attempts on supported sites | Not measured yet. The planned Insights page was never built. |
 | Bad matches | **< 10 %** of applications | Your 👎 "bad match" clicks on the tracker |
-| Your edits per reviewed application | **Falling** week over week | Tracker: edits ÷ reviews. This proves it learns from your input. |
+| Your edits to its answers | **Falling** week over week | Not measured yet. It was planned as edits ÷ approvals, and approvals are gone. |
 | Made-up facts in resumes or answers | **0** | Automatic resume checks, plus a hand review of 20 tailored resumes before each release |
 | Duplicate applications | **0** | Duplicate test plus a database check |
-| Scheduled runs that finish without crashing | **≥ 95 %** | Run log |
-| Claude calls per application | **≤ 6** on average, falling over time | Usage counter in the database |
-| New user, from install to first dry run | **≤ 15 min** | Timed on a fresh macOS account |
+| Scheduled runs that finish without crashing | **≥ 95 %** | Run logs on the Activity page |
+| Claude calls per application | **≤ 6** on average, falling over time | Usage counter in the database (calls per day) |
+| New user, from install to first run | **≤ 15 min** | Timed on a fresh macOS account |
 
 ## Scope
 
@@ -51,41 +55,52 @@ What "good enough" means. Every number is measured, not guessed.
 
 | Command | What it does |
 |---|---|
-| `truapply setup` | Reads your resume, asks the [setup questions](setup-questions.md), and saves your profile |
-| `truapply login` | Opens Chrome so you can log in to LinkedIn, Naukri, Indeed and Wellfound once |
-| `truapply doctor` | Checks that everything works: Claude, Chrome, LaTeX, each login, schedule. Says how to fix anything broken. |
+| `truapply tracker` | Starts the local tracker app (`--open` opens it, `--port`, `--allow-host`). On first use it opens on **Set up**: 5 steps (resume, details, rights and pay, how it runs, Chrome extension), and every other page is locked until it's done. |
+| `truapply setup` | The same setup in the terminal: reads your resume and asks the [setup questions](setup-questions.md) |
+| `truapply doctor` | Checks the data folder, database, profile, resume build, Claude budget, Claude Code, Chrome, tracker page and schedule. Says how to fix anything broken. |
 | `truapply tailor JOB.txt --company … --title …` | Previews your resume tailored to one job description, with every check and the changed lines |
-| `truapply run` | One full pass: find, score, tailor, apply, write the summary. `--dry-run`, `--site`, `--limit`, `--show` |
-| `truapply tracker` | Opens the local tracker page |
-| `truapply finish` | Opens every job waiting for you in one browser, a tab each, filled in and stopped before Submit; you do any human check and press Submit |
+| `truapply run` | One pass: find jobs, score them, tailor your resume for the best. Nothing is sent. `--limit`, `--no-search`, `--find-companies`, `--job`, `--score`, `--no-find`, `--only find\|score\|tailor` |
 | `truapply add LINK` | Adds a company from a Greenhouse, Lever or Ashby job or careers link and checks it now and on every run |
-| `truapply schedule` / `unschedule` | Runs it every 3 hours in the background (macOS launchd, Windows Task Scheduler; prints a cron line on Linux) |
+| `truapply schedule` / `unschedule` | Runs it on its own every 3 hours (or `--every` minutes): macOS launchd, Windows Task Scheduler; prints a cron line on Linux |
 | `truapply boards --new` | Prints the career boards you found that aren't in the shared list yet, ready to contribute |
 | `truapply archive` | Finds new companies in the latest web archive (no AI); the tracker and weekly runs start it in the background |
 
-Job sources: **career pages** (Greenhouse, Lever, Ashby) and **LinkedIn Easy Apply, Naukri, Indeed, Wellfound**.
+The **Chrome extension** (`truapply/extension/`) fills applications in your own Chrome. From the tracker, **Open in my Chrome** opens a job and the extension fills it with the tailored resume and saved answers; you check it and press Submit. When the site confirms, the job becomes `applied`. On any other job page, the extension's toolbar icon adds the job and fills the form. See [extension.md](extension.md).
+
+Job sources:
+
+- **Career pages** (Greenhouse, Lever, Ashby): found, scored and tailored on every run. The built-in list has 693 boards.
+- **Wellfound:** checked on every run and listed for you to apply on the site.
+- **LinkedIn, Naukri, Indeed and other sites:** a job page you open yourself can be added from the extension. TruApply never searches or applies there on its own.
+
+Job statuses: `new`, `skipped`, `scored`, `ready`, `dismissed`, `applied`, `closed`.
 
 ### v1 doesn't
 
 | Left out | Why | What happens instead |
 |---|---|---|
-| Workday, iCIMS, Taleo and other sites that need an account per company | Every company needs a separate account and password | Marked `external` with the link: apply yourself |
-| Solving CAPTCHAs or email/SMS codes | Getting past them is deceptive and breaks site rules | The job is flagged `needs_input` |
+| Searching Workday, iCIMS, Taleo and other sites that need an account per company | Every company needs a separate account and password | Open the form yourself and click the extension's icon to fill it |
+| Solving CAPTCHAs or email/SMS codes | Getting past them is deceptive and breaks site rules | You solve them in your own Chrome. Auto-submit stops before them. |
+| Logging in to job sites | Risky for your accounts | The extension works in your own Chrome, with your own logins |
+| Applying on LinkedIn | Dropped on 27 Oct 2026: LinkedIn's rules ban automation and could restrict your account | The extension can add a LinkedIn job you open; you apply yourself |
+| Refreshing your Naukri profile | Dropped: it would mean acting on your Naukri account | — |
 | Reading your email | Dropped on 28 Oct 2026: an inbox password can read all your mail, and the risk isn't worth it | You mark what happened yourself |
-| Windows scheduling | Different system; later | `truapply run` still works by hand |
+| Other AI services (such as Gemini) | Dropped: Claude Code is the only AI, so every call goes through one safe wrapper | — |
 | A hosted or cloud version | It's meant to stay on your machine | — |
 
 ---
 
 ## Build phases
 
-A phase is **done only when every must-pass box is ticked**. Nothing is submitted to a real employer until the owner says yes.
+A phase is **done only when every must-pass box is ticked**. Nothing is submitted to a real employer during development or tests.
 
 ```mermaid
 flowchart LR
-  P0[0 Plan] --> P1[1 Foundation] --> P2[2 Career pages] --> P3[3 Tracker] --> P4[4 Background] --> P4b[4b More companies]
-  P4b --> P5[5 Logged-in sites] --> P7[7 Release]
+  P0[0 Plan] --> P1[1 Foundation] --> P2[2 Career pages] --> P3[3 Tracker] --> P3c[3c Extension] --> P3d[3d Setup in the app]
+  P3d --> P4[4 Background] --> P4b[4b More companies] --> P7[7 Release]
 ```
+
+Phase 5 (logged-in sites) and phase 6 (email replies) were dropped.
 
 ### Phase 0 · Plan ✅
 These docs.
@@ -117,7 +132,7 @@ These docs.
 - Board discovery by web search
 - Title filter and AI scoring
 - Detection of employer "no AI" rules
-- The general form filler, plus a local multi-step test form
+- The general form filler, plus a local multi-step test form. This Playwright filler was later replaced by the Chrome extension (phase 3c).
 
 **Must pass**
 - [x] 20 boards polled: 100 % of jobs have a title, company, location, link and description
@@ -126,57 +141,82 @@ These docs.
 - [x] A job post with hidden instructions ("ignore your rules…") changes nothing: no tools used, answers still from the profile
 - [x] A job post saying "no AI-generated applications" is skipped. A form box "I did not use AI" is never ticked.
 - [x] The same job from two sources is applied to once
-- [x] A removed job (API 404), or an Ashby job past its deadline to apply, is marked `closed`, not `failed`
+- [x] A removed job (API 404), or an Ashby job past its deadline to apply, is marked `closed`
 
-### Phase 3 · Tracker page and learning from you
+### Phase 3 · Tracker page and learning from you ✅
 
 **Builds**
 - Application list with filters
-- "Needs your answer" and approvals. You can edit any answer before approving.
-- Resume change view, and a "what was sent" view per application
+- Resume change view, a "what was sent" view per application, and a button to go back to the original resume
 - 👍 / 👎 buttons, dismiss reasons, and resume tailoring notes
 - A "Tell TruApply" box for plain-language rules
-- The "What it learned" page
-- Trust counter and the auto-submit offer
-- A "Ready for you to apply" list (it replaced "Finish these"): **Open in my Chrome** opens the job, the TruApply extension fills it with the tailored resume and saved answers, and you do any picture check ("prove you're human") and press Submit. TruApply never solves the check itself.
-- A count of how often each site shows a check, so jobs on sites without checks are tried first
+- The "What it learned" page: suggestions, your rules, tailoring notes and saved answers, all editable
+- A "Ready for you to apply" list (it replaced "Finish these"): **Open in my Chrome** opens the job, the extension fills it with the tailored resume and saved answers, and you do any human check and press Submit. TruApply never solves the check itself.
+
+Changed: "Needs your answer", approvals, the trust counter and the auto-submit offer were dropped once the extension took over filling. Questions it can't answer are now left for you on the form itself, and auto-submit is a plain setting (see [Auto-submit](#auto-submit)). The planned count of human checks per site isn't built.
 
 **Must pass**
 - [x] Every status is visible and filterable
-- [x] A picture check that appears after Submit puts the job in "Finish these" with every answer saved, never in `unconfirmed` or `failed`
 - [x] From "Ready for you to apply", the job opens filled in your own Chrome; submitting it, or **I submitted it**, sets `applied` (14 real applications sent this way, plus a browser test)
-- [x] Answer a question on the page, and the next form with that question fills without an AI call (shown in the log)
-- [x] Edit an answer before approving → the next form with that question uses your version
-- [x] Approve → submitted on the next run (with `--send`, or the Run page's send box); dismiss → never applied
+- [x] Answer a question on a form, and the next form with that question fills without an AI call
+- [x] Edit a saved answer on "What it learned" → the next form with that question uses your version
 - [x] Dismiss 3 jobs as "too senior" → a suggestion to add that title word to "skip titles" appears, and nothing changes until you accept it
 - [x] A rule typed in "Tell TruApply" ("no staffing agencies") changes the next scores, appears on "What it learned", and can be deleted there
 - [x] A tailoring note ("don't change my headline") is followed in the next 5 tailored resumes
-- [x] The auto-submit suggestion appears exactly after 20 clean approvals in a row; an edit or a 👎 resets the count; **Turn on now** switches it on sooner
-- [x] Two 👎 in the last 10 auto-submitted → auto-submit turns off and a notification is sent
+- [x] Two 👎 in the last 10 auto-submitted → auto-submit turns off
 - [x] The change view shows exactly the changed lines for 5 tailored resumes
 - [x] A POST from another website is rejected (curl test with a fake `Origin`)
 - [x] Checked in a real browser, with a screenshot
+- Dropped with the review queue: picture check after Submit → "Finish these"; approve → sent on the next run with `--send`; the auto-submit offer after 20 clean approvals.
 
-### Phase 3b · React tracker and the workflow map
+### Phase 3b · React tracker ✅
 
 **Builds**
 - The tracker as a React + TypeScript app (`web/`, built with Vite and shipped prebuilt inside the package, so users don't need Node), talking to the Python tracker only through the JSON API in [tracker-api.md](tracker-api.md)
+- Pages: Today, Jobs, All jobs, Companies, Activity (runs and their logs), Learned, Settings, and a page per job
 - Inline answer editing, live run progress without reloads
-- **Workflow map** (`/workflow`, removed on 2026-10-29: Today's pipeline counts replace it): a live decision-flow chart of how every job is handled, in the style of a Notion decision diagram. Questions are nodes with YES / NO branches, outcomes are boxes with live job counts, and automatic steps (AI scoring, tailoring, form filling) are dashed purple lines. Clicking a box opens those jobs. The flow:
-  - Found on a career page → Title fits your keywords? → Location fits where you'll work? → Seen before? (duplicate) → AI score at least your minimum, with no deal-breaker? (no → Not a fit) → Employer bans AI-written applications? (yes → Skipped)
-  - → Tailor the resume → Passes the fact check? (no → original resume used) → Fill the form → Legal question it can't answer? (yes → Needs your answer) → Picture check? (yes → Finish these)
-  - → Auto-submit earned and score ≥ 80? (yes → Sent automatically) / (no → Waiting for your OK → Approve? yes → Sent on the next run, no → Dismissed) → Confirmation shown? (yes → Applied, no → Unconfirmed)
-- The Revert-to-original-resume button (suggests a tailoring note), and the tracker choosing a free port when 8765 is taken
+- The tracker choosing a free port when 8765 is taken
+- A workflow map page (`/workflow`), removed on 2026-10-29: Today's pipeline counts (Found, Not a fit, Good matches, Ready for you, Applied) replace it
 
 **Must pass**
-- [x] Every page of the current tracker works in the React app, with the same safety checks (Host, Origin, JSON-only POST, strict CSP with only the tracker's own scripts)
-- [x] The workflow map's counts match the Career jobs page for every box, and each box links to exactly those jobs
+- [x] Every page of the tracker works in the React app, with the same safety checks (Host, Origin, JSON-only POST, strict CSP with only the tracker's own scripts)
+- [x] The workflow map's counts matched the Jobs page for every box (before it was removed)
 - [x] Checked in a real browser, light and dark, with screenshots of every page; a browser test also checks phone width has no sideways scrolling (a phone layout isn't needed for now)
+
+### Phase 3c · Chrome extension ✅
+
+It replaced the Playwright form filler and the separate filled-in browser. See [extension.md](extension.md).
+
+**Builds**
+- The extension in `truapply/extension/`, loaded from a folder. It talks only to the app on `127.0.0.1`.
+- Filling in your own Chrome: saved answers and profile facts first, then Claude for the rest. Consent boxes and legal questions it can't answer are left for you, outlined.
+- **Open in my Chrome** from the tracker, and the toolbar icon to add and fill a job on any other page. A LinkedIn job page can only be added.
+- The site's confirmation marks the job `applied`, and what you typed is learned.
+- Auto-submit, as a setting (see [Auto-submit](#auto-submit)), with **Send these with auto-submit** on Today.
+
+**Must pass**
+- [x] Requests from other websites and extensions are refused
+- [x] Saved answers fill without an AI call; consent is never answered and is left for you
+- [x] Submitting marks the job applied; doing it twice changes nothing; a thank-you page on its own address also counts (browser test)
+- [x] Auto-submit sends nothing while off or during a run, sends only strong jobs one at a time, and holds a stalled send for you without trying it again
+- Live tests (`pytest -m network`, `tests/live/test_extension_live.py`) fill real application forms with real Claude answers, leave consent to you, and submit nothing.
+
+### Phase 3d · Setup in the tracker app ✅
+
+**Builds**
+- First-run setup in the app, in 5 steps: your resume (Claude reads it), your details and jobs to look for, rights and pay (never filled in for you), how it runs, and the Chrome extension with a live installed check
+- Every other page is locked until setup is done; the rest take defaults (see [setup-questions.md](setup-questions.md))
+
+**Must pass**
+- [x] A fresh folder asks for setup and can't run
+- [x] A wrong file is refused before Claude reads it; finishing needs the resume first
+- [x] Work rights are never filled in for you
+- [x] Finishing saves the profile and opens the app; picking a schedule turns automatic runs on
 
 ### Phase 4 · Background runs and daily summary
 
 **Builds**
-- `schedule` / `unschedule`
+- `schedule` / `unschedule` (macOS launchd and Windows Task Scheduler; a cron line on Linux), and turning automatic runs on or off from the tracker
 - A run lock, daily limits and pauses
 - Crash recovery and a daily Claude call budget
 - Daily summary and notifications
@@ -185,20 +225,20 @@ These docs.
 **Must pass**
 - [ ] After `schedule`, a run starts on its own and writes the log
 - [x] A second run started during a first exits with "already running"
-- [x] A run killed right after clicking Submit → the next run marks the job `unconfirmed` and does **not** submit again
-- [x] The daily limit and the LinkedIn limit stop applying at exactly the limit
+- [x] The daily limit and the LinkedIn limit stop getting jobs ready at exactly the limit
 - [x] The summary notification shows once a day
 - [x] `doctor` names each broken piece and its fix (tested by breaking each one)
+- Changed: "a run killed right after clicking Submit is marked `unconfirmed`". Runs no longer submit. Auto-submit marks a job before pressing Submit, so it's never sent twice.
 
 ### Phase 4b · More companies
 
 Most Indian startups don't use Greenhouse, Lever or Ashby. A check of 975 Bengaluru startups' careers pages found Keka on 41, Google Forms on 30, Darwinbox on 27, Greenhouse, Lever and Ashby together on 28, Wellfound on 17, Zoho Recruit on 15 and Workday on 14; the rest load their links with JavaScript or post only on job sites. The measure is **relevant open jobs found per week**. In order, each its own change:
 
 1. **Companies from the web archive.** The free Common Crawl index lists every Greenhouse, Lever and Ashby page it has visited. A partial read on 28 Oct 2026 gave 2,353 names we didn't have, 210 of them with jobs in India. Read in the background beside runs, once a week or from **Search the web archive**; only new names are checked, and no AI is used.
-1. **Companies by name.** Paste company names or websites on the Companies page; each is tried on Greenhouse, Lever and Ashby, and kept only when it has jobs in your country, so a same-named company abroad isn't added.
-2. **Companies from every job.** Any job whose apply link or description points to a Greenhouse, Lever or Ashby board adds that company.
-3. **Many small web searches.** One search per role, place and job system instead of one per job system, within the daily Claude budget.
-4. **Keka and Darwinbox.** Only if their job lists can be read without signing in. Then Zoho Recruit.
+2. **Companies by name.** Paste company names or websites on the Companies page; each is tried on Greenhouse, Lever and Ashby, and kept only when it has jobs in your country, so a same-named company abroad isn't added.
+3. **Companies from every job.** Any job whose apply link or description points to a Greenhouse, Lever or Ashby board adds that company.
+4. **Many small web searches.** One search per role, place and job system instead of one per job system, within the daily Claude budget.
+5. **Keka and Darwinbox.** Only if their job lists can be read without signing in. Then Zoho Recruit.
 
 SmartRecruiters and Workday stay out (dropped on 28 Oct 2026).
 
@@ -212,14 +252,11 @@ SmartRecruiters and Workday stay out (dropped on 28 Oct 2026).
 
 ### Phase 5 · Logged-in sites
 
-One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for each site:
-- [ ] `doctor` detects logged in and logged out
-- [ ] Search finds ≥ 10 relevant jobs, read-only, with no errors
-- [ ] Saved page fixtures (search page and job page, personal data removed) are in `tests/fixtures/<site>/`, and the tests pass on them
-- [ ] 5 dry runs reach Submit
-- [ ] A block or "unusual activity" page pauses the site for the day (fixture test)
-- [ ] "Apply on company site" links to Greenhouse/Lever/Ashby are followed; other links are marked `external`
-- [ ] With the owner's OK: 3 live applications, each confirmed by the site
+**Dropped.** The plan was to search and apply on LinkedIn, Naukri, Indeed and Wellfound with your saved logins. TruApply never logs in to job sites now:
+
+- **LinkedIn:** auto-apply dropped on 27 Oct 2026, because LinkedIn's rules ban automation and could restrict your account. The extension can add a LinkedIn job you open; you apply yourself.
+- **Naukri and Indeed:** not searched. A job page you open can be added from the extension.
+- **Wellfound:** read on every run without logging in, and listed for you to apply on the site.
 
 ### Phase 6 · Replies and learning from results
 
@@ -228,13 +265,13 @@ One at a time: **LinkedIn → Naukri → Indeed → Wellfound.** Must pass, for 
 ### Phase 7 · Open-source release
 
 **Builds**
-- README (install, disclaimer), MIT LICENSE, CONTRIBUTING
-- Issue and PR templates, CHANGELOG
-- Shared company list of ≥ 300 companies
-- Version `0.1.0`
+- [x] README (install, disclaimer), MIT LICENSE, CONTRIBUTING
+- [ ] Issue and PR templates, CHANGELOG
+- [x] Shared company list of ≥ 300 companies (693 boards)
+- [ ] Version `0.1.0` (now `0.1.0.dev0`)
 
 **Must pass**
-- [ ] Fresh macOS user account: README install → first dry run in ≤ 15 min
+- [ ] Fresh macOS user account: README install → first run in ≤ 15 min
 - [ ] Fresh Linux machine: the same
 - [ ] Fresh Windows machine: the same
 - [x] Secret scan of the full git history is clean, and there's no personal data in the repo (search for the owner's name, email and phone)

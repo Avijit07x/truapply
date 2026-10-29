@@ -11,7 +11,7 @@ It finds jobs that fit you, tailors your resume using only true facts, and fills
 ## What you need
 
 - Python 3.11 or newer
-- Node.js 22 or newer (only to build the app once)
+- Node.js 22.12 or newer (only to build the app once)
 - Google Chrome
 - Claude Code, installed and logged in (`claude` works in your terminal)
 
@@ -62,4 +62,4 @@ You can change all of it later in **Settings**.
 - [Safety rules](docs/safety.md)
 - [Contributing](docs/CONTRIBUTING.md)
 
-License: MIT
+License: [MIT](LICENSE)

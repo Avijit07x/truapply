@@ -4,6 +4,7 @@
   --surface: light-dark(#ffffff, #17171b);
   --subtle: light-dark(#f4f4f5, #1b1b20);
   --hover: light-dark(rgb(24 24 27 / 0.045), rgb(255 255 255 / 0.05));
+  --selected: light-dark(#ececef, #26262d);
   --sidebar: light-dark(#f4f4f5, #09090b);
   --canvas: light-dark(#fafafa, #0d0d10);
   --text: light-dark(#18181b, #ededf0);
