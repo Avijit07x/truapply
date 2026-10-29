@@ -26,11 +26,10 @@ function Pip({ cx, cy }: { cx: number; cy: number }) {
   return <circle cx={cx} cy={cy} r={1} fill="currentColor" stroke="none" />;
 }
 
-export function Home(props: IconProps) {
+export function Sunrise(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M2.5 7L8 2.5L13.5 7V12.5A1 1 0 0 1 12.5 13.5H3.5A1 1 0 0 1 2.5 12.5Z" />
-      <path d="M6.5 13.5V10H9.5V13.5" />
+      <path d="M2 12.5H14M4.75 12.5A3.25 3.25 0 0 1 11.25 12.5M8 4.5V6M3.2 7.7L4.2 8.7M12.8 7.7L11.8 8.7" />
     </Svg>
   );
 }

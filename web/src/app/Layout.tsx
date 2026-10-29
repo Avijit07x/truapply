@@ -13,12 +13,12 @@ import { PAGE_NAMES } from "../lib/pages";
 import {
   Briefcase,
   Building,
-  Home,
   type IconProps,
   Pulse,
   Rows,
   Sliders,
   Spark,
+  Sunrise,
 } from "../ui/icons";
 import styles from "./Layout.module.css";
 import { useLiveRefresh } from "./useLiveRefresh";
@@ -29,7 +29,7 @@ const TABLE = "/jobs/table";
 type NavItem = { to: string; label: string; Icon: ComponentType<IconProps>; also?: string };
 
 const MAIN: readonly NavItem[] = [
-  { to: "/", label: PAGE_NAMES["/"], Icon: Home },
+  { to: "/", label: PAGE_NAMES["/"], Icon: Sunrise },
   { to: "/jobs", label: "Jobs", Icon: Briefcase, also: "/sites/" },
   { to: TABLE, label: PAGE_NAMES[TABLE], Icon: Rows },
   { to: "/companies", label: PAGE_NAMES["/companies"], Icon: Building },

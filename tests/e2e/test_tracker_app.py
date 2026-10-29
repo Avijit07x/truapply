@@ -27,14 +27,15 @@ from tests.unit.tracker_api import fetch, get, ids_in, running, seed_every_group
 from truapply.ai import tasks
 from truapply.core import autorun
 from truapply.core.documents import ResumeFormat
-from truapply.core.models import Board, Source, Status
+from truapply.core.models import Ats, Board, Source, Status
 from truapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
 from truapply.core.paths import Paths
 from truapply.core.profile import ResumeRef, load, save
 from truapply.run.lock import run_lock
 from truapply.sources import intake, lookup
 from truapply.sources.ats import PollResult
-from truapply.store import feedback, jobs, records, rules
+from truapply.store import boards, feedback, jobs, records, rules
+from truapply.store.boards import BoardOrigin
 from truapply.store.db import connect
 from truapply.store.feedback import FeedbackKind
 from truapply.store.groups import Group
@@ -735,3 +736,21 @@ def test_a_new_user_sets_up_from_the_page_and_nothing_else_opens_before(
     assert (profile.citizenship, profile.notice_period) == ("India", "30 days")
     assert profile.needs_sponsorship_elsewhere
     assert not profile.settings.tailor_resume
+
+
+def test_companies_come_in_pages_of_fifty(browser: Browser, home: Paths) -> None:
+    many = [Board(Ats.GREENHOUSE, f"company{index:03}") for index in range(60)]
+    with closing(connect(home.database)) as db:
+        boards.add_many(db, many, BoardOrigin.SEARCH, datetime.now(UTC))
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/companies")
+        rows = page.locator("main tbody tr")
+        expect(rows).to_have_count(50)
+        pages = page.get_by_role("navigation", name="Pages")
+        expect(pages).to_contain_text("of 60")
+        pages.get_by_role("link", name="Next").click()
+        expect(page).to_have_url(server.url + "/companies?page=2")
+        expect(rows).to_have_count(10)
+        page.get_by_role("searchbox", name="Search companies").fill("company059")
+        expect(rows).to_have_count(1)
+        assert errors == []

@@ -729,6 +729,15 @@
   min-height: 34px;
 }
 
+.footer > .keys {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.footer > .pager {
+  flex: none;
+}
+
 .keys {
   display: flex;
   align-items: center;

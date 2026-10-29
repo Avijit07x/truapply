@@ -3,7 +3,9 @@ import {
   type Header,
   type SortingState,
   createColumnHelper,
+  createPaginatedRowModel,
   createSortedRowModel,
+  rowPaginationFeature,
   rowSortingFeature,
   sortFn_alphanumeric,
   sortFn_basic,
@@ -26,15 +28,20 @@ import { SearchBox } from "../../ui/SearchBox";
 import { toast } from "../../ui/toasts";
 import styles from "../jobs/Jobs.module.css";
 import { ChipMenu } from "../jobs/ChipMenu";
+import { Pager } from "../jobs/Pager";
 import { AddNames } from "./AddNames";
 import own from "./Companies.module.css";
 
 const features = tableFeatures({
+  rowPaginationFeature,
+  paginatedRowModel: createPaginatedRowModel(),
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   sortFns: { alphanumeric: sortFn_alphanumeric, basic: sortFn_basic },
 });
 type Features = typeof features;
+
+const PAGE_SIZE = 50;
 
 const SITE: Record<CompanyRow["site"], string> = {
   greenhouse: "Greenhouse",
@@ -124,10 +131,11 @@ function count(rows: readonly CompanyRow[], show: Show): number {
   return rows.filter((row) => shown(row, show, "")).length;
 }
 
-function href(show: Show, q: string): string {
+function href(show: Show, q: string, page = 1): string {
   const params = new URLSearchParams();
   if (show !== "all") params.set("show", show);
   if (q) params.set("q", q);
+  if (page > 1) params.set("page", String(page));
   const search = params.toString();
   return search ? `/companies?${search}` : "/companies";
 }
@@ -220,6 +228,8 @@ export default function CompaniesPage() {
   });
   const [sorting, setSorting] = useState<SortingState>([{ id: "company", desc: false }]);
   const rows = data.companies.filter((row) => shown(row, show, q));
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const page = Math.min(pages, Math.max(1, Number(url.searchParams.get("page")) || 1));
   const table = useTable({
     features,
     columns,
@@ -227,7 +237,7 @@ export default function CompaniesPage() {
     getRowId: (row) => row.key,
     enableSortingRemoval: false,
     enableMultiSort: false,
-    state: { sorting },
+    state: { sorting, pagination: { pageIndex: page - 1, pageSize: PAGE_SIZE } },
     onSortingChange: setSorting,
   });
   const all = data.companies;
@@ -301,12 +311,20 @@ export default function CompaniesPage() {
           </tbody>
         </table>
       </div>
-      <p className={styles.keys}>
-        <span>
-          Jobs for you counts the jobs it listed from that company, not counting skipped or closed
-          ones. Change how often it searches in <Link to="/settings?tab=search">Settings</Link>.
-        </span>
-      </p>
+      <footer className={styles.footer}>
+        <p className={styles.keys}>
+          <span>
+            Jobs for you counts the jobs it listed from that company, not counting skipped or closed
+            ones. Change how often it searches in <Link to="/settings?tab=search">Settings</Link>.
+          </span>
+        </p>
+        <Pager
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={rows.length}
+          hrefOf={(next) => href(show, q, next)}
+        />
+      </footer>
     </div>
   );
 }
