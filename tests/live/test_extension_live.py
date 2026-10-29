@@ -395,6 +395,25 @@ def test_the_panel_stays_when_the_page_redraws_itself(tmp_path: Path) -> None:
         assert page.evaluate("document.documentElement.dataset.truapply") == "unknown"
 
 
+def test_education_and_employment_dates_have_their_own_labels(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(extension, "answer_fields", every_answer)
+    found = poll([Board(Ats.GREENHOUSE, "cannondesign")]).jobs[:1]
+    assert found, "CannonDesign has no open Greenhouse jobs right now"
+    paths = seeded(tmp_path, found)
+    with (
+        running(paths) as server,
+        chrome_with_extension(server.server_address[1], Guard()) as context,
+    ):
+        page = context.new_page()
+        page.goto(found[0].apply_url, wait_until="domcontentloaded")
+        fields = report(page).get("fields")
+    assert isinstance(fields, list)
+    labels = {item["label"].rstrip("*") for item in fields}
+    assert {"Education: Start date year", "Employment: Start date year"} <= labels
+
+
 AUTO_JOBS_PER_SITE = 2
 AUTO_WAIT_MS = 180_000
 SEND_NOW = "chrome.alarms.create('send', { when: Date.now() })"

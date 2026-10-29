@@ -1,5 +1,5 @@
 import type { Field, Kind } from "./messages";
-import { SITE_SEARCH_BOXES } from "./sites";
+import { SITE_SEARCH_BOXES, SITE_SECTIONS, SITE_SECTION_TITLES } from "./sites";
 
 export const FIELD_ATTR = "data-truapply-field";
 export const OPTION_ATTR = "data-truapply-option";
@@ -98,14 +98,21 @@ const labelsOf = (element: Element): HTMLLabelElement[] =>
     ? [...(element.labels ?? [])]
     : [];
 
-const labelOf = (element: Element) =>
-  (
-    byIds(element.getAttribute("aria-labelledby")) ||
-    textOf(labelsOf(element)[0] ?? null) ||
-    clean(element.getAttribute("aria-label")) ||
-    nearbyText(element) ||
-    clean(element.getAttribute("placeholder") ?? element.getAttribute("name"))
-  ).slice(0, MAX_LABEL);
+const ownLabel = (element: Element) =>
+  byIds(element.getAttribute("aria-labelledby")) ||
+  textOf(labelsOf(element)[0] ?? null) ||
+  clean(element.getAttribute("aria-label")) ||
+  nearbyText(element) ||
+  clean(element.getAttribute("placeholder") ?? element.getAttribute("name"));
+
+const sectionOf = (element: Element) =>
+  textOf(element.closest(SITE_SECTIONS)?.querySelector(SITE_SECTION_TITLES) ?? null);
+
+const labelOf = (element: Element) => {
+  const section = sectionOf(element);
+  const label = ownLabel(element);
+  return (section ? `${section}: ${label}` : label).slice(0, MAX_LABEL);
+};
 
 const fileLabel = (element: Element) => {
   const group = element.closest("[role='group'][aria-labelledby]");
