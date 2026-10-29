@@ -23,7 +23,7 @@ pre-commit install
 playwright install chromium            # only if Google Chrome isn't installed
 (cd web && npm ci && npm run build)    # the tracker app; needs Node 22.12 or newer
 export TRUAPPLY_HOME=/tmp/truapply-dev # never develop against your real profile
-truapply setup
+truapply tracker --open                # the first time, setup runs in the app
 ```
 
 To work on the tracker app with instant reloads, run the tracker and the Vite dev server side by side. The dev server sends API calls on to the tracker:
@@ -66,7 +66,7 @@ How a senior engineer works on this codebase.
 
 ### After writing code
 
-12. **Prove it.** Tests for logic; a recorded dry run (log + screenshot) for anything that touches a site.
+12. **Prove it.** Tests for logic; for form-filling changes, a live fill of a real public form in a throwaway browser, stopped before Submit.
 13. **Make it observable.** Log every decision point with ids and statuses, never personal data. Errors say what happened and what to do next.
 14. **Leave it cleaner.** Delete the dead code you find. Split a file that grew past its job.
 15. **Review like an owner.** Review for correctness, safety, failure handling and simplicity; tools handle style. Be specific, suggest code, and approve when it's right, not when it's perfect.
@@ -96,13 +96,13 @@ How a senior engineer works on this codebase.
 - Booleans read as questions: `is_duplicate`, `has_submit_button`, `auto_submit_allowed`.
 - Units go in the name: `timeout_s`, `max_age_days`, `pause_range_s`.
 - No abbreviations beyond the standard ones: `db`, `url`, `id`, `ai`, `pdf`, `html`.
-- Constants are `UPPER_CASE` at the top of their module. Fixed sets are `StrEnum`: `Status.SUBMITTING`, never `"submitting"` typed out.
+- Constants are `UPPER_CASE` at the top of their module. Fixed sets are `StrEnum`: `Status.APPLIED`, never `"applied"` typed out.
 
 ### Python
 
 - Type hints everywhere; `mypy --strict` passes.
 - Frozen dataclasses for values (`Job`, `Field`, `Score`); `StrEnum` and `Literal` for fixed sets; `pathlib` for paths; `logging` for logs.
-- **One error hierarchy** in `core/errors.py`: `TruApplyError` → `AIError`, `UsageLimitError`, `SiteBlockedError`, `LoggedOutError`, `SiteUnreachableError`, `FormStuckError`, `ProfileInvalidError`. Raise the specific one. Only the run loop catches broadly, and it records the error and moves on to the next job.
+- **One error hierarchy** in `core/errors.py`: `TruApplyError` → `AIError` (→ `UsageLimitError` → `DailyBudgetError`), `ProfileMissingError`, `ProfileInvalidError`, `ClaudeUnavailableError`, `BrowserUnavailableError`, `ScheduleError` and the rest. Each carries a plain-words `hint`. Raise the specific one. Only the run loop catches broadly, and it records the error and moves on to the next job.
 - Context managers for every resource (browser, database transaction).
 - No mutable default arguments. `print` only in `cli` and `onboarding`.
 
@@ -110,7 +110,7 @@ How a senior engineer works on this codebase.
 
 - `strict` TypeScript, and the strictest typescript-eslint rules with type information. No `any`, no `!` assertions, no comments.
 - Every API call goes through TanStack Query (`src/api/queries.ts`, `src/api/mutations.ts`). Components never call `fetch` themselves.
-- Shared client state lives in small zustand stores (drag state, theme). Everything else is component state.
+- Shared client state lives in small zustand stores (theme, clock format, jobs you've seen). Everything else is component state.
 - Data grids use TanStack Table (headless) with our own markup and styles. Anything the server sorts, filters or pages lives in the URL, not in table state.
 - Scrollbars: hidden everywhere by `base.css`; areas still scroll with the wheel, trackpad and keys.
 - Interactive parts (dialogs, selects, switches, toasts) are built on Base UI, wrapped once in `src/ui/`. Styles are CSS Modules using the color tokens in `src/styles/base.css`, which have light and dark values. Midnight `--accent` marks only what you can click or have selected; meaning comes from the status colors (`--info`, `--good`, `--warn`, `--bad`, `--auto`). Corners use two sizes only: `--radius` (8px) for layout like the page, cards, tables and menus, and `--radius-small` (6px) for controls like buttons, inputs, search, chips and badges. Font sizes come from the `--text-*` scale and long forms stay within `--form-width`. The font is Inter, bundled from `@fontsource-variable/inter` so it works offline.
@@ -179,14 +179,14 @@ for answer in reply.answers:
 
 **State is saved before the irreversible step**
 
-```python
-submit_button.click()
-jobs.set_status(db, job.id, Status.SUBMITTING)
+```ts
+submit.click();
+await post(`/api/extension/jobs/${id}/submitting`, {});
 ```
 
-```python
-jobs.set_status(db, job.id, Status.SUBMITTING)
-submit_button.click()
+```ts
+await post(`/api/extension/jobs/${id}/submitting`, {});
+submit.click();
 ```
 
 **Names instead of comments**
@@ -235,12 +235,12 @@ These run in `pre-commit` on your machine and in GitHub Actions on every pull re
 | `mypy --strict` | Types across `truapply/` |
 | `tools/check_no_comments.py` | No comments or docstrings outside the allowed tool directives |
 | `tests/test_architecture.py` | Layers only import downward; no cycles |
-| `pytest` + `pytest-cov` | All tests pass; **≥ 80 % line coverage** on `store`, `resume`, `ai` and `apply` |
+| `pytest` + `pytest-cov` | All tests pass; **≥ 80 % line coverage** on `store`, `resume`, `ai` and `core` |
 | `tsc`, `eslint`, `prettier` (`npm run check` in `web/`) | The tracker app's types, lint rules (typescript-eslint strict, React hooks, TanStack Query) and formatting |
 | `gitleaks` | No passwords, keys or tokens |
 | `pip-audit`, `npm audit` | No dependency with a known security hole |
 | CodeQL | Deeper security analysis of Python and TypeScript, on every PR and weekly |
-| CI matrix | All of the above on **macOS + Ubuntu**, **Python 3.11 + latest** |
+| CI matrix | All of the above on **Ubuntu, macOS and Windows**, **Python 3.11 and 3.14** |
 
 ```toml
 [tool.ruff]
@@ -302,13 +302,11 @@ files = ["truapply", "tools", "tests"]
 | Kind | Where | Rule |
 |---|---|---|
 | Unit | `tests/unit/` | Every pure function with a branch, loop, parser or safety rule. A bug fix adds a test that failed before. Runs in under 10 s. |
-| Site fixtures | `tests/fixtures/<site>/` | Saved search, job, blocked and logged-out pages, **with personal data removed**. Tests link matching, parsing, and block/logout detection. |
-| Form end to end | `tests/e2e/form.html` | The real form filler on a local 3-step form with every field type, through to "submitted" |
 | Tracker API | `tests/unit/test_tracker*.py` | Every endpoint, the request checks (Host, Origin, JSON only, size) and the headers |
 | Tracker app | `tests/e2e/test_tracker_app.py` | Every page in a real headless browser, light and dark, desktop and phone width: no errors, no sideways scrolling. Today's pipeline counts and links, and the job page buttons. Needs the built app. |
 | AI | — | Recorded replies in unit tests. Live AI only in tests marked `@pytest.mark.ai`. |
-| Live sites | `tests/live/` | Real public job-board APIs, only in tests marked `@pytest.mark.network`. |
-| Real employers | — | **Never submitted to in tests.** Dry run only, and only by maintainers. |
+| Live sites | `tests/live/` | Real public job-board APIs, only in tests marked `@pytest.mark.network`. The extension fills real public forms in a throwaway browser and never submits. |
+| Real employers | — | **Never submitted to in tests.** Live extension tests stop before Submit, and only maintainers run them. |
 
 - Test names describe behavior: `test_same_job_on_second_site_is_skipped`.
 - Arrange, act, assert. One behavior per test.
@@ -366,38 +364,36 @@ The tests and runs that prove it.
 
 ---
 
-## Adding a job site
+## Adding a form the extension fills
 
-1. Create `truapply/sites/<name>.py` with one `Site` value following [the site contract](architecture.md#the-site-contract), and register it in `truapply/sites/__init__.py`.
-2. Save `search.html`, `job.html`, `blocked.html` and `logged_out.html` to `tests/fixtures/<name>/`, with names, emails, phone numbers and photos removed.
-3. Add tests: links found, job parsed, block and logout detected.
-4. Watch it read-only: `truapply run --site <name> --dry-run --limit 3 --show`.
-5. Record the site's rules in the sources table in [architecture.md](architecture.md#finding-jobs): does Apply submit straight away (`submits_on_open`)? Does it send its own stored resume?
-6. Open the PR with the dry-run log and screenshots.
+1. Add the site's job page address to `content_scripts` in `web/extension/manifest.json`.
+2. Teach `web/extension/src/fields.ts` and `fill.ts` how its fields are built.
+3. Fill a real public form in a throwaway browser with the extension loaded (see `tests/live/test_extension_live.py`). Never press Submit.
+4. Open the PR with what was filled and what was left for the user.
 
-A site isn't merged without block detection, logout detection and a daily cap.
+The extension never solves a CAPTCHA, never ticks a consent box and never presses Submit unless auto-submit is on.
 
 ## Adding an ATS
 
-1. Create `truapply/sources/ats/<name>.py` exposing `board_of(url) -> Board | None` and `poll(slug) -> list[Job]`, and register it in `truapply/sources/ats/__init__.py`.
-2. Add a recorded API response to `tests/fixtures/ats/<name>.json` and test the parsing.
-3. Dry run on 3 real boards; attach the log.
+1. Add the ATS to the `Ats` enum in `truapply/core/models.py`.
+2. Create `truapply/sources/ats/<name>.py` with a `READER: AtsReader` (board link pattern, list URL, posting URL, parser; see `sources/ats/base.py`) and add it to `READERS` in `truapply/sources/ats/__init__.py`.
+3. Test the parsing with a recorded API response in `tests/unit/test_ats.py`, and add a live check in `tests/live/test_boards_live.py`.
 
 ## Adding companies to the shared list
 
 - Add rows to `truapply/sources/companies.csv`: `ats,slug,company,tags`. Tags come from where the board's jobs are: `india`, `remote`.
 - Only **public** boards with at least one open job.
-- Keep it sorted by `ats`, then `slug`. A test fails on duplicates or a wrong order.
+- Keep it sorted by `ats`, then `slug`, with no duplicates.
 - `truapply boards --new` prints the boards you've found that aren't listed yet, already formatted.
 
 ## Reporting a broken site
 
 Open a **"Site broken"** issue with:
 
-- the site, and what broke (search, job page or a form step)
+- the site, and what broke (finding jobs, the job page, or filling the form)
 - `truapply doctor` output
-- the matching lines from `~/.truapply/run.log` (it holds no personal data)
-- a screenshot from `~/.truapply/shots/`, **with personal data blurred**
+- the matching lines from the run log (open it on the **Activity** page; it holds no personal data)
+- a screenshot of the form, **with personal data blurred**
 
 Never paste your `profile.json`, saved answers, emails or resume.
 

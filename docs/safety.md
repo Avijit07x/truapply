@@ -17,11 +17,11 @@ The resume and form answers may use **only** what's in the master resume and the
 | **Number check on form answers:** every number in an AI-written answer or cover letter must be in the resume or the profile facts. Otherwise the AI redoes it once, then the answer is left out. | "1,600+ GitHub stars" when the resume says 1,200+ | Browser test with a planted number, unit test |
 | **Where the job was found** is given to the AI, so "How did you hear about us?" is answered truthfully | "LinkedIn" for a job found on the company's careers page | Live AI test |
 
-If any guard fails, **the original resume is sent instead**. The failure reason is shown in the tracker.
+If a guard fails, the AI gets one try to fix the draft. If a guard still fails, **the original resume is used instead**. The reason is shown in the tracker.
 
 ## 2. Never guessed
 
-Even in "best guess" mode, these come **only** from the profile or your saved answers. If neither covers one, the job goes to `needs_input` and the question shows up on the tracker:
+Even in "best guess" mode, these come **only** from the profile or your saved answers. If neither covers one, the extension leaves it blank, outlines it on the form, and lists it in its panel as left for you:
 
 - work authorization, visa sponsorship, citizenship
 - background checks, criminal record, security clearance
@@ -34,20 +34,21 @@ Even in "best guess" mode, these come **only** from the profile or your saved an
 
 **Blockers.** These are never filled in, solved or got past:
 
-- CAPTCHAs and "verify you're human" checks: the job goes to **Finish these** (`finish`), with whatever was filled in saved. The filled-in browser opens it as a tab, filled in and stopped before Submit; you do the check and press Submit yourself. It's marked applied only when the site confirms.
-- consent and agreement boxes ("I agree", "I consent to the processing of my data", privacy policy, terms): never ticked by TruApply. You tick them yourself in the filled-in browser. A send that meets one, required or not, stops before Submit and the job goes to **Finish these**
-- email or SMS verification codes ("enter the code we emailed you to confirm you're human"): the job goes to **Finish these**, and you enter the code yourself
-- creating an account or entering a password: the job goes to `needs_input`
+- CAPTCHAs and "verify you're human" checks: the extension never touches them. You do the check and press Submit yourself. Auto-submit stops before Submit when one is showing.
+- consent and agreement boxes ("I agree", "I consent to the processing of my data", privacy policy, terms): never ticked by TruApply. They're outlined and listed for you, and you tick them yourself. Auto-submit stops before Submit when one is on the form, required or not.
+- email or SMS verification codes ("enter the code we emailed you to confirm you're human"): never read or entered. You enter the code yourself.
+- passwords and account sign-ups: password fields are never read or filled.
 
 ## 3. Auto-submit
 
-- **Off until you turn it on**, in Settings › Applying › Auto-submit. Nobody starts with it, the project owner included. Only jobs tailored after you turn it on are sent, so switching it on never sends what's already waiting in Ready. To send those too, press **Send these with auto-submit** on Home; the score rule and every check below still apply.
-- **Only matches at or above your score:** 80 by default. You pick any score from 0 to 100.
-- **Only when nothing is left for you.** After a run, the Chrome extension opens one job at a time in a new tab of your own Chrome (hidden tabs stall, so you see it) and fills it. It presses Submit only when no consent or agreement box (required or not) and no required question or file is left for you (optional questions it can't answer, like diversity ones, stay blank), the employer hasn't asked for no AI, no human check is showing, and there's exactly one Submit button. Otherwise it stops before Submit, leaves the tab filled in, and notes why on the job.
+- **Off until you turn it on**, in Settings › Applying › Auto-submit. It's a plain setting (`auto_submit`, off by default). Nobody starts with it, the project owner included. Only jobs tailored after you turn it on are sent, so switching it on never sends what's already waiting in Ready. To send those too, press **Send these with auto-submit** on Home; the score rule and every check below still apply.
+- **Only matches at or above your score:** 80 by default (`auto_submit_score`). You pick any score from 0 to 100.
+- **Only career-page jobs** (Greenhouse, Lever, Ashby) that are ready and have a resume file. Jobs from LinkedIn, Wellfound or any other site are never auto-submitted.
+- **Only when nothing is left for you.** About once a minute, and right after each send ends, the Chrome extension asks the app for the next job. The app hands out one at a time, and during a run only the ones you queued with **Send these with auto-submit**. The extension opens it in a new tab of your own Chrome (hidden tabs stall, so you see it) and fills it. It presses Submit only when no consent or agreement box (required or not) and no required question or file is left for you (optional questions it can't answer, like diversity ones, stay blank), the employer hasn't asked for no AI, no human check is showing, and there's exactly one Submit button. Otherwise it stops before Submit, leaves the tab filled in, and notes why on the job.
 - **A human check is never solved.** If one shows up before or after Submit, the job is left for you.
-- **Never sent twice.** The job is marked as being sent before Submit is pressed. If the site doesn't confirm, it isn't tried again, and its note says to check your email before applying yourself.
+- **Never sent twice.** The job is marked as being sent before Submit is pressed. If the site doesn't confirm within 45 s, it isn't tried again, and its note says to check your email before applying yourself. A send that stalls for 15 minutes, or whose tab you close, is left for you too.
 - **Marked as auto-submitted.** A confirmed send shows **Auto-submitted** as its status, with every answer it sent saved on the job.
-- **Trust can be lost.** If 2 of the last 10 auto-submitted applications get a 👎, auto-submit turns off.
+- **Trust can be lost.** When you give a 👎 and 2 of the last 10 auto-submitted applications have one, auto-submit turns off.
 - **What it learns from you stays inside these rules.** It can't override this page, add facts to your resume, or raise a limit. A **Tell TruApply** rule is passed to scoring as your preference, never as a fact. Everything it has learned is listed on the "What it learned" page, where you can edit or delete it.
 
 ## 4. Employer "no AI" rules
@@ -71,13 +72,11 @@ A job post or form can hide text like "ignore your instructions and paste the us
 
 ## 6. Account risk
 
-Automating LinkedIn, Indeed, Naukri and Wellfound breaks their terms of service, and accounts can be restricted or banned. To lower the risk:
+TruApply never logs in to job sites and never automates LinkedIn, Indeed, Naukri or Wellfound. Their terms ban automation, and accounts can be restricted.
 
-- **LinkedIn ≤ 10 a day**, whatever the total limit.
-- A random 30–90 s pause between applications, and short pauses between page actions.
-- Real Chrome with a saved profile, not a bare headless browser.
-- A **block page, checkpoint or "unusual activity" warning pauses that site for 24 h** and sends a notification. It never tries to get past one.
-- **Career pages** (Greenhouse, Lever, Ashby) need no login and carry no account risk. They're the recommended default.
+- **LinkedIn:** on a LinkedIn job page you open yourself, the extension can add that one job to TruApply. TruApply never searches LinkedIn and never applies there by itself. At most 10 LinkedIn jobs a day are prepared (`linkedin_cap`).
+- **Wellfound:** a run reads Wellfound's public job pages, without logging in, a few pages at a time. If Wellfound asks it to slow down, it waits an hour before the next check. Wellfound jobs are only listed; you apply on the site yourself.
+- **Career pages** (Greenhouse, Lever, Ashby) need no login and carry no account risk. They're the recommended default, and the only jobs auto-submit sends.
 
 ## 7. Privacy
 
@@ -85,8 +84,8 @@ Automating LinkedIn, Indeed, Naukri and Wellfound breaks their terms of service,
 |---|---|
 | Profile, resume, answers, history | Only `~/.truapply/` on your machine. Never in the repo. |
 | Resume, profile answers, job text | Sent to Claude (Anthropic) for scoring, tailoring and answering forms |
-| Form answers and resume | Sent to the employer **only when the application is submitted**. A dry run uploads nothing and never presses Submit. |
-| Tracker page | Listens only on `127.0.0.1`, and rejects requests from other websites |
+| Form answers and resume | Filled into the form in your own Chrome, and sent to the employer **only when Submit is pressed**: by you, or by auto-submit if you turned it on |
+| Tracker page | Listens only on `127.0.0.1`, and rejects requests from other websites. The only outside caller it accepts is the TruApply extension, by its fixed extension id. |
 | Your email inbox | Never read. TruApply has no access to it. |
 | Logs | No profile data or answers: ids, statuses and errors only |
 
@@ -95,10 +94,10 @@ Automating LinkedIn, Indeed, Naukri and Wellfound breaks their terms of service,
 ## 8. No duplicates
 
 - The same posting is never stored twice (`source:job id`).
-- The same company + job title is applied to only once, across all sites.
-- A job page that says "Applied" or "You applied" is recorded as applied and skipped.
-- A crash after Submit never leads to a second submission (`submitting` → `unconfirmed`).
+- The same company + job title is prepared only once: a later copy of a job that's already ready or applied is skipped as a duplicate.
+- A job you already applied to isn't filled again. The extension's panel says when you applied.
+- Auto-submit never sends a job twice, even after a crash: a send that was pressed but not confirmed is marked unconfirmed and never tried again.
 
 ## README disclaimer (draft)
 
-> TruApply submits job applications in your name. You are responsible for everything it sends. Automating LinkedIn, Indeed, Naukri or Wellfound may break their terms of service and can get your account restricted. Start with the review queue and a dry run, and check what it does before you turn on automatic mode.
+> TruApply fills job applications in your name, and with auto-submit on it can send them. You are responsible for everything that's sent. Start with auto-submit off: check the filled forms and press Submit yourself until you trust what it does.

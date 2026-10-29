@@ -7,9 +7,9 @@ The TypeScript shapes below are the same ones the app uses, in `web/src/api/type
 ## Rules for every request
 
 - Only `Host: 127.0.0.1:<port>` or `localhost:<port>` is answered (this blocks DNS-rebinding tricks), plus your Tailscale address or a `--allow-host` name (see [other-devices.md](other-devices.md)). Anything else gets `403`.
-- Every `POST` needs `Origin: http://127.0.0.1:<port>` (or `localhost`, or `https://` plus an allowed name) **and** `Content-Type: application/json`. Anything else gets `403`.
-- Bodies are JSON objects, at most 200 KB. A bigger body gets `403`; a body that isn't a JSON object gets `400`.
-- Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: finish setup).
+- Every `POST` needs `Origin: http://127.0.0.1:<port>` (or `localhost`, or `https://` plus an allowed name, or the TruApply Chrome extension's `chrome-extension://<id>`) **and** `Content-Type: application/json`. Anything else gets `403`.
+- Bodies are JSON objects, at most 200 KB. The two resume uploads (`/api/settings/resume` and `/api/setup/resume`) allow about 6.7 MB, enough for a 5 MB file in base64. A bigger body gets `403`; a body that isn't a JSON object gets `400`.
+- Errors are `{ error: string, problems?: string[] }`, in plain words, with status `400` (bad input, or the job moved on since you opened it), `403` (refused), `404` (no such thing), or `409` (no profile yet: finish setup; or, for the setup endpoints, already set up).
 - Times are ISO 8601 strings in UTC. The app shows them in local time.
 - Text from job posts and forms comes back as plain strings. The app renders it as text, never as HTML.
 - Links come back only when they are `http` or `https`; otherwise the field is `null`.
@@ -18,12 +18,11 @@ The TypeScript shapes below are the same ones the app uses, in `web/src/api/type
 ## Shapes
 
 ```ts
-type Status = "new" | "skipped" | "scored" | "ready" | "approved" | "dismissed" | "submitting"
-  | "applied" | "unconfirmed" | "needs_input" | "external" | "failed" | "closed" | "finish";
+type Status = "new" | "skipped" | "scored" | "ready" | "dismissed" | "applied" | "closed";
 
-type Group = "found" | "waiting_score" | "duplicate" | "no_ai" | "not_a_fit" | "skipped" | "wrong_title" | "wrong_place" | "too_old" | "skipped_company"
-  | "scored" | "closed" | "needs_input" | "finish" | "failed" | "external" | "ready"
-  | "auto_sent" | "approved" | "dismissed" | "applied" | "unconfirmed";
+type Group = "found" | "waiting_score" | "duplicate" | "no_ai" | "not_a_fit" | "skipped"
+  | "wrong_title" | "wrong_place" | "too_old" | "skipped_company"
+  | "scored" | "closed" | "ready" | "dismissed" | "applied";
 
 type JobRow = {
   id: number; title: string; company: string; location: string;
@@ -31,16 +30,13 @@ type JobRow = {
   updatedAt: string;
 };
 
-type Sent = { question: string; answer: string; editable: boolean };
-type OpenQuestion = { question: string; label: string };
-type Action = "approve" | "answers" | "dismiss" | "thumbs" | "questions" | "retry"
-  | "finished" | "revert";
+type Sent = { question: string; answer: string };
+type Action = "dismiss" | "thumbs" | "finished" | "revert" | "score" | "tailor";
 
 type JobDetail = JobRow & {
   reason: string; note: string; source: string;
   url: string | null; applyUrl: string | null; description: string;
-  sent: Sent[]; questions: OpenQuestion[]; changes: string[] | null;
-  hasScreenshot: boolean; hasResume: boolean;
+  sent: Sent[]; changes: string[] | null; hasResume: boolean;
   feedback: -1 | 0 | 1; actions: Action[]; dismissReasons: string[];
 };
 
@@ -67,11 +63,19 @@ type SetupView = {
   noticePeriods: string[]; automatic: Automatic; extension: { folder: string; built: boolean };
   warning?: string;
 };
+type SetupAnswers = {
+  name: string; email: string; phone: string; city: string; country: string;
+  roles: string[]; titleKeywords: string[];
+  onsiteCity: boolean; remoteCountry: boolean; relocate: boolean; remoteAbroad: boolean;
+  citizenship: string; workWithoutVisa: string[]; needsSponsorship: boolean | null;
+  noticePeriod: string; currency: string; expectedMin: number | null; expectedMax: number | null;
+  tailorResume: boolean | null; jobsPerRun: number | null; runEveryMinutes: number | null;
+};
 
 type Sort = "updated" | "score" | "title" | "company" | "location";
 type JobList = {
   jobs: JobRow[]; total: number; page: number; pageSize: number;
-  dismissable: Status[]; dismissReasons: string[];
+  dismissable: Status[]; scorable: Status[]; scoring: number[]; dismissReasons: string[];
 };
 
 type Column = { status: Status; total: number; jobs: JobRow[] };
@@ -108,7 +112,7 @@ type SettingsView = {
 };
 ```
 
-`actions` lists only what the job's status allows, so the app shows only those buttons. `revert` appears only when the job has a tailored resume. `changes` is `null` when the job wasn't tailored.
+`actions` lists only what the job's status allows, so the app shows only those buttons. `revert` appears only when the job has a tailored resume. `changes` is `null` when the job wasn't tailored. `sent` is what was sent on the form, saved when the extension reports the job applied.
 
 ## Endpoints
 
@@ -117,13 +121,13 @@ type SettingsView = {
 | Method and path | Body | Answer |
 |---|---|---|
 | `GET /api/summary` | | `Summary` |
-| `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped and closed jobs are left out unless you ask for a status, a group or `show=all`. `total` counts every match. |
+| `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped and closed jobs are left out unless you ask for a status, a group or `show=all`. `total` counts every match. `scorable` lists the statuses a job can be scored from; `scoring` lists the ids being scored or waiting to be. |
 | `GET /api/new-jobs` | `?jobs=<ISO>&wellfound=<ISO>` | `{ jobs?: number, wellfound?: number }`: for each tab you name, the jobs found after that time that aren't skipped or closed (`jobs` is Career jobs). The sidebar sends when you last opened each tab, kept in this browser, and shows their total as a badge on **Jobs**, leaving out the tab you're on. |
 | `GET /api/jobs?show=all` | | the same, skipped jobs included. Skipped also holds software jobs outside your titles, places or age (`note` says which: "not one of your titles", "not a place you work in", "posted too long ago" or "a company you skip"; no description). Each run updates the note, and the job goes back to `new` once it fits. The `skipped` group counts them all; `wrong_title`, `wrong_place`, `too_old` and `skipped_company` count each reason. |
 | `GET /api/jobs?status=<Status>` | | the same, for one status |
 | `GET /api/jobs?group=<Group>` | | the same, for one workflow box |
 | `GET /api/workflow` | | `{ groups: Record<Group, number>, lastRun: { startedAt, groups: Record<Group, number> } \| null }`: the count in each group (Today's pipeline uses it), and how many jobs reached each group since the latest run started (`found` by when it was found, the rest by their last status change). `stage` in `RunState` is the step a run is on, read from its latest progress line. |
-| `GET /api/board` | | Home's job lists. `{ columns: Column[], dismissReasons }`: scored, needs_input, finish, ready, approved, applied (the order jobs move in), the newest 8 jobs in each |
+| `GET /api/board` | | Today's job lists. `{ columns: Column[], dismissReasons }`: scored, ready, applied (the order jobs move in), the newest 8 jobs in each |
 | `GET /api/jobs/<id>` | | `JobDetail` |
 
 `GET /api/jobs` also takes, in any mix:
@@ -134,29 +138,25 @@ type SettingsView = {
 - `sites=all`: jobs from every site together, listed-only ones included. The Jobs list asks for this by default; its **Career pages** choice leaves it out. Any other value is refused.
 - `sort`: one of `Sort` (default `updated`), and `order`: `asc` or `desc` (default newest or highest first, A to Z for text). Jobs with no score sort last either way.
 - `page`: 1 or more. A page past the end returns the last page, and `page` in the answer says which.
+- `after` and `before`: ISO times with a time zone. Only jobs whose status changed in that window.
 
-An unknown status, group, sort, order, page or score is `400`. `dismissable` lists the statuses a job can be dismissed from, so the app only offers a checkbox on those rows.
+An unknown status, group, sort, order, page, score, source or time is `400`. `dismissable` lists the statuses a job can be dismissed from, so the app only offers a checkbox on those rows.
 
 A workflow box's count and its job list come from the same SQL condition (`store/groups.py`), so they always match.
 
 ### Job actions
 
-Each one answers with the updated `JobDetail`, and is refused with `400` if the job's status no longer allows it.
+Each one for a single job answers with the updated `JobDetail`, and is refused with `400` if the job's status no longer allows it.
 
 | Method and path | Body | What it does |
 |---|---|---|
-| `POST /api/jobs/<id>/approve` | `{}` | `ready` → `approved`. Counts as a clean approval unless you edited an answer. |
-| `POST /api/jobs/<id>/answers` | `{ answers: [{ question, answer }] }` | Changes filled-in answers before you approve. Changed answers become your saved answers. File uploads can't be changed. |
-| `POST /api/jobs/<id>/dismiss` | `{ reason }`, one of `dismissReasons` | → `dismissed`. It's never applied to. |
-| `POST /api/jobs/<id>/thumbs` | `{ value: 1 \| -1 }` | Good or bad match. A 👎 resets the trust count. |
-| `POST /api/jobs/<id>/questions` | `{ answers: [{ question, answer }] }` | Answers the questions it couldn't. `needs_input` → `scored`, filled in on the next run. |
-| `POST /api/jobs/<id>/retry` | `{}` | `needs_input` → `scored`, when its questions were answered on another job |
-| `POST /api/jobs/<id>/finished` | `{}` | `finish` → `applied`, after you sent it yourself |
-| `POST /api/jobs/<id>/revert` | `{}` | This job uses your original resume. The app then asks for a tailoring note. |
-| `POST /api/jobs/<id>/handoff` | `{}` | For `finish` and `ready`. Opens the job as a tab in the filled-in browser (starting `truapply finish` in the background if it isn't open), filled in and stopped before Submit, and brings its tab to the front. Answers with `JobDetail`. When the site confirms, the job becomes `applied`. |
+| `POST /api/jobs/<id>/dismiss` | `{ reason }`, one of `dismissReasons` | `scored` or `ready` → `dismissed`. It's never applied to. The reason "job is closed" makes it `closed` instead. |
+| `POST /api/jobs/<id>/thumbs` | `{ value: 1 \| -1 }` | Good or bad match, for any status. When auto-submit is on and 2 of the last 10 auto-submitted jobs have a 👎, auto-submit turns off. |
+| `POST /api/jobs/<id>/finished` | `{}` | `ready` → `applied`, after you sent it yourself |
+| `POST /api/jobs/<id>/revert` | `{}` | For a `ready` job: it uses your original resume. The app then asks for a tailoring note. |
 | `POST /api/jobs/<id>/score` | `{}` | `JobDetail`. Starts a score-only run for a new or skipped job; a job saved without its description has it read from its job board first. If a run is going, it waits its turn. |
 | `POST /api/jobs/<id>/tailor` | `{}` | `JobDetail`. For a `scored` job: starts a run for just this job (`truapply run --job <id>`), which tailors your resume, or uses your original one when `tailorResume` is off, and makes it `ready`. `400` if a run is already going. |
-| `POST /api/jobs/score` | `{ ids }` | `{ scoring, skipped }`. The same for several jobs; `JobList.scoring` lists the ids being scored or waiting. |
+| `POST /api/jobs/score` | `{ ids: number[] }`, 1 to 200 ids | `{ scoring, skipped }`. The same for several jobs; `JobList.scoring` lists the ids being scored or waiting. |
 | `POST /api/jobs/dismiss` | `{ ids: number[], reason }`, 1 to 200 ids, `reason` one of `dismissReasons` | Dismisses many at once, the same way as one by one, and answers `{ dismissed, skipped }`. Jobs that moved on to a status you can't dismiss from are skipped. |
 
 
@@ -178,7 +178,7 @@ Each one answers with the updated `Learned`.
 | `POST /api/rules/<id>/edit` | `{ text }` | Changes a rule or note |
 | `POST /api/rules/<id>/delete` | `{}` | Deletes a rule or note |
 | `POST /api/answers/edit` | `{ question, answer }` | Changes a saved answer. It becomes yours. |
-| `POST /api/answers/delete` | `{ question }` | Forgets a saved answer. The next form that asks waits for you. |
+| `POST /api/answers/delete` | `{ question }` | Forgets a saved answer. The next form that asks has Claude answer it from your facts, or leaves it for you. |
 | `POST /api/suggestions/<id>/accept` | `{}` | Adds the word to the titles to skip in your profile |
 | `POST /api/suggestions/<id>/dismiss` | `{}` | Drops the suggestion. Nothing changes. |
 
@@ -192,32 +192,32 @@ Each one answers with the updated `Learned`.
 | `GET /api/runs` | | `RunState` |
 | `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `truapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
 | `POST /api/runs/stop` | `{}` | `RunState` |
-| `GET /api/runs/log/<name>` | | `RunLog & { lines: string[]; report: RunReport \| null }`: the last 200 lines, and the run's numbers read from its Summary (companies checked, jobs that fit, new jobs, scores), each scored job with its result, score and reason, and the jobs made ready, and `error` (`{ message, hint }`) when it stopped on an error. A run that ended early reports what it got to; `report` is `null` only before it has done anything. |
+| `GET /api/runs/log/<name>` | | `{ name, finishedAt, kind, lines: string[], report: RunReport \| null }`: the last 200 lines, and the run's numbers read from its Summary (companies checked, jobs that fit, new jobs, scores), each scored job with its result, score and reason, and the jobs made ready, and `error` (`{ message, hint, fix }`) when it stopped on an error. A run that ended early reports what it got to; `report` is `null` only before it has done anything. |
 | `GET /api/settings` | | `SettingsView` |
-| `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
+| `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. Turning `autoSubmit` on starts the clock for which ready jobs it may send. |
 | `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |
 | `GET /api/setup` | | `SetupView`. `draft` is what Claude read from the resume, kept until setup finishes, so a reload carries on from step 2. |
 | `POST /api/setup/resume` | `{ name, data }`, like `/api/settings/resume` | `SetupView`. Claude reads the resume once for the details and, in parallel, stores it as the master resume. `409` once set up. |
-| `POST /api/setup` | the answers: name, email, phone, city, country, roles, titleKeywords, the four place flags, citizenship, workWithoutVisa, needsSponsorship (`true`/`false`, never guessed), noticePeriod, currency, expectedMin, expectedMax, tailorResume, jobsPerRun, runEveryMinutes (`null` = only when you press Run) | `SetupView`. Saves the profile with defaults for the rest, adds the built-in companies, and turns automatic runs on when a time was picked (`warning` says if that failed). `400` lists every missing answer. `409` once set up. |
+| `POST /api/setup` | `SetupAnswers`: name, email, phone, city, country, roles, titleKeywords, the four place flags, citizenship, workWithoutVisa, needsSponsorship (`true`/`false`, never guessed), noticePeriod, currency, expectedMin, expectedMax, tailorResume, jobsPerRun, runEveryMinutes (`null` = only when you press Run) | `SetupView`. Saves the profile with defaults for the rest (auto-submit off), adds the built-in companies, and turns automatic runs on when a time was picked (`warning` says if that failed). `400` lists every missing answer. `409` once set up. |
 | `POST /api/settings/automatic` | `{ on: boolean }` | `Automatic`. Turns the background run on (every `runEveryMinutes`) or off. macOS and Windows. |
 
 ### Chrome extension
 
 | Request | Body | Answer |
 |---|---|---|
-| `POST /api/extension/job` | `{ url }` | `{ job }` for the page's job, or `null` |
-| `POST /api/extension/add` | `{ url, posting?, text }` | `{ job, preparing }` |
-| `POST /api/extension/jobs/<id>/answers` | `{ fields, ai }` | `{ answers, forYou, waiting, note }` |
-| `POST /api/extension/jobs/<id>/applied` | `{ sent }` | `{ applied: true }`; a job that auto-submit pressed Submit on is marked auto-submitted |
-| `POST /api/extension/send/next` | `{}` | `{ job: { id, url } \| null }`: the next job to auto-submit, only while **autoSubmit** is on, no run is going and no other send is in progress. Each job is handed out once |
+| `POST /api/extension/job` | `{ url }` | `{ job }`: the page's job as a `JobRow` plus `resume` (the PDF's file name, or `null`), or `null` |
+| `POST /api/extension/add` | `{ url, posting?, text, prepare? }` | `{ job, preparing }`: saves the page's job (read by Claude from `text` when `posting` has no title and company) and, unless `prepare` is `false`, starts a run that scores and tailors it |
+| `POST /api/extension/jobs/<id>/answers` | `{ fields, ai? }`, up to 200 fields | `{ answers: { id, value }[], forYou: { id, label, why, consent }[], waiting, note }`: answers from your profile, saved answers and Claude (`ai: false` skips Claude). `forYou` is what's left for you, such as legal questions, consent boxes and files to attach. |
+| `POST /api/extension/jobs/<id>/applied` | `{ sent: { question, answer, kind, yours }[] }` | `{ applied: true }`: the job becomes `applied` and what was sent is saved. Answers you typed (`yours`) become saved answers. A job that auto-submit pressed Submit on is marked auto-submitted |
+| `POST /api/extension/send/next` | `{}` | `{ job: { id, url } \| null }`: the next job to auto-submit, only while **autoSubmit** is on and no other send is in progress: a ready career-page job scoring `autoSubmitScore` or more that was queued, or became ready after auto-submit was turned on. During a run, only queued jobs. Each job is handed out once |
 | `POST /api/extension/jobs/<id>/submitting` | `{}` | `{ go }`: written before Submit is pressed; `false` if auto-submit was turned off or the job was already tried |
-| `POST /api/autosend/queue` | `{}` | `{ queued, below, score }`: **Send these with auto-submit** on Home. Queues every ready career-page job scoring `autoSubmitScore` or more for sending, even jobs tailored before it was turned on and even during a run. `400` while auto-submit is off |
+| `POST /api/autosend/queue` | `{}` | `{ queued, below, score }`: **Send these with auto-submit** on Today. Queues every ready career-page job scoring `autoSubmitScore` or more for sending, even jobs tailored before it was turned on and even during a run. `400` while auto-submit is off |
 | `POST /api/extension/jobs/<id>/held` | `{ why }` | `{ held: true }`: auto-submit stopped; the reason goes in the job's note |
 
 ## Files and pages
 
-- `GET /jobs/<id>/screenshot.png` and `GET /jobs/<id>/resume.pdf` serve a job's files. They're looked up by job id, never by a path in the address, and only from inside the data folder.
-- `GET /assets/<name>` serves the app's built files.
+- `GET /jobs/<id>/resume.pdf` serves the resume to send with a job: its tailored PDF, or your master resume when it has none. It's looked up by job id, never by a path in the address, and only from inside the data folder.
+- `GET /assets/<name>`, `/favicon.svg` and `/favicon-running.svg` serve the app's built files.
 - Every other `GET` returns the app's `index.html`, so links like `/jobs/12` work after a reload. If the app isn't built, it's `503` with the build command.
 
 ## Headers

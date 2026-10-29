@@ -29,16 +29,16 @@ To stop sharing: `tailscale serve --https=443 off`.
 
 ## What works from your phone
 
-Everything on the tracker page: jobs, scoring, runs, settings, companies and what it learned. Two things still happen on the computer:
+Everything on the tracker page: jobs, scoring, runs, settings, companies and what it learned. Applying still happens on the computer:
 
-- **Open it filled in** opens the filled-in browser on the computer, not on your phone.
-- The Chrome extension only runs in desktop Chrome.
+- The Chrome extension only runs in desktop Chrome. **Open in my Chrome** on your phone opens the job in your phone's browser, where nothing is filled in.
+- Auto-submit, when it's on, runs through the extension, so Chrome on the computer has to be open.
 
 The computer has to be on and awake.
 
 ## How it stays private
 
 - The tracker still listens only on `127.0.0.1`. Tailscale's own app passes requests from your devices to it.
-- The tracker answers only the addresses it knows: `127.0.0.1`, `localhost` and your Tailscale address. Changes (any `POST`) must come from one of those pages too, so another website can't act through your browser.
+- The tracker answers only the addresses it knows: `127.0.0.1`, `localhost` and your Tailscale address. Changes (any `POST`) must come from one of those pages or from the TruApply Chrome extension, so another website can't act through your browser.
 - Another address can be allowed by hand with `truapply tracker --allow-host NAME`, for example on a second Tailscale network. Only use names that point to your own devices.
 - Don't put the tracker on the open internet with a public tunnel: it has no login.
