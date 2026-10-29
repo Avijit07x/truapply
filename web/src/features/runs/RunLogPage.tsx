@@ -9,9 +9,9 @@ import styles from "./Runs.module.css";
 export default function RunLogPage({ params }: PageProps) {
   const { data: log } = useSuspenseQuery(queries.runLog(params[0] ?? ""));
   return (
-    <div className={styles.page}>
+    <div className={styles.logPage}>
       <PageHeader
-        back={<BackLink to="/runs">Run</BackLink>}
+        back={<BackLink to="/runs">Activity</BackLink>}
         title="Run log"
         description={`Finished ${when(log.finishedAt)}.`}
       />

@@ -1,6 +1,7 @@
 import math
 import sqlite3
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from truapply.core.models import Source, Status
@@ -15,6 +16,8 @@ COMPANY = "company like :company escape '\\'"
 LOCATION = "location like :location escape '\\'"
 SCORED_AT_LEAST = "score >= :min_score"
 FROM_SITE = "source = :source"
+CHANGED_AFTER = "status_at >= :after"
+CHANGED_BEFORE = "status_at < :before"
 
 
 class Sort(StrEnum):
@@ -48,6 +51,9 @@ class Browse:
     min_score: int | None = None
     everything: bool = False
     source: Source | None = None
+    every_site: bool = False
+    after: datetime | None = None
+    before: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +61,10 @@ class Page:
     jobs: list[JobRecord]
     total: int
     page: int
+
+
+def _stamp(moment: datetime | None) -> str | None:
+    return moment.astimezone(UTC).isoformat() if moment else None
 
 
 def _like(search: str) -> str:
@@ -76,8 +86,10 @@ def _where(browse: Browse) -> str:
         (browse.company, COMPANY),
         (browse.location, LOCATION),
         (browse.min_score is not None, SCORED_AT_LEAST),
-        (browse.source is None, CAREER),
+        (browse.source is None and not browse.every_site, CAREER),
         (browse.source is not None, FROM_SITE),
+        (browse.after is not None, CHANGED_AFTER),
+        (browse.before is not None, CHANGED_BEFORE),
     )
     parts = [_chosen(browse), *(part for wanted, part in narrowing if wanted)]
     return " and ".join(f"({part})" for part in parts)
@@ -98,6 +110,8 @@ def page(db: sqlite3.Connection, browse: Browse) -> Page:
         "location": _like(browse.location),
         "min_score": browse.min_score,
         "source": browse.source,
+        "after": _stamp(browse.after),
+        "before": _stamp(browse.before),
     }
     total = int(db.execute(f"select count(*) from jobs where {where}", params).fetchone()[0])  # noqa: S608
     shown = min(browse.page, max(1, math.ceil(total / PAGE_SIZE)))

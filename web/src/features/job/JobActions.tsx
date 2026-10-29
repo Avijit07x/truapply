@@ -30,7 +30,7 @@ export function JobActions({ job }: { job: JobDetail }) {
     <Row>
       {canDismiss && (
         <Button
-          variant="dangerSoft"
+          variant="ghost"
           icon={<Close size={12} />}
           onClick={() => {
             setDismissing(true);

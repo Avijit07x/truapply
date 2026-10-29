@@ -1,22 +1,40 @@
 .header {
   display: grid;
+  flex: none;
+  align-content: center;
   gap: var(--space-1);
-  margin-bottom: var(--space-5);
+  min-height: 60px;
+  margin: -20px -20px 20px;
+  padding: var(--space-3) 20px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  z-index: 2;
+  top: -20px;
+  background: var(--bg);
 }
 
 .titleRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1.25;
+}
+
+.inlineNote {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: var(--text-md);
+}
+
+.titleRow > :last-child:not(.inlineNote, .title) {
+  margin-left: auto;
 }
 
 .section {
@@ -29,11 +47,11 @@
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-3);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 .sectionTitle {
-  font-size: 15px;
+  font-size: var(--text-base);
   font-weight: 600;
 }
 
@@ -48,13 +66,13 @@
 }
 
 .cardTitle {
-  font-size: 15px;
+  font-size: var(--text-base);
   font-weight: 600;
 }
 
 .note {
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-base);
 }
 
 .empty {
@@ -62,7 +80,7 @@
   border: 1px dashed var(--line);
   border-radius: var(--radius);
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-base);
   text-align: center;
 }
 
@@ -102,7 +120,7 @@
   gap: 6px;
   margin-bottom: var(--space-2);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-md);
   text-decoration: none;
 }
 

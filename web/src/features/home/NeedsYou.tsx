@@ -22,6 +22,7 @@ function SendThese() {
   return (
     <Row>
       <Button
+        variant="ghost"
         icon={<Send size={14} />}
         busy={send.isPending}
         onClick={() => {
@@ -43,27 +44,25 @@ export function NeedsYou({ columns }: { columns: readonly Column[] }) {
   const ready = columns.find((column) => column.status === "ready");
   const total = ready?.total ?? 0;
   return (
-    <section className={styles.needs} aria-labelledby="needs-title">
-      <header className={styles.railHead}>
-        <h2 id="needs-title" className={styles.railTitle}>
-          Ready for you to apply
+    <section className={styles.block} aria-labelledby="needs-title">
+      <header className={styles.blockHead}>
+        <h2 id="needs-title" className={styles.blockTitle}>
+          Apply next
         </h2>
-        <span className={styles.railMeta}>{total.toLocaleString()}</span>
+        <span className={styles.blockHint}>
+          The TruApply extension fills it in; you check it and press Submit.
+        </span>
+        {total > 0 && <SendThese />}
       </header>
       {ready && total > 0 ? (
         <>
-          <p className={styles.hint}>
-            Open one in your Chrome. The TruApply extension fills it in; you check it and press
-            Submit.
-          </p>
-          <SendThese />
           <ul className={styles.queue}>
             {ready.jobs.map((job) => (
               <QueueItem key={job.id} job={job} />
             ))}
           </ul>
           {total > ready.jobs.length && (
-            <Link to="/jobs?status=ready" className={styles.more}>
+            <Link to="/jobs?status=ready" className={styles.link}>
               See all {total.toLocaleString()}
               <ArrowRight size={12} />
             </Link>
@@ -71,8 +70,9 @@ export function NeedsYou({ columns }: { columns: readonly Column[] }) {
         </>
       ) : (
         <p className={styles.calm}>
-          <Check size={14} />
-          Nothing ready yet. New ones show up after a run.
+          <Check size={16} />
+          <strong>Nothing ready yet</strong>
+          New good matches show up here after a run.
         </p>
       )}
     </section>

@@ -21,7 +21,7 @@ import { Ago } from "../../ui/Ago";
 import { PageHeader } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { ExternalLink } from "../../ui/ExternalLink";
-import { ChevronDown, Inbox, Search } from "../../ui/icons";
+import { ChevronDown, Filter, Inbox, Search } from "../../ui/icons";
 import { SearchBox } from "../../ui/SearchBox";
 import { toast } from "../../ui/toasts";
 import styles from "../jobs/Jobs.module.css";
@@ -49,9 +49,9 @@ const ORIGIN: Record<CompanyOrigin, string> = {
   archive: "Web archive",
 };
 const EVERY: Record<CompanySearch, string> = {
-  off: "Web search is off",
-  daily: "Searches every day",
-  weekly: "Searches every week",
+  off: "web search is off",
+  daily: "searches every day",
+  weekly: "searches every week",
 };
 const FOUND = ["search", "archive", "shared", "yours"] as const;
 type Found = (typeof FOUND)[number];
@@ -65,7 +65,6 @@ const YOURS: ReadonlySet<CompanyOrigin> = new Set(["link", "name"]);
 const CHIPS = ["all", "closed"] as const;
 const SHOWS = [...CHIPS, ...FOUND] as const;
 type Show = (typeof SHOWS)[number];
-const CHIP_LABEL: Record<(typeof CHIPS)[number], string> = { all: "All", closed: "Closed" };
 
 const LOOK: Record<string, { label: string; className?: string }> = {
   company: { label: "Company" },
@@ -164,7 +163,11 @@ function FindMore({ running }: { running: boolean }) {
       icon={<Search size={14} />}
       busy={find.isPending}
       disabled={running}
-      title={running ? "Wait for the run that's going to finish." : undefined}
+      title={
+        running
+          ? "Wait for the run that's going to finish."
+          : "Asks the AI to search the web for new companies' job pages. Starts a run."
+      }
       onClick={() => {
         find.mutate(undefined, {
           onSuccess: () => {
@@ -173,15 +176,16 @@ function FindMore({ running }: { running: boolean }) {
         });
       }}
     >
-      Find more companies
+      Search with AI
     </Button>
   );
 }
 
-function CheckArchive({ going }: { going: boolean }) {
+function CheckArchive({ going, last }: { going: boolean; last: string | null }) {
   const check = useCheckArchive();
   return (
     <Button
+      title={`Reads a free public list of job pages. No AI, runs in the background.${last ? ` Last checked ${when(last)}.` : ""}`}
       icon={<Inbox size={14} />}
       busy={check.isPending || going}
       disabled={going}
@@ -189,23 +193,21 @@ function CheckArchive({ going }: { going: boolean }) {
         check.mutate(undefined, {
           onSuccess: () => {
             toast(
-              "Checking the web archive in the background. New companies show up here when it's done.",
+              "Searching the web archive in the background. New companies show up here when it's done.",
             );
           },
         });
       }}
     >
-      {going ? "Checking the web archive" : "Check the web archive"}
+      {going ? "Searching the web archive" : "Search the web archive"}
     </Button>
   );
 }
 
-function searchNote({ search, archive }: Pick<Companies, "search" | "archive">) {
-  const parts: string[] = [EVERY[search.every]];
-  if (search.last) parts.push(`last ${when(search.last)}`);
-  if (search.next) parts.push(`next ${when(search.next)}`);
-  if (archive.last) parts.push(`web archive checked ${when(archive.last)}`);
-  return parts.join(" · ");
+function searchNote(search: Companies["search"]) {
+  return search.every !== "off" && search.next
+    ? `next search ${when(search.next)}`
+    : EVERY[search.every];
 }
 
 export default function CompaniesPage() {
@@ -233,46 +235,9 @@ export default function CompaniesPage() {
     <div className={styles.page}>
       <PageHeader
         title="Companies"
-        description={
-          <>
-            {`${plural(count(all, "all") - count(all, "closed"), "company", "companies")} checked on every run.`}
-            <span className={own.schedule}>{searchNote(data)}.</span>
-          </>
-        }
-        actions={
-          <>
-            <AddNames />
-            <FindMore running={summary.run.running} />
-            <CheckArchive going={data.archive.going} />
-          </>
-        }
+        description={`${plural(count(all, "all") - count(all, "closed"), "company", "companies")} · ${searchNote(data.search)}`}
       />
-      <div className={styles.toolbar}>
-        <nav className={styles.chips} aria-label="Filter by how it was found">
-          {CHIPS.map((item) => (
-            <Link
-              key={item}
-              to={href(item, q)}
-              className={styles.chip}
-              aria-current={item === show ? "true" : undefined}
-            >
-              {CHIP_LABEL[item]}
-              <span className={styles.chipCount}>{count(all, item).toLocaleString()}</span>
-            </Link>
-          ))}
-          <ChipMenu
-            label="Found by"
-            title="How it was found"
-            choices={FOUND.map((found) => ({
-              key: found,
-              label: FOUND_LABEL[found],
-              count: count(all, found),
-              to: href(found, q),
-            }))}
-            picked={show}
-            anyTo={href("all", q)}
-          />
-        </nav>
+      <div className={own.tools}>
         <SearchBox
           label="Search companies"
           placeholder="Search companies"
@@ -281,6 +246,29 @@ export default function CompaniesPage() {
             navigate(href(show, next), true);
           }}
         />
+        <ChipMenu
+          icon={<Filter size={14} />}
+          label="Filter"
+          idle="Filter"
+          title="Show"
+          any="All companies"
+          anyTo={href("all", q)}
+          picked={show === "all" ? null : show}
+          choices={[
+            { key: "closed", label: "Closed", count: count(all, "closed"), to: href("closed", q) },
+            ...FOUND.map((found) => ({
+              key: found,
+              label: `Found by: ${FOUND_LABEL[found]}`,
+              count: count(all, found),
+              to: href(found, q),
+            })),
+          ]}
+        />
+        <div className={own.actions}>
+          <CheckArchive going={data.archive.going} last={data.archive.last} />
+          <FindMore running={summary.run.running} />
+          <AddNames />
+        </div>
       </div>
       <div className={styles.tableWrap}>
         <table className={cx(styles.table, rows.length === 0 && styles.stretch)}>

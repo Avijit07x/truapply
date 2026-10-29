@@ -62,6 +62,13 @@ export type JobQuery = {
   location?: string;
   minScore?: number;
   source?: string;
+  sites?: "all" | "career";
+  when?: "today" | "week" | "month" | "custom";
+  from?: string;
+  to?: string;
+  after?: string;
+  before?: string;
+  table?: true;
 };
 export type JobList = {
   jobs: JobRow[];
@@ -91,6 +98,7 @@ export type RunLog = {
   kind: RunKind | null;
   running: boolean;
   outcome: "done" | "failed" | "stopped" | null;
+  problem: string | null;
 };
 export type RunLimits = { min: number; max: number; default: number };
 export type RunState = {
@@ -104,7 +112,25 @@ export type RunState = {
   nextAutomatic: string | null;
   limits: RunLimits;
 };
-export type RunLogLines = Omit<RunLog, "running" | "outcome"> & { lines: string[] };
+export type RunResult = {
+  company: string;
+  title: string;
+  result: "good" | "skipped" | "retry";
+  score: number | null;
+  note: string;
+};
+export type RunReport = {
+  companies: { checked: number; new: number; gone: number; unreachable: number } | null;
+  jobs: { open: number; fit: number | null; new: number } | null;
+  scored: { good: number; skipped: number; retry: number } | null;
+  results: RunResult[];
+  prepared: { company: string; title: string }[];
+  error: { message: string; hint: string; fix: string } | null;
+};
+export type RunLogLines = Omit<RunLog, "running" | "outcome" | "problem"> & {
+  lines: string[];
+  report: RunReport | null;
+};
 export type RunStage = "find" | "score" | "tailor";
 export type RunChoice = { limit: number; search: boolean; only?: RunStage };
 

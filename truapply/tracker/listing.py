@@ -25,6 +25,8 @@ from truapply.tracker.routes import Route, route
 CARDS_PER_COLUMN = 8
 SEARCH_LIMIT = 100
 EVERYTHING = "all"
+EVERY_SITE = "all"
+MOMENTS = ("after", "before")
 PAGE_NUMBER = re.compile(r"[1-9][0-9]{0,5}")
 SCORE = re.compile(r"[0-9]{1,3}")
 HIGHEST_SCORE = 100
@@ -67,6 +69,14 @@ def _summary(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body:
     )
 
 
+def _moment(value: str) -> datetime | None:
+    try:
+        moment = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else None
+
+
 def _refused(body: Body) -> bool:
     status, group = text(body, "status", 40), text(body, "group", 40)
     order, score = text(body, "order", 20), text(body, "minScore", 20)
@@ -80,6 +90,8 @@ def _refused(body: Body) -> bool:
         or (score and not (SCORE.fullmatch(score) and int(score) <= HIGHEST_SCORE))
         or text(body, "show", 20) not in ("", EVERYTHING)
         or (source and source not in SOURCES)
+        or text(body, "sites", 20) not in ("", EVERY_SITE)
+        or any(text(body, key, 40) and _moment(text(body, key, 40)) is None for key in MOMENTS)
     )
 
 
@@ -99,6 +111,9 @@ def _browse(body: Body) -> Browse:
         min_score=int(score) if score else None,
         everything=text(body, "show", 20) == EVERYTHING,
         source=Source(source) if source else None,
+        every_site=text(body, "sites", 20) == EVERY_SITE,
+        after=_moment(text(body, "after", 40)),
+        before=_moment(text(body, "before", 40)),
     )
 
 

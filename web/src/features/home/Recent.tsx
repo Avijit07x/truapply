@@ -1,4 +1,5 @@
 import type { Column } from "../../api/types";
+import { cx } from "../../lib/cx";
 import { Link } from "../../lib/router";
 import { ArrowRight } from "../../ui/icons";
 import styles from "./Home.module.css";
@@ -12,12 +13,12 @@ export function Recent({ columns }: { columns: readonly Column[] }) {
     return null;
   }
   return (
-    <section className={styles.recent} aria-labelledby="recent-title">
-      <header className={styles.railHead}>
-        <h2 id="recent-title" className={styles.railTitle}>
+    <section className={styles.block} aria-labelledby="recent-title">
+      <header className={styles.blockHead}>
+        <h2 id="recent-title" className={styles.blockTitle}>
           Recently applied
         </h2>
-        <Link to="/jobs?status=applied" className={styles.railLink}>
+        <Link to="/jobs?status=applied" className={cx(styles.link, styles.end)}>
           See all {applied.total.toLocaleString()}
           <ArrowRight size={12} />
         </Link>

@@ -1,40 +1,53 @@
 :root {
   color-scheme: light dark;
-  --bg: light-dark(#ffffff, #09090b);
-  --surface: light-dark(#ffffff, #18181b);
-  --subtle: light-dark(#f4f4f5, #141417);
-  --sidebar: light-dark(#fafafa, #0c0c0f);
-  --canvas: light-dark(#fafafa, #09090b);
-  --text: light-dark(#18181b, #fafafa);
-  --muted: light-dark(#71717a, #a1a1aa);
-  --line: light-dark(#e4e4e7, #27272a);
-  --line-strong: light-dark(#d4d4d8, #3f3f46);
-  --accent: light-dark(#2563eb, #3b82f6);
-  --accent-bg: light-dark(#eff6ff, #172554);
+  --bg: light-dark(#ffffff, #111114);
+  --surface: light-dark(#ffffff, #17171b);
+  --subtle: light-dark(#f4f4f5, #1b1b20);
+  --hover: light-dark(rgb(24 24 27 / 0.045), rgb(255 255 255 / 0.05));
+  --sidebar: light-dark(#f4f4f5, #09090b);
+  --canvas: light-dark(#fafafa, #0d0d10);
+  --text: light-dark(#18181b, #ededf0);
+  --muted: light-dark(#6b6b76, #9b9ba6);
+  --faint: light-dark(#a1a1aa, #5f5f69);
+  --line: light-dark(#e7e7ea, #24242a);
+  --line-strong: light-dark(#d6d6db, #33333b);
+  --accent: light-dark(#0f766e, #14b8a6);
+  --accent-solid: #0f766e;
+  --accent-bg: light-dark(#effcf9, #0a2a27);
   --on-accent: #ffffff;
-  --good: light-dark(#16a34a, #4ade80);
-  --good-bg: light-dark(#f0fdf4, #052e16);
+  --info: light-dark(#2563eb, #60a5fa);
+  --info-bg: light-dark(#eff6ff, #10203f);
+  --good: light-dark(#15803d, #4ade80);
+  --good-bg: light-dark(#ecfdf3, #0b2a17);
   --warn: light-dark(#b45309, #fbbf24);
-  --warn-bg: light-dark(#fffbeb, #422006);
+  --warn-bg: light-dark(#fff8eb, #2d1f05);
   --bad: light-dark(#dc2626, #f87171);
-  --bad-bg: light-dark(#fef2f2, #450a0a);
+  --bad-bg: light-dark(#fef2f2, #351010);
   --auto: light-dark(#7c3aed, #a78bfa);
-  --auto-bg: light-dark(#f5f3ff, #2e1065);
+  --auto-bg: light-dark(#f5f3ff, #221641);
   --shadow-color: light-dark(rgb(24 24 27 / 0.08), rgb(0 0 0 / 0.5));
-  --shadow: 0 8px 24px var(--shadow-color);
+  --shadow: 0 1px 2px var(--shadow-color), 0 8px 24px var(--shadow-color);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
-  --radius: 12px;
-  --radius-small: 8px;
-  --radius-large: 16px;
+  --radius: 8px;
+  --radius-small: 6px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --form-width: 800px;
+  --font: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, Menlo, monospace;
-  --scrollbar: 10px;
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
@@ -52,15 +65,11 @@
   box-sizing: border-box;
 }
 
-html {
-  scrollbar-gutter: stable;
-}
-
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.5 var(--font);
+  font: var(--text-base) / 1.5 var(--font);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -89,45 +98,13 @@ select {
   outline-offset: 2px;
 }
 
-:not(html, body)::-webkit-scrollbar {
-  width: var(--scrollbar);
-  height: var(--scrollbar);
-}
-
-:not(html, body)::-webkit-scrollbar-track,
-:not(html, body)::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 * {
-  --scroll-thumb: transparent;
+  scrollbar-width: none;
   scroll-padding: 8px;
 }
 
-:hover {
-  --scroll-thumb: var(--line-strong);
-}
-
-:not(html, body)::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background: var(--scroll-thumb) padding-box;
-}
-
-:not(html, body)::-webkit-scrollbar-thumb:hover,
-:not(html, body)::-webkit-scrollbar-thumb:active {
-  background-color: var(--muted);
-}
-
-@supports not selector(::-webkit-scrollbar) {
-  body * {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
-
-  body :hover {
-    scrollbar-color: var(--line-strong) transparent;
-  }
+::-webkit-scrollbar {
+  display: none;
 }
 
 .base-ui-disable-scrollbar {

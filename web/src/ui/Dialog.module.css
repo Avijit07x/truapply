@@ -37,6 +37,6 @@
 }
 
 .title {
-  font-size: 17px;
+  font-size: var(--text-lg);
   font-weight: 600;
 }

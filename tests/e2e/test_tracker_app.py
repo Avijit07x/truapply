@@ -53,36 +53,16 @@ PAGES = (
         "/",
         re.compile(r"^(You're all caught up|1 job is ready for you|\d+ jobs are ready for you)$"),
     ),
-    ("/workflow", "Workflow"),
-    ("/jobs", "Career jobs"),
+    ("/jobs", "Jobs"),
+    ("/jobs/table", "All jobs"),
     ("/jobs?group=ready", "Ready for you to apply"),
     ("/jobs/9", "Frontend Engineer"),
     ("/companies", "Companies"),
-    ("/runs", "Run"),
+    ("/runs", "Activity"),
     ("/learned", "What it learned"),
     ("/settings", "Settings"),
     ("/nowhere", "Page not found"),
 )
-STEP_BOXES = {
-    "find": Group.FOUND,
-    "score": Group.WAITING_SCORE,
-    "scored": Group.SCORED,
-    "ready": Group.READY,
-    "applied": Group.APPLIED,
-}
-SKIP_REASONS = (Group.WRONG_TITLE, Group.WRONG_PLACE, Group.TOO_OLD, Group.SKIPPED_COMPANY)
-OUTCOME_BOXES = {
-    f"o-{group}": group
-    for group in Group
-    if group not in STEP_BOXES.values() and group not in SKIP_REASONS
-}
-OVERLAPPING_BOXES = """() => {
-  const boxes = [...document.querySelectorAll('.react-flow__node:not(.react-flow__node-lane)')]
-    .map((node) => [node.dataset.id, node.getBoundingClientRect()]);
-  return boxes.flatMap(([id, a], index) => boxes.slice(index + 1)
-    .filter(([, b]) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom)
-    .map(([other]) => `${id} overlaps ${other}`));
-}"""
 
 
 @pytest.fixture(scope="module")
@@ -105,7 +85,9 @@ def home(tmp_path: Path) -> Paths:
 
 @contextmanager
 def opened(
-    browser: Browser, theme: Theme = "light", viewport: ViewportSize = DESKTOP
+    browser: Browser,
+    theme: Theme = "light",
+    viewport: ViewportSize = DESKTOP,
 ) -> Iterator[tuple[Page, list[str]]]:
     context = browser.new_context(viewport=viewport, color_scheme=theme)
     stored = json.dumps({"state": {"theme": theme}, "version": 0})
@@ -170,30 +152,26 @@ def test_an_unknown_page_highlights_no_sidebar_link(browser: Browser, home: Path
         page.get_by_role("heading", level=1, name="Page not found").wait_for()
         assert page.locator("nav [aria-current=page]").count() == 0
         page.goto(server.url + "/")
-        assert page.locator("nav [aria-current=page]").inner_text() == "Home"
+        assert page.locator("nav [aria-current=page]").inner_text() == "Today"
 
 
-def test_each_workflow_box_opens_exactly_the_jobs_it_counts(browser: Browser, home: Paths) -> None:
+def test_each_pipeline_number_on_today_opens_the_jobs_it_counts(
+    browser: Browser, home: Paths
+) -> None:
     with closing(connect(home.database)) as db:
         seed_every_group(db, NOW)
+    shown = (Group.FOUND, Group.NOT_A_FIT, Group.SCORED, Group.READY, Group.APPLIED)
     with running(home) as server, opened(browser) as (page, errors):
         counts = get(server, "/api/workflow")[1]["groups"]
-        page.goto(server.url + "/workflow")
-        page.locator('.react-flow__node[data-id="applied"]').wait_for()
-        assert page.evaluate(OVERLAPPING_BOXES) == []
-        for node, group in (STEP_BOXES | OUTCOME_BOXES).items():
-            page.locator(f'.react-flow__node[data-id="{node}"]').click()
-            link = page.get_by_role("link", name=f"See all {counts[group]}", exact=True)
-            expect(link).to_have_attribute("href", f"/jobs?group={group}")
-            if group is Group.SKIPPED:
-                reasons = page.get_by_role("list", name="Why they were skipped")
-                for reason in SKIP_REASONS:
-                    link = reasons.locator(f'a[href="/jobs?group={reason}"]')
-                    expect(link).to_contain_text(str(counts[reason]))
-            page.get_by_role("button", name="Close", exact=True).click()
-        for group in Group:
-            page.goto(server.url + f"/jobs?group={group}")
-            expect(page.locator('main a[href^="/jobs/"]')).to_have_count(len(ids_in(group)))
+        page.goto(server.url + "/")
+        pipeline = page.get_by_role("region", name="Pipeline")
+        for group in shown:
+            expect(pipeline.locator(f'a[href="/jobs?group={group}"]')).to_contain_text(
+                str(counts[group])
+            )
+        pipeline.locator(f'a[href="/jobs?group={Group.APPLIED}"]').click()
+        listed = page.get_by_role("list", name="Jobs").get_by_role("button")
+        expect(listed).to_have_count(len(ids_in(Group.APPLIED)))
         assert errors == []
 
 
@@ -228,7 +206,7 @@ def test_the_jobs_grid_moves_by_keys_filters_and_dismisses_many(
             jobs.record_attempt(db, job_id, AttemptRecord(Status.READY, at, "filled", (), None))
         jobs.set_status(db, 4, StatusChange(Status.APPLIED, NOW, "sent"))
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/jobs")
+        page.goto(server.url + "/jobs/table")
         expect(page.locator("main tbody tr")).to_have_count(4)
         page.locator('main a[href="/jobs/3"]').focus()
         page.keyboard.press("x")
@@ -295,15 +273,15 @@ def test_the_back_link_returns_to_where_you_opened_the_job(browser: Browser, hom
     with running(home) as server, opened(browser) as (page, errors):
         page.goto(server.url + "/")
         page.locator('main a[href="/jobs/9"]').first.click()
-        back = page.get_by_role("link", name="Home", exact=True).and_(page.locator("main a"))
+        back = page.get_by_role("link", name="Today", exact=True).and_(page.locator("main a"))
         back.click()
         expect(page).to_have_url(server.url + "/")
-        page.goto(server.url + "/jobs?group=ready")
+        page.goto(server.url + "/jobs/table?group=ready")
         page.locator('main a[href="/jobs/9"]').first.click()
-        page.locator("main").get_by_role("link", name="Career jobs", exact=True).click()
-        expect(page).to_have_url(server.url + "/jobs?group=ready")
+        page.locator("main").get_by_role("link", name="All jobs", exact=True).click()
+        expect(page).to_have_url(server.url + "/jobs/table?group=ready")
         page.goto(server.url + "/jobs/9")
-        page.locator("main").get_by_role("link", name="Career jobs", exact=True).click()
+        page.locator("main").get_by_role("link", name="Jobs", exact=True).click()
         expect(page).to_have_url(server.url + "/jobs")
         assert errors == []
 
@@ -384,7 +362,7 @@ def test_pasted_company_names_are_looked_up_and_added(
         assert errors == []
 
 
-def test_the_learned_list_lines_up_with_its_heading(browser: Browser, home: Paths) -> None:
+def test_the_learned_list_lines_up_with_the_box_above_it(browser: Browser, home: Paths) -> None:
     with closing(connect(home.database)) as db:
         for text in ("no staffing agencies", "Pune is fine"):
             rules.add(db, rules.NewRule(rules.RuleKind.RULE, text, rules.RuleState.ACTIVE, NOW))
@@ -393,28 +371,12 @@ def test_the_learned_list_lines_up_with_its_heading(browser: Browser, home: Path
         page.goto(server.url + "/learned")
         item = page.get_by_text("no staffing agencies", exact=True)
         item.wait_for()
-        heading = page.get_by_role("heading", level=1).bounding_box()
-        row = page.locator("main li").first.bounding_box()
-        assert heading is not None
-        assert row is not None
-        assert abs(row["x"] - heading["x"]) <= 8
-        assert errors == []
-
-
-def test_the_workflow_legend_stays_on_one_line_during_a_run(browser: Browser, home: Paths) -> None:
-    def live(route: Route) -> None:
-        answer = route.fetch().json()
-        answer["run"]["running"] = True
-        route.fulfill(json=answer)
-
-    with running(home) as server, opened(browser) as (page, errors):
-        page.route("**/api/summary", live)
-        page.goto(server.url + "/workflow")
-        legend = page.get_by_label("How to read the map")
-        expect(legend).to_contain_text("Live: a run is going")
-        box = legend.bounding_box()
+        box = page.get_by_role("tabpanel").locator(":scope > *").first.bounding_box()
+        listed = item.locator("xpath=ancestor::ul[1]").bounding_box()
         assert box is not None
-        assert box["height"] < 40
+        assert listed is not None
+        assert abs(listed["x"] - box["x"]) <= 1
+        assert abs(listed["width"] - box["width"]) <= 1
         assert errors == []
 
 
@@ -443,9 +405,11 @@ def test_the_all_chip_shows_skipped_jobs_too(browser: Browser, home: Paths) -> N
         seed_every_group(db, NOW)
     with running(home) as server, opened(browser) as (page, errors):
         total = get(server, "/api/summary")[1]["total"]
-        page.goto(server.url + "/jobs")
-        chips = page.get_by_role("navigation", name="Filter by status")
-        chips.get_by_role("link", name=re.compile(r"^All ")).click()
+        page.goto(server.url + "/jobs/table")
+        page.get_by_role("button", name="Filter", exact=True).click()
+        page.get_by_role("group", name="Show").get_by_role(
+            "button", name=re.compile(r"^All ")
+        ).click()
         expect(page).to_have_url(re.compile(r"show=all"))
         expect(page.get_by_text(f"{total} jobs", exact=True)).to_be_visible()
         expect(page.locator("main").get_by_text("Skipped", exact=True).first).to_be_visible()
@@ -459,7 +423,7 @@ def test_row_checkboxes_scroll_under_the_table_header(browser: Browser, home: Pa
     with closing(connect(home.database)) as db:
         jobs.add_many(db, many, NOW)
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/jobs")
+        page.goto(server.url + "/jobs/table")
         header = page.locator("thead th").first
         header.wait_for()
         page.locator("tbody tr").nth(30).scroll_into_view_if_needed()
@@ -488,7 +452,7 @@ def test_score_from_the_table_shows_a_spinner_then_the_score(
     with closing(connect(home.database)) as db:
         jobs.add_outside_search(db, [(senior, WRONG_TITLE_NOTE)], NOW)
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/jobs?show=all")
+        page.goto(server.url + "/jobs/table?show=all")
         page.get_by_role("button", name="Score Senior Frontend Engineer at Northwind").click()
         expect(page.locator("tbody").get_by_role("status")).to_have_text("Scoring")
         with closing(connect(home.database)) as db:
@@ -503,7 +467,7 @@ def test_a_column_filter_stays_open_while_you_type(browser: Browser, home: Paths
     with closing(connect(home.database)) as db:
         seed_every_group(db, NOW)
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/jobs?show=all")
+        page.goto(server.url + "/jobs/table?show=all")
         page.get_by_role("button", name="Filter by location").click()
         box = page.get_by_role("searchbox", name="Location contains")
         for letter in "zqx":
@@ -562,7 +526,7 @@ def test_how_long_ago_keeps_counting_while_the_page_stays_open(
 
 def test_an_empty_site_table_spans_exactly_its_own_columns(browser: Browser, home: Paths) -> None:
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/sites/wellfound")
+        page.goto(server.url + "/sites/wellfound/table")
         empty = page.locator("tbody td[colspan]")
         empty.wait_for()
         headers = page.locator("thead th")
@@ -576,10 +540,10 @@ def test_a_wellfound_job_goes_back_to_the_wellfound_tab(browser: Browser, home: 
     with closing(connect(home.database)) as db:
         jobs.add_ready(db, [samples.job(Source.WELLFOUND, "9")], NOW, WELLFOUND_NOTE)
     with running(home) as server, opened(browser) as (page, errors):
-        page.goto(server.url + "/sites/wellfound")
+        page.goto(server.url + "/sites/wellfound/table")
         page.locator('main a[href="/jobs/1"]').first.click()
         page.locator("main").get_by_role("link", name="Wellfound jobs", exact=True).click()
-        expect(page).to_have_url(server.url + "/sites/wellfound")
+        expect(page).to_have_url(server.url + "/sites/wellfound/table")
         page.goto(server.url + "/jobs/1")
         page.locator("main").get_by_role("link", name="Wellfound jobs", exact=True).click()
         expect(page).to_have_url(server.url + "/sites/wellfound")
@@ -587,13 +551,11 @@ def test_a_wellfound_job_goes_back_to_the_wellfound_tab(browser: Browser, home: 
         assert errors == []
 
 
-def test_the_sidebar_counts_new_jobs_per_tab_until_you_open_it(
-    browser: Browser, home: Paths
-) -> None:
+def test_the_sidebar_counts_new_jobs_until_you_open_them(browser: Browser, home: Paths) -> None:
     with running(home) as server, opened(browser) as (page, errors):
         page.goto(server.url + "/runs")
         nav = page.get_by_role("navigation", name="Main")
-        nav.get_by_role("link", name="Wellfound").wait_for()
+        nav.get_by_role("link", name=re.compile(r"^Jobs")).wait_for()
         page.wait_for_load_state("networkidle")
         found = datetime.now(UTC)
         with closing(connect(home.database)) as db:
@@ -601,13 +563,83 @@ def test_the_sidebar_counts_new_jobs_per_tab_until_you_open_it(
             listed = [samples.job(Source.WELLFOUND, str(n)) for n in range(3)]
             jobs.add_ready(db, listed, found, WELLFOUND_NOTE)
         page.reload()
+        expect(nav.get_by_label("5 new")).to_be_visible()
+        page.goto(server.url + "/sites/wellfound")
         expect(nav.get_by_label("2 new")).to_be_visible()
-        expect(nav.get_by_label("3 new")).to_be_visible()
-        nav.get_by_role("link", name="Wellfound").click()
-        expect(page).to_have_url(server.url + "/sites/wellfound")
-        expect(nav.get_by_label("3 new")).to_have_count(0)
-        nav.get_by_role("link", name="Run").click()
+        nav.get_by_role("link", name="Activity").click()
         expect(nav.get_by_label("2 new")).to_be_visible()
-        expect(nav.get_by_label("3 new")).to_have_count(0)
+        nav.get_by_role("link", name=re.compile(r"^Jobs")).click()
+        expect(page).to_have_url(server.url + "/jobs")
+        expect(nav.get_by_label(re.compile(r"\d+ new"))).to_have_count(0)
         page.wait_for_load_state("networkidle")
+        assert errors == []
+
+
+def test_the_jobs_list_shows_the_picked_job_beside_it(browser: Browser, home: Paths) -> None:
+    picks = [samples.job(external_id=str(n), company=f"Co {n + 1}") for n in range(3)]
+    with closing(connect(home.database)) as db:
+        jobs.add_many(db, picks, NOW)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs")
+        beside = page.get_by_role("region", name="Selected job")
+        items = page.get_by_role("list", name="Jobs").get_by_role("button")
+        expect(items).to_have_count(3)
+        expect(beside).to_contain_text(re.compile(r"Co \d"))
+        items.nth(1).click()
+        picked = items.nth(1).inner_text().split("\n")[1].split(" · ")[0]
+        expect(beside.get_by_text(picked).first).to_be_visible()
+        page.keyboard.press("j")
+        expect(items.nth(2)).to_be_focused()
+        expect(items.nth(2)).to_have_attribute("aria-current", "true")
+        page.get_by_role("navigation", name="Main").get_by_role("link", name="All jobs").click()
+        expect(page).to_have_url(server.url + "/jobs/table")
+        expect(page.locator("main tbody tr")).to_have_count(3)
+        assert errors == []
+
+
+def test_the_jobs_list_shows_every_site_unless_you_pick_career_pages(
+    browser: Browser, home: Paths
+) -> None:
+    with closing(connect(home.database)) as db:
+        jobs.add_many(db, [samples.job(external_id="1")], NOW)
+        jobs.add_ready(db, [samples.job(Source.WELLFOUND, "9", "Globex")], NOW, WELLFOUND_NOTE)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs")
+        items = page.get_by_role("list", name="Jobs").get_by_role("button")
+        expect(items).to_have_count(2)
+        expect(items.filter(has_text="Globex")).to_contain_text("Wellfound")
+        page.get_by_role("button", name="Filter").click()
+        sites = page.get_by_role("group", name="Site")
+        sites.get_by_role("button", name=re.compile("^Career pages")).click()
+        expect(page).to_have_url(server.url + "/jobs?sites=career")
+        expect(items).to_have_count(1)
+        assert errors == []
+
+
+def test_the_table_shows_only_jobs_updated_in_the_picked_dates(
+    browser: Browser, home: Paths
+) -> None:
+    now = datetime.now(UTC)
+    with closing(connect(home.database)) as db:
+        jobs.add_many(
+            db, [replace(samples.job(external_id="1"), title="Old role")], now - timedelta(days=40)
+        )
+        jobs.add_many(db, [replace(samples.job(external_id="2"), title="Fresh role")], now)
+    with running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/jobs/table")
+        rows = page.locator("main tbody tr")
+        expect(rows).to_have_count(2)
+        page.get_by_role("button", name="Updated: Any time").click()
+        page.get_by_role("group", name="Updated").get_by_role("button", name="Today").click()
+        expect(page).to_have_url(re.compile(r"when=today"))
+        expect(rows).to_have_count(1)
+        expect(rows.first).to_contain_text("Fresh role")
+        page.get_by_role("button", name="Updated: Today").click()
+        start = (now - timedelta(days=60)).astimezone().date().isoformat()
+        end = (now - timedelta(days=20)).astimezone().date().isoformat()
+        page.get_by_label("From", exact=True).fill(start)
+        page.get_by_label("To", exact=True).fill(end)
+        page.get_by_role("button", name="Show these dates").click()
+        expect(rows).to_have_count(1)
+        expect(rows.first).to_contain_text("Old role")
         assert errors == []

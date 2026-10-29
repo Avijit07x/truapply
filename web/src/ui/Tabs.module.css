@@ -16,7 +16,7 @@
   background: none;
   color: var(--muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 500;
   transition: color 140ms ease;
 }
@@ -29,10 +29,10 @@
 .tabCount {
   min-width: 20px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-small);
   background: var(--subtle);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   line-height: 18px;
   text-align: center;
@@ -60,8 +60,46 @@
 }
 
 .tab:focus-visible {
-  border-radius: 6px;
+  border-radius: var(--radius-small);
   outline-offset: 2px;
+}
+
+.vertical {
+  flex-direction: column;
+  align-self: start;
+  gap: 4px;
+  border-bottom: 0;
+}
+
+.vertical .tab {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-small);
+  font-size: var(--text-md);
+  font-weight: 400;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.vertical .tab:hover {
+  background: var(--hover);
+}
+
+.vertical .tab[data-active] {
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 2px var(--shadow-color);
+  font-weight: 500;
+}
+
+.vertical .tabCount {
+  margin-left: auto;
+}
+
+.vertical .tab:focus-visible {
+  outline-offset: -2px;
 }
 
 @media (max-width: 760px) {

@@ -2,14 +2,20 @@ import { useState } from "react";
 import { useJobChange } from "../../api/mutations";
 import type { JobDetail } from "../../api/types";
 import { RuleForm } from "../../components/RuleForm";
-import { Empty, Note, Row, Section, Stack } from "../../ui/Blocks";
+import { cx } from "../../lib/cx";
+import { Empty, Note, Row, Stack } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Callout";
 import { Dialog } from "../../ui/Dialog";
 import { ExternalLink } from "../../ui/ExternalLink";
-import { Spark, Undo } from "../../ui/icons";
+import { ChevronDown, Spark, Undo } from "../../ui/icons";
 import { toast } from "../../ui/toasts";
 import styles from "./Job.module.css";
+
+const FOLD_AFTER = 4;
+
+const LINE_LOOK: Partial<Record<string, string>> = { "+": styles.added, "-": styles.removed };
+import { Panel } from "./Panel";
 
 function TailorNow({ job }: { job: JobDetail }) {
   const change = useJobChange(job.id);
@@ -44,18 +50,46 @@ function Changes({ job }: { job: JobDetail }) {
   if (job.changes.length === 0) {
     return <Note>Tailored, but nothing changed from your original.</Note>;
   }
+  return <Folded lines={job.changes} />;
+}
+
+function Folded({ lines }: { lines: readonly string[] }) {
+  const [open, setOpen] = useState(false);
+  const folds = lines.length > FOLD_AFTER;
   return (
-    <pre className={styles.diff} aria-label="What changed in your resume">
-      {job.changes.map((line, index) => (
-        <span
-          key={`${String(index)}-${line}`}
-          className={line.startsWith("+") ? styles.added : styles.removed}
+    <div className={styles.foldWrap}>
+      <ul
+        id="resume-changes"
+        className={cx(styles.diff, folds && !open && styles.folded)}
+        aria-label="What changed in your resume"
+      >
+        {lines.map((line, index) => (
+          <li key={`${String(index)}-${line}`} className={LINE_LOOK[line.charAt(0)] ?? styles.same}>
+            {LINE_LOOK[line.charAt(0)] ? line.slice(1) : line}
+          </li>
+        ))}
+      </ul>
+      {folds && (
+        <button
+          type="button"
+          className={styles.unfold}
+          aria-expanded={open}
+          aria-controls="resume-changes"
+          onClick={() => {
+            setOpen(!open);
+          }}
         >
-          {line}
-          {"\n"}
-        </span>
-      ))}
-    </pre>
+          {open ? "Show less" : `Show all ${String(lines.length)} changes`}
+          <ChevronDown size={12} className={cx(styles.unfoldIcon, open && styles.flipped)} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function resumeApplies(job: JobDetail): boolean {
+  return (
+    job.changes !== null || job.hasResume || job.actions.includes("tailor") || job.status === "new"
   );
 }
 
@@ -67,7 +101,7 @@ export function ResumeSection({ job }: { job: JobDetail }) {
     setConfirming(false);
   };
   return (
-    <Section
+    <Panel
       title="Resume"
       aside={
         job.hasResume && (
@@ -122,6 +156,6 @@ export function ResumeSection({ job }: { job: JobDetail }) {
           </Button>
         </Row>
       </Dialog>
-    </Section>
+    </Panel>
   );
 }

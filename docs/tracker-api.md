@@ -47,6 +47,7 @@ type JobDetail = JobRow & {
 type RunLog = {
   name: string; finishedAt: string; kind: "automatic" | "manual" | null;
   running: boolean; outcome: "done" | "failed" | "stopped" | null;
+  problem: string | null; // the ✘ line of a failed run, e.g. "Today's Claude call budget is used up."
 };
 type RunState = {
   running: boolean; startedAt: string | null; exitCode: number | null;
@@ -107,11 +108,11 @@ type SettingsView = {
 |---|---|---|
 | `GET /api/summary` | | `Summary` |
 | `GET /api/jobs` | | `JobList`: one page of 50, newest first. Skipped and closed jobs are left out unless you ask for a status, a group or `show=all`. `total` counts every match. |
-| `GET /api/new-jobs` | `?jobs=<ISO>&wellfound=<ISO>` | `{ jobs?: number, wellfound?: number }`: for each tab you name, the jobs found after that time that aren't skipped or closed (`jobs` is Career jobs). The sidebar sends when you last opened each tab, kept in this browser, and shows the counts as badges. |
+| `GET /api/new-jobs` | `?jobs=<ISO>&wellfound=<ISO>` | `{ jobs?: number, wellfound?: number }`: for each tab you name, the jobs found after that time that aren't skipped or closed (`jobs` is Career jobs). The sidebar sends when you last opened each tab, kept in this browser, and shows their total as a badge on **Jobs**, leaving out the tab you're on. |
 | `GET /api/jobs?show=all` | | the same, skipped jobs included. Skipped also holds software jobs outside your titles, places or age (`note` says which: "not one of your titles", "not a place you work in", "posted too long ago" or "a company you skip"; no description). Each run updates the note, and the job goes back to `new` once it fits. The `skipped` group counts them all; `wrong_title`, `wrong_place`, `too_old` and `skipped_company` count each reason. |
 | `GET /api/jobs?status=<Status>` | | the same, for one status |
 | `GET /api/jobs?group=<Group>` | | the same, for one workflow box |
-| `GET /api/workflow` | | `{ groups: Record<Group, number>, lastRun: { startedAt, groups: Record<Group, number> } \| null }`: the count in each workflow box, and how many jobs reached each box since the latest run started (`found` by when it was found, the rest by their last status change). `stage` in `RunState` is the step a run is on, read from its latest progress line. |
+| `GET /api/workflow` | | `{ groups: Record<Group, number>, lastRun: { startedAt, groups: Record<Group, number> } \| null }`: the count in each group (Today's pipeline uses it), and how many jobs reached each group since the latest run started (`found` by when it was found, the rest by their last status change). `stage` in `RunState` is the step a run is on, read from its latest progress line. |
 | `GET /api/board` | | Home's job lists. `{ columns: Column[], dismissReasons }`: scored, needs_input, finish, ready, approved, applied (the order jobs move in), the newest 8 jobs in each |
 | `GET /api/jobs/<id>` | | `JobDetail` |
 
@@ -119,7 +120,8 @@ type SettingsView = {
 
 - `q`: words in the title or company. `company` and `location`: words in that field. Each is at most 100 characters; `%` and `_` are plain text.
 - `minScore`: 1 to 100, only jobs scored at least that.
-- `source`: one site (`career_pages`, `linkedin`, `naukri`, `indeed`, `wellfound`, `manual`). Without it, listed-only sites (Wellfound) are left out, here and in `counts`, the board and the workflow map. `sites` in `Summary` gives each listed-only site that's switched on its own counts, for its own tab.
+- `source`: one site (`career_pages`, `linkedin`, `naukri`, `indeed`, `wellfound`, `manual`). Without it, listed-only sites (Wellfound) are left out, here and in `counts`, the board and Today's pipeline. `sites` in `Summary` gives each listed-only site that's switched on its own counts, for its own tab.
+- `sites=all`: jobs from every site together, listed-only ones included. The Jobs list asks for this by default; its **Career pages** choice leaves it out. Any other value is refused.
 - `sort`: one of `Sort` (default `updated`), and `order`: `asc` or `desc` (default newest or highest first, A to Z for text). Jobs with no score sort last either way.
 - `page`: 1 or more. A page past the end returns the last page, and `page` in the answer says which.
 
@@ -179,7 +181,7 @@ Each one answers with the updated `Learned`.
 | `GET /api/runs` | | `RunState` |
 | `POST /api/runs/start` | `{ limit, search, only? }` | `RunState`. `only` (`find`, `score` or `tailor`) runs just that step, as `truapply run --only`. `limit` is kept between 1 and 50; the form starts at the saved `jobsPerRun`. Nothing is sent. `400` if one is already running. |
 | `POST /api/runs/stop` | `{}` | `RunState` |
-| `GET /api/runs/log/<name>` | | `RunLog & { lines: string[] }`, the last 200 lines |
+| `GET /api/runs/log/<name>` | | `RunLog & { lines: string[]; report: RunReport \| null }`: the last 200 lines, and the run's numbers read from its Summary (companies checked, jobs that fit, new jobs, scores), each scored job with its result, score and reason, and the jobs made ready, and `error` (`{ message, hint }`) when it stopped on an error. A run that ended early reports what it got to; `report` is `null` only before it has done anything. |
 | `GET /api/settings` | | `SettingsView` |
 | `POST /api/settings` | `SettingsValues` | `SettingsView`, or `400 { error, problems }` naming every problem at once. Nothing is saved unless all of it is valid. Moves a running schedule when `runEveryMinutes` changes. |
 | `POST /api/settings/resume` | `{ name, data }`, `data` in base64, up to 5 MB | `{ format, pages }`. A `.tex` keeps its design when pdflatex is installed; other files are moved into the built-in design by Claude. The master PDF is rebuilt before the profile switches, so a resume that fails to build changes nothing. |

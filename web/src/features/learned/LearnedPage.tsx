@@ -212,33 +212,39 @@ export default function LearnedPage() {
         title="What it learned"
         description={`${plural(data.rules.length, "rule")}, ${plural(data.notes.length, "tailoring note")} and ${plural(data.answers.length, "saved answer")}. Change or delete any of them.`}
       />
-      <Tabs.Root defaultValue={tabs[0]?.value ?? "rules"} className={styles.tabs}>
-        <TabList label="What it learned" items={tabs} />
-        <Tabs.Panel value="suggestions" className={styles.panel}>
-          <p className={styles.hint}>From jobs you dismissed as too senior.</p>
-          <ul className={styles.list}>
-            {data.suggestions.map((suggestion) => (
-              <SuggestionItem key={suggestion.id} suggestion={suggestion} />
-            ))}
-          </ul>
-        </Tabs.Panel>
-        <Tabs.Panel value="rules" className={styles.panel}>
-          <RulesPanel
-            kind="rule"
-            items={data.rules}
-            empty="No rules yet. Rules change how jobs are scored."
-          />
-        </Tabs.Panel>
-        <Tabs.Panel value="notes" className={styles.panel}>
-          <RulesPanel
-            kind="tailoring_note"
-            items={data.notes}
-            empty="No tailoring notes yet. Notes change how your resume is tailored."
-          />
-        </Tabs.Panel>
-        <Tabs.Panel value="answers" className={styles.panel}>
-          <SavedAnswers answers={data.answers} />
-        </Tabs.Panel>
+      <Tabs.Root
+        defaultValue={tabs[0]?.value ?? "rules"}
+        orientation="vertical"
+        className={styles.tabs}
+      >
+        <TabList label="What it learned" items={tabs} vertical />
+        <div className={styles.pane}>
+          <Tabs.Panel value="suggestions" className={styles.panel}>
+            <p className={styles.hint}>From jobs you dismissed as too senior.</p>
+            <ul className={styles.list}>
+              {data.suggestions.map((suggestion) => (
+                <SuggestionItem key={suggestion.id} suggestion={suggestion} />
+              ))}
+            </ul>
+          </Tabs.Panel>
+          <Tabs.Panel value="rules" className={styles.panel}>
+            <RulesPanel
+              kind="rule"
+              items={data.rules}
+              empty="No rules yet. Rules change how jobs are scored."
+            />
+          </Tabs.Panel>
+          <Tabs.Panel value="notes" className={styles.panel}>
+            <RulesPanel
+              kind="tailoring_note"
+              items={data.notes}
+              empty="No tailoring notes yet. Notes change how your resume is tailored."
+            />
+          </Tabs.Panel>
+          <Tabs.Panel value="answers" className={styles.panel}>
+            <SavedAnswers answers={data.answers} />
+          </Tabs.Panel>
+        </div>
       </Tabs.Root>
     </div>
   );

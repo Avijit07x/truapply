@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRunStart } from "../../api/mutations";
 import type { RunLimits } from "../../api/types";
-import { Note, Row, Stack } from "../../ui/Blocks";
+import { Note, Row } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { Checkbox, TextField } from "../../ui/Fields";
 import { Play } from "../../ui/icons";
@@ -25,7 +25,7 @@ export function RunForm({ limits }: { limits: RunLimits }) {
     );
   };
   return (
-    <section className={styles.block} aria-labelledby="start-title">
+    <section className={styles.card} aria-labelledby="start-title">
       <h2 id="start-title" className={styles.blockTitle}>
         Start a run
       </h2>
@@ -35,7 +35,7 @@ export function RunForm({ limits }: { limits: RunLimits }) {
           run();
         }}
       >
-        <Stack>
+        <div className={styles.form}>
           <div className={styles.limit}>
             <TextField
               label="How many jobs"
@@ -48,20 +48,22 @@ export function RunForm({ limits }: { limits: RunLimits }) {
               onChange={setLimit}
             />
           </div>
-          <Checkbox label="Search for new jobs first" checked={search} onChange={setSearch} />
-          <Note>It finds, scores and tailors. You apply yourself in your Chrome.</Note>
-          <Row>
-            <Button
-              type="submit"
-              variant="primary"
-              icon={<Play />}
-              busy={start.isPending}
-              disabled={!valid}
-            >
-              Run now
-            </Button>
-          </Row>
-        </Stack>
+          <div className={styles.formSide}>
+            <Checkbox label="Search for new jobs first" checked={search} onChange={setSearch} />
+            <Note>It finds, scores and tailors. You apply yourself in your Chrome.</Note>
+            <Row>
+              <Button
+                type="submit"
+                variant="primary"
+                icon={<Play />}
+                busy={start.isPending}
+                disabled={!valid}
+              >
+                Run now
+              </Button>
+            </Row>
+          </div>
+        </div>
       </form>
     </section>
   );
