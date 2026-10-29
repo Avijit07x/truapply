@@ -25,6 +25,7 @@ import { ChevronDown, Inbox, Search } from "../../ui/icons";
 import { SearchBox } from "../../ui/SearchBox";
 import { toast } from "../../ui/toasts";
 import styles from "../jobs/Jobs.module.css";
+import { ChipMenu } from "../jobs/ChipMenu";
 import { AddNames } from "./AddNames";
 import own from "./Companies.module.css";
 
@@ -52,9 +53,19 @@ const EVERY: Record<CompanySearch, string> = {
   daily: "Searches every day",
   weekly: "Searches every week",
 };
-const SHOWS = ["all", "search", "archive", "shared", "link", "name", "closed"] as const;
+const FOUND = ["search", "archive", "shared", "yours"] as const;
+type Found = (typeof FOUND)[number];
+const FOUND_LABEL: Record<Found, string> = {
+  search: ORIGIN.search,
+  archive: ORIGIN.archive,
+  shared: ORIGIN.shared,
+  yours: "Added by you",
+};
+const YOURS: ReadonlySet<CompanyOrigin> = new Set(["link", "name"]);
+const CHIPS = ["all", "closed"] as const;
+const SHOWS = [...CHIPS, ...FOUND] as const;
 type Show = (typeof SHOWS)[number];
-const SHOW_LABEL: Record<Show, string> = { all: "All", closed: "Closed", ...ORIGIN };
+const CHIP_LABEL: Record<(typeof CHIPS)[number], string> = { all: "All", closed: "Closed" };
 
 const LOOK: Record<string, { label: string; className?: string }> = {
   company: { label: "Company" },
@@ -100,9 +111,14 @@ function isShow(value: string | null): value is Show {
   return SHOWS.includes(value as Show);
 }
 
+function isKind(row: CompanyRow, show: Show): boolean {
+  if (show === "all") return true;
+  if (show === "closed") return row.closed;
+  return show === "yours" ? YOURS.has(row.origin) : row.origin === show;
+}
+
 function shown(row: CompanyRow, show: Show, q: string): boolean {
-  const kind = show === "all" || (show === "closed" ? row.closed : row.origin === show);
-  return kind && row.company.toLowerCase().includes(q.toLowerCase());
+  return isKind(row, show) && row.company.toLowerCase().includes(q.toLowerCase());
 }
 
 function count(rows: readonly CompanyRow[], show: Show): number {
@@ -233,17 +249,29 @@ export default function CompaniesPage() {
       />
       <div className={styles.toolbar}>
         <nav className={styles.chips} aria-label="Filter by how it was found">
-          {SHOWS.map((item) => (
+          {CHIPS.map((item) => (
             <Link
               key={item}
               to={href(item, q)}
               className={styles.chip}
               aria-current={item === show ? "true" : undefined}
             >
-              {SHOW_LABEL[item]}
+              {CHIP_LABEL[item]}
               <span className={styles.chipCount}>{count(all, item).toLocaleString()}</span>
             </Link>
           ))}
+          <ChipMenu
+            label="Found by"
+            title="How it was found"
+            choices={FOUND.map((found) => ({
+              key: found,
+              label: FOUND_LABEL[found],
+              count: count(all, found),
+              to: href(found, q),
+            }))}
+            picked={show}
+            anyTo={href("all", q)}
+          />
         </nav>
         <SearchBox
           label="Search companies"

@@ -4,6 +4,7 @@ import { GROUP_LABEL } from "../../domain/groups";
 import { STATUS, STATUSES, activeCount } from "../../domain/status";
 import { Link } from "../../lib/router";
 import { Close } from "../../ui/icons";
+import { ChipMenu, type MenuChoice } from "./ChipMenu";
 import styles from "./Jobs.module.css";
 
 type Chip = { to: string; label: string; count: number; on: boolean };
@@ -14,29 +15,35 @@ type FilterChipsProps = {
   total: number;
 };
 
+function kept(query: JobQuery): JobQuery {
+  return { q: query.q, sort: query.sort, order: query.order, source: query.source };
+}
+
 function chips({ query, counts, total }: FilterChipsProps): Chip[] {
-  const kept: JobQuery = { q: query.q, sort: query.sort, order: query.order, source: query.source };
   const all = {
-    to: jobsHref({ ...kept, show: "all" }),
+    to: jobsHref({ ...kept(query), show: "all" }),
     label: "All",
     count: total,
     on: query.show === "all" && !query.status && !query.group,
   };
   const active = {
-    to: jobsHref(kept),
+    to: jobsHref(kept(query)),
     label: "Active",
     count: activeCount(counts, total),
     on: !query.show && !query.status && !query.group,
   };
-  const statuses = STATUSES.filter(
-    (status) => (counts[status] ?? 0) > 0 || status === query.status,
-  ).map((status) => ({
-    to: jobsHref({ ...kept, status }),
-    label: STATUS[status].label,
-    count: counts[status] ?? 0,
-    on: status === query.status,
-  }));
-  return [all, active, ...statuses];
+  return [all, active];
+}
+
+function statusChoices({ query, counts }: FilterChipsProps): MenuChoice[] {
+  return STATUSES.filter((status) => (counts[status] ?? 0) > 0 || status === query.status).map(
+    (status) => ({
+      key: status,
+      to: jobsHref({ ...kept(query), status }),
+      label: STATUS[status].label,
+      count: counts[status] ?? 0,
+    }),
+  );
 }
 
 export function FilterChips(props: FilterChipsProps) {
@@ -60,6 +67,13 @@ export function FilterChips(props: FilterChipsProps) {
           <span className={styles.chipCount}>{chip.count.toLocaleString()}</span>
         </Link>
       ))}
+      <ChipMenu
+        label="Status"
+        title="Status"
+        choices={statusChoices(props)}
+        picked={props.query.status ?? null}
+        anyTo={jobsHref(kept(props.query))}
+      />
     </nav>
   );
 }

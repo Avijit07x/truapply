@@ -25,8 +25,13 @@
 }
 
 .toolbar > .chips {
-  flex: 1 1 0;
-  min-width: min(100%, 320px);
+  flex: 0 1 auto;
+}
+
+.toolbar > :not(.chips) {
+  flex: 1 0 200px;
+  max-width: 280px;
+  margin-left: auto;
 }
 
 .chip {
