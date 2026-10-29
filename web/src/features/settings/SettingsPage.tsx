@@ -17,13 +17,14 @@ import {
   AutoSubmit,
   FormAnswers,
   Group,
-  type GroupProps,
   JobSearch,
   MoreFacts,
   PayAndNotice,
   PersonalDetails,
+  ResumeChoice,
   RunsAndLimits,
   TimeFormat,
+  type GroupProps,
   Wellfound,
   WorkPlaces,
   WorkRights,
@@ -89,6 +90,7 @@ const TABS: readonly Tab[] = [
     show: (props) => (
       <>
         <FormAnswers {...props} />
+        <ResumeChoice {...props} />
         <AutoSubmit {...props} />
         <RunsAndLimits {...props} />
       </>

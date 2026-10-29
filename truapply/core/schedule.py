@@ -32,6 +32,7 @@ class Plan:
 class Installed:
     every_minutes: int
     program: Path
+    home: Path | None
 
 
 def launchctl(arguments: Sequence[str]) -> int:
@@ -132,6 +133,12 @@ def remove(agents: Path, runner: Runner = launchctl) -> bool:
     return existed
 
 
+def _home(agent: dict[str, object]) -> Path | None:
+    variables = agent.get("EnvironmentVariables")
+    home = variables.get(HOME_ENV) if isinstance(variables, dict) else None
+    return Path(home) if isinstance(home, str) else None
+
+
 def installed(agents: Path) -> Installed | None:
     target = plist_path(agents)
     if not target.is_file():
@@ -144,7 +151,7 @@ def installed(agents: Path) -> Installed | None:
     minutes = _every_minutes(agent) if isinstance(agent, dict) else None
     if not isinstance(program, list) or not program or minutes is None:
         raise ScheduleError(f"The schedule file is damaged: {target}")
-    return Installed(minutes, Path(str(program[0])))
+    return Installed(minutes, Path(str(program[0])), _home(agent))
 
 
 def _minute_of_day(time: object) -> int | None:

@@ -258,6 +258,12 @@
   background: var(--subtle);
 }
 
+.barNote {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-md);
+}
+
 .segment {
   border-radius: 999px;
   transform-origin: left;

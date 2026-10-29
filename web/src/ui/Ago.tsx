@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { ago, isPast } from "../lib/format";
+import { ago, elapsed, isPast } from "../lib/format";
 
 const TICK_MS = 1_000;
 
@@ -26,4 +26,8 @@ export function Ago({ iso, past }: { iso: string; past?: string }) {
   return useSyncExternalStore(subscribe, () =>
     past !== undefined && isPast(iso) ? past : ago(iso),
   );
+}
+
+export function Elapsed({ iso }: { iso: string }) {
+  return useSyncExternalStore(subscribe, () => elapsed(iso));
 }

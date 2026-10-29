@@ -115,7 +115,7 @@ export function JobsFilter({ summary, ...props }: FilterChipsProps & { summary: 
         <ChevronDown size={10} />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner className={styles.positioner} sideOffset={6} align="end">
+        <Popover.Positioner className={styles.positioner} sideOffset={6} align="start">
           <Popover.Popup className={styles.popup}>
             {summary.sites.length > 0 && <Group title="Site" choices={sites} pick={pick} />}
             <Group title="Show" choices={shown} pick={pick} />

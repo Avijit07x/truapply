@@ -17,6 +17,8 @@ import type {
   SendQueued,
   SettingsValues,
   SettingsView,
+  SetupAnswers,
+  SetupView,
 } from "./types";
 
 type Request = readonly [path: string, body: object];
@@ -92,6 +94,20 @@ export function useSetAutomatic() {
 
 export function useReplaceResume() {
   return useChange<ResumeReplaced, ResumeUpload>((upload) => ["/api/settings/resume", upload]);
+}
+
+export function useSetupResume() {
+  return useChange<SetupView, ResumeUpload>(
+    (upload) => ["/api/setup/resume", upload],
+    queries.setup().queryKey,
+  );
+}
+
+export function useFinishSetup() {
+  return useChange<SetupView, SetupAnswers>(
+    (answers) => ["/api/setup", answers],
+    queries.setup().queryKey,
+  );
 }
 
 export function useSaveSettings() {

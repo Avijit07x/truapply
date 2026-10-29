@@ -14,6 +14,7 @@ from truapply.core.clock import utc_now
 from truapply.core.errors import TruApplyError
 from truapply.core.locks import is_held
 from truapply.core.models import RunStage
+from truapply.core.notes import UNTAILORED_START
 from truapply.core.paths import AUTOMATIC_RUN, MANUAL_RUN, RUN_LOG_STAMP, Paths
 from truapply.core.profile import MAX_JOBS_PER_RUN, Settings, load
 from truapply.tracker import automatic
@@ -32,6 +33,7 @@ RECENT_LOGS = 5
 STOP_WAIT_SECONDS = 10
 LOG_NAME = re.compile(r"^\d{8}-\d{6}-\d{6}\.log$")
 ALREADY_RUNNING = "A run is already going."
+SET_UP_FIRST = "Finish setup first."
 RUN_KINDS = {AUTOMATIC_RUN: "automatic", MANUAL_RUN: "manual"}
 FAILED = "✘"
 STAGE_LINES = (
@@ -39,6 +41,7 @@ STAGE_LINES = (
     ("Checking Wellfound", RunStage.FIND),
     ("Scoring ", RunStage.SCORE),
     ("Tailoring your resume", RunStage.TAILOR),
+    (UNTAILORED_START, RunStage.TAILOR),
 )
 
 
@@ -258,8 +261,8 @@ def _going_log(paths: Paths, recent: list[Path]) -> str | None:
     return recent[0].name if recent and is_held(paths.lock) else None
 
 
-def next_automatic() -> datetime | None:
-    every = automatic.current()["everyMinutes"]
+def next_automatic(paths: Paths) -> datetime | None:
+    every = automatic.current(paths)["everyMinutes"]
     if not isinstance(every, int):
         return None
     return schedule.next_run(schedule.Plan(every), utc_now().astimezone())
@@ -299,7 +302,7 @@ def latest_start(paths: Paths) -> datetime | None:
 def state(paths: Paths) -> dict[str, object]:
     recent = recent_logs(paths)
     going = _going_log(paths, recent)
-    upcoming = next_automatic()
+    upcoming = next_automatic(paths)
     current = _current(paths, REGISTRY.current)
     return current | {
         "stage": _stage_now(current),
@@ -353,6 +356,8 @@ def stage_of(lines: list[str]) -> RunStage | None:
 
 
 def _start(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
+    if not paths.profile.is_file():
+        return bad_request(SET_UP_FIRST)
     choice = parse_choice(body)
     if choice is None:
         return bad_request(f"Enter how many jobs to run, from {MIN_LIMIT} to {MAX_LIMIT}.")

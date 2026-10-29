@@ -4,32 +4,18 @@ from datetime import date
 from truapply.ai.replies import ProfileDraft
 from truapply.core.models import normalize_company
 from truapply.core.profile import (
+    NOTICE_PERIODS,
     CoverLetter,
     Diversity,
     Salary,
     UnknownQuestions,
     WorkPlaces,
+    currency_for,
 )
 from truapply.onboarding import ask
 from truapply.onboarding.ask import Option
 
 PREFER_NOT = "Prefer not to say"
-CURRENCIES = {
-    "india": "INR",
-    "united states": "USD",
-    "usa": "USD",
-    "united kingdom": "GBP",
-    "uk": "GBP",
-    "canada": "CAD",
-    "australia": "AUD",
-    "singapore": "SGD",
-    "germany": "EUR",
-    "france": "EUR",
-    "netherlands": "EUR",
-    "ireland": "EUR",
-    "united arab emirates": "AED",
-}
-NOTICE_PERIODS = ("Immediate", "15 days", "30 days", "60 days", "90 days")
 
 
 @dataclass(frozen=True)
@@ -173,7 +159,7 @@ def _notice_period() -> str:
 
 
 def _salary(country: str) -> Salary:
-    currency = ask.text("Salary currency", CURRENCIES.get(country.lower(), "USD"), required=True)
+    currency = ask.text("Salary currency", currency_for(country), required=True)
     lowest = ask.amount("Lowest yearly salary you'd accept (like 1200000 or 12 LPA)", True) or 1
     highest = ask.amount("Highest yearly salary you'd ask for", True, minimum=lowest) or lowest
     current = ask.amount("Current yearly salary (Enter to skip; some forms require it)", False)

@@ -9,7 +9,7 @@ from truapply.core.profile import load
 from truapply.store import browse, groups, records
 from truapply.store.browse import NEWEST_FIRST, PAGE_SIZE, Browse, Sort
 from truapply.store.groups import Group
-from truapply.tracker import learning, runs
+from truapply.tracker import learning, runs, setup
 from truapply.tracker.body import Body, text
 from truapply.tracker.detail import (
     DISMISS_REASONS,
@@ -65,6 +65,7 @@ def _summary(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body:
             "sites": [_site(db, source) for source in _sites_on(paths)],
             "run": runs.state(paths),
             "suggestions": len(learning.pending(db)),
+            "setupNeeded": setup.needed(paths),
         }
     )
 

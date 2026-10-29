@@ -16,6 +16,7 @@ TIMEOUT_S = 30
 TASK_FILE = "truapply-task.xml"
 INTERVAL = re.compile(r"<Interval>PT(\d+)M</Interval>")
 COMMAND = re.compile(r"<Command>([^<]+)</Command>")
+HOME = re.compile(r'--home "([^"]+)"')
 
 
 def schtasks(arguments: Sequence[str]) -> int:
@@ -113,4 +114,7 @@ def installed(tasks: Path) -> Installed | None:
         raise ScheduleError(f"The schedule file is damaged: {target}")
     interval = INTERVAL.search(task)
     minutes = int(interval.group(1)) if interval else MINUTES_PER_DAY
-    return Installed(minutes, Path(unescape(command.group(1))))
+    home = HOME.search(unescape(task))
+    return Installed(
+        minutes, Path(unescape(command.group(1))), Path(home.group(1)) if home else None
+    )

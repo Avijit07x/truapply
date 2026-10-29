@@ -5,7 +5,7 @@ from pathlib import Path
 
 from truapply.core import autorun, schedule
 from truapply.core.errors import TruApplyError
-from truapply.core.paths import Paths
+from truapply.core.paths import DEFAULT_HOME, Paths
 from truapply.core.profile import load
 from truapply.tracker.body import Body, flag
 from truapply.tracker.responses import Response, bad_request, ok
@@ -19,17 +19,24 @@ def supported() -> bool:
     return autorun.SUPPORTED
 
 
-def current() -> dict[str, object]:
+def _same(home: Path | None, paths: Paths) -> bool:
+    runs_for = home or Path(DEFAULT_HOME)
+    return runs_for.expanduser().resolve() == paths.root.expanduser().resolve()
+
+
+def current(paths: Paths) -> dict[str, object]:
     if not supported():
-        return {"supported": False, "on": False, "everyMinutes": None}
+        return {"supported": False, "on": False, "everyMinutes": None, "elsewhere": False}
     try:
         found = autorun.installed(agents())
     except TruApplyError:
         found = None
+    mine = found is not None and _same(found.home, paths)
     return {
         "supported": True,
-        "on": found is not None,
-        "everyMinutes": found.every_minutes if found else None,
+        "on": mine,
+        "everyMinutes": found.every_minutes if found and mine else None,
+        "elsewhere": found is not None and not mine,
     }
 
 
@@ -38,7 +45,7 @@ def turn_on(paths: Paths, every_minutes: int) -> None:
 
 
 def follow(paths: Paths, every_minutes: int) -> None:
-    now = current()
+    now = current(paths)
     if now["on"] and now["everyMinutes"] != every_minutes:
         turn_on(paths, every_minutes)
 
@@ -56,7 +63,7 @@ def _set(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Bod
             autorun.remove(agents(), runner)
     except TruApplyError as error:
         return bad_request(str(error))
-    return ok(current())
+    return ok(current(paths))
 
 
 GET: tuple[Route, ...] = ()

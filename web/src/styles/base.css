@@ -11,9 +11,9 @@
   --faint: light-dark(#a1a1aa, #5f5f69);
   --line: light-dark(#e7e7ea, #24242a);
   --line-strong: light-dark(#d6d6db, #33333b);
-  --accent: light-dark(#0f766e, #14b8a6);
-  --accent-solid: #0f766e;
-  --accent-bg: light-dark(#effcf9, #0a2a27);
+  --accent: light-dark(#2e3a59, #9aa8cc);
+  --accent-solid: #2e3a59;
+  --accent-bg: light-dark(#f0f2f7, #191d2a);
   --on-accent: #ffffff;
   --info: light-dark(#2563eb, #60a5fa);
   --info-bg: light-dark(#eff6ff, #10203f);

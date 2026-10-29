@@ -2,6 +2,7 @@ import re
 from contextlib import closing
 from http import HTTPStatus
 
+from truapply.core.errors import ProfileMissingError
 from truapply.core.paths import Paths
 from truapply.store import records
 from truapply.store.db import connect
@@ -17,14 +18,16 @@ from truapply.tracker import (
     resume_upload,
     runs,
     settings,
+    setup,
     static,
 )
 from truapply.tracker.body import Body
 from truapply.tracker.detail import resume_to_send
-from truapply.tracker.responses import Response, not_found
+from truapply.tracker.responses import Response, not_found, problem
 from truapply.tracker.routes import Incoming, Route, dispatch
 
 API = "/api/"
+SET_UP_FIRST = "Finish setup first."
 PDF = "application/pdf"
 JOB_FILE = re.compile(r"^/jobs/(\d+)/resume\.pdf$")
 FEATURES = (
@@ -37,6 +40,7 @@ FEATURES = (
     settings,
     automatic,
     resume_upload,
+    setup,
     extension,
     autosend,
 )
@@ -53,7 +57,10 @@ def _resume(paths: Paths, job_id: int) -> Response:
 
 def _api(routes: tuple[Route, ...], paths: Paths, path: str, body: Body) -> Response:
     with closing(connect(paths.database)) as db:
-        return dispatch(routes, Incoming(db, paths, path, body)) or not_found()
+        try:
+            return dispatch(routes, Incoming(db, paths, path, body)) or not_found()
+        except ProfileMissingError:
+            return problem(HTTPStatus.CONFLICT, SET_UP_FIRST)
 
 
 def respond_get(paths: Paths, path: str, query: Body) -> Response:

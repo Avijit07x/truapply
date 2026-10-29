@@ -112,7 +112,7 @@ web/                     the tracker app: React + TypeScript, built with Vite in
   src/app/               layout, routes (each page loads as its own chunk), theme
   src/features/<page>/   one folder per page: home, board, workflow, jobs, job, runs, learned, settings
   src/components/        parts shared by pages: job list, status pill, rule and dismiss forms
-  src/ui/                design-system parts on Base UI: buttons, fields, dialog, toasts, icons
+  src/ui/                design-system parts on Base UI: buttons, fields, dialog, toasts, calendar, icons
   src/domain/            status and workflow labels
 tools/
   check_no_comments.py

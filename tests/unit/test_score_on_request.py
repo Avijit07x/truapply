@@ -12,7 +12,7 @@ from tests.unit import samples
 from tests.unit.test_master import CountingResume
 from tests.unit.tracker_api import get, post, running
 from truapply.ai.replies import Score
-from truapply.core.models import Job, RunStage, Status
+from truapply.core.models import RunStage, Status
 from truapply.core.notes import WRONG_TITLE_NOTE
 from truapply.core.paths import Paths
 from truapply.resume.contract import Rendered
@@ -65,6 +65,35 @@ def test_score_this_starts_a_score_only_run(
     assert runs.command(runs.Choice(1, search=False, score=(1,)))[-2:] == ["--score", "1"]
 
 
+def test_tailor_this_gets_that_one_job_ready_and_not_just_scored(
+    tracker: TrackerServer, started: list[list[int]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    launched: list[runs.Choice] = []
+
+    def launch(_paths: Paths, choice: runs.Choice) -> runs.Choice:
+        launched.append(choice)
+        return choice
+
+    monkeypatch.setattr(runs, "_launch", launch)
+    with closing(connect(tracker.paths.database)) as db:
+        jobs.set_status(db, 1, StatusChange(Status.SCORED, NOW, "fit"))
+    code, _ = post(tracker, "/api/jobs/1/tailor")
+    assert code == 200
+    assert started == []
+    assert [choice.job for choice in launched] == [1]
+
+
+def test_tailor_this_is_refused_while_a_run_is_going(
+    tracker: TrackerServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(runs, "start", lambda *_: None)
+    with closing(connect(tracker.paths.database)) as db:
+        jobs.set_status(db, 1, StatusChange(Status.SCORED, NOW, "fit"))
+    code, answer = post(tracker, "/api/jobs/1/tailor")
+    assert code == 400
+    assert "run is going" in str(answer)
+
+
 def test_scoring_many_keeps_only_scorable_jobs(
     tracker: TrackerServer, started: list[list[int]]
 ) -> None:
@@ -107,37 +136,6 @@ def test_a_job_without_its_description_is_read_again_then_scored(
     assert (result.matched, result.skipped) == (1, 0)
     assert found is not None
     assert (found.status, found.score) == (Status.SCORED, 85)
-
-
-def test_a_good_score_is_tailored_in_the_same_run_and_a_weak_one_is_not(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    run = RunContext(
-        Paths(tmp_path),
-        samples.profile(tmp_path / "master.tex"),
-        CountingResume(),
-        Rendered(tmp_path / "m.pdf", 1),
-        lambda: NOW,
-    )
-    good = replace(samples.job(external_id="greenhouse/x/1"), title="Frontend Engineer")
-    weak = replace(samples.job(external_id="greenhouse/x/2", company="Acme"), title="UI Dev")
-    scores = {good.external_id: 88, weak.external_id: 40}
-    tailored: list[str] = []
-
-    def score(_profile: object, _resume: object, job: Job, _notes: object) -> Score:
-        return Score(scores[job.external_id], "fit", None, False)
-
-    def tailor(_db: object, _run: object, picks: list[Job]) -> list[object]:
-        tailored.extend(job.title for job in picks)
-        return []
-
-    monkeypatch.setattr(scoring, "score_job", score)
-    monkeypatch.setattr(run_module, "tailor_all", tailor)
-    with closing(connect(tmp_path / "jobs.db")) as db:
-        jobs.add_many(db, [good, weak], NOW)
-        report = run_module._score_and_tailor(db, run, (1, 2))
-    assert (report.scoring.matched, report.scoring.skipped) == (1, 1)
-    assert tailored == ["Frontend Engineer"]
 
 
 def test_only_good_matches_offer_tailoring(tracker: TrackerServer) -> None:

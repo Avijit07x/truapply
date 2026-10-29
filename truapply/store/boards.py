@@ -17,7 +17,9 @@ insert or ignore into boards (ats, slug, company, origin, added_at) values (?, ?
 """
 SELECT_ACTIVE = "select ats, slug, company from boards where dead = 0 order by ats, slug"
 SELECT_KEYS = "select ats, slug from boards"
-SELECT_BY_ORIGIN = "select ats, slug, company from boards where origin = ? order by ats, slug"
+SELECT_BY_ORIGIN = (
+    "select ats, slug, company from boards where origin = ? and not dead order by ats, slug"
+)
 SELECT_LISTED = """
 select ats, slug, company, origin, added_at, checked_at, dead from boards
 order by dead, lower(coalesce(nullif(company, ''), slug))

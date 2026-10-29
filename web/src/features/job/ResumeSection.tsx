@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useJobChange } from "../../api/mutations";
+import { queries } from "../../api/queries";
 import type { JobDetail } from "../../api/types";
 import { RuleForm } from "../../components/RuleForm";
 import { cx } from "../../lib/cx";
@@ -8,7 +10,7 @@ import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Callout";
 import { Dialog } from "../../ui/Dialog";
 import { ExternalLink } from "../../ui/ExternalLink";
-import { ChevronDown, Spark, Undo } from "../../ui/icons";
+import { Check, ChevronDown, Spark, Undo } from "../../ui/icons";
 import { toast } from "../../ui/toasts";
 import styles from "./Job.module.css";
 
@@ -19,23 +21,31 @@ import { Panel } from "./Panel";
 
 function TailorNow({ job }: { job: JobDetail }) {
   const change = useJobChange(job.id);
+  const settings = useQuery(queries.settings());
+  const tailors = settings.data?.values.tailorResume ?? true;
   const [asked, setAsked] = useState(false);
   if (asked && !change.isPending && !change.isError) {
-    return <Empty>Tailoring your resume now. It shows here in about a minute.</Empty>;
+    return (
+      <Empty>
+        {tailors
+          ? "Tailoring your resume now. It shows here in about a minute."
+          : "Getting it ready with your original resume. It shows here in a moment."}
+      </Empty>
+    );
   }
   return (
     <div className={styles.tailorNow}>
-      <span>Not tailored yet.</span>
+      <span>{tailors ? "Not tailored yet." : "You send your resume as it is."}</span>
       <Button
         variant="primary"
-        icon={<Spark />}
+        icon={tailors ? <Spark /> : <Check />}
         busy={change.isPending}
         onClick={() => {
           setAsked(true);
           change.mutate({ action: "tailor" });
         }}
       >
-        Tailor my resume
+        {tailors ? "Tailor my resume" : "Get it ready"}
       </Button>
     </div>
   );

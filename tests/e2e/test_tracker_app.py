@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterator, Sequence
 from contextlib import closing, contextmanager
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from importlib import resources
 from pathlib import Path
 from typing import Literal
@@ -22,12 +22,16 @@ from playwright.sync_api import (
 )
 
 from tests.unit import samples
+from tests.unit.test_tracker_setup import DRAFT as SETUP_DRAFT
 from tests.unit.tracker_api import fetch, get, ids_in, running, seed_every_group
+from truapply.ai import tasks
 from truapply.core import autorun
+from truapply.core.documents import ResumeFormat
 from truapply.core.models import Board, Source, Status
 from truapply.core.notes import WELLFOUND_NOTE, WRONG_TITLE_NOTE
 from truapply.core.paths import Paths
-from truapply.core.profile import load, save
+from truapply.core.profile import ResumeRef, load, save
+from truapply.run.lock import run_lock
 from truapply.sources import intake, lookup
 from truapply.sources.ats import PollResult
 from truapply.store import feedback, jobs, records, rules
@@ -35,7 +39,7 @@ from truapply.store.db import connect
 from truapply.store.feedback import FeedbackKind
 from truapply.store.groups import Group
 from truapply.store.jobs import AttemptRecord, StatusChange
-from truapply.tracker import automatic, runs
+from truapply.tracker import automatic, resume_upload, runs
 
 BUILT = resources.files("truapply.tracker").joinpath("static", "index.html").is_file()
 pytestmark = [
@@ -289,7 +293,7 @@ def test_the_back_link_returns_to_where_you_opened_the_job(browser: Browser, hom
 SETTINGS_TABS = {
     "Profile": ("About you", "Work rights", "Personal details", "Other true facts"),
     "Job search": ("Job search", "Where you'll work", "Pay and notice"),
-    "Applying": ("Form answers", "Runs and limits"),
+    "Applying": ("Form answers", "Your resume", "Runs and limits"),
     "Automation": ("Automatic runs",),
     "Resume and extension": ("Resume", "Chrome extension"),
 }
@@ -316,6 +320,8 @@ def test_every_setting_is_changed_from_the_settings_page(
         page.get_by_label("Jobs to get ready each run", exact=True).fill("12")
         page.get_by_role("combobox", name="Write a cover letter").click()
         page.get_by_role("option", name="Never", exact=True).click()
+        page.get_by_role("combobox", name="For each job").click()
+        page.get_by_role("option", name="Always send my resume as it is").click()
         with answered(page, "/api/settings"):
             page.get_by_role("button", name="Save settings").click()
         tabs.get_by_role("tab", name="Automation", exact=True).click()
@@ -328,6 +334,7 @@ def test_every_setting_is_changed_from_the_settings_page(
     assert saved.settings.jobs_per_run == 12
     assert saved.years_experience == 3.5
     assert saved.cover_letter == "never"
+    assert not saved.settings.tailor_resume
     assert autorun.installed(agents) is not None
 
 
@@ -524,6 +531,25 @@ def test_how_long_ago_keeps_counting_while_the_page_stays_open(
         assert errors == []
 
 
+def test_the_sidebar_shows_a_live_run_with_its_step_time_and_latest_line(
+    browser: Browser, home: Paths
+) -> None:
+    home.runs.mkdir(parents=True, exist_ok=True)
+    started = datetime.now(UTC) - timedelta(minutes=2, seconds=5)
+    log = home.runs / f"{started:%Y%m%d-%H%M%S-%f}.log"
+    log.write_text(
+        "Checking company career pages\nScoring 3 jobs\nScoring Frontend Engineer at Northwind\n",
+        encoding="utf-8",
+    )
+    with run_lock(home), running(home) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/")
+        box = page.get_by_role("link", name=re.compile("^Running"))
+        expect(box).to_contain_text(re.compile(r"2m \d\ds"))
+        expect(box.locator("[aria-current=step]")).to_have_text("Scoring")
+        expect(box).to_contain_text("Scoring Frontend Engineer at Northwind")
+        assert errors == []
+
+
 def test_an_empty_site_table_spans_exactly_its_own_columns(browser: Browser, home: Paths) -> None:
     with running(home) as server, opened(browser) as (page, errors):
         page.goto(server.url + "/sites/wellfound/table")
@@ -616,6 +642,14 @@ def test_the_jobs_list_shows_every_site_unless_you_pick_career_pages(
         assert errors == []
 
 
+def months_between(earlier: date, later: date) -> int:
+    return (later.year - earlier.year) * 12 + later.month - earlier.month
+
+
+def day_name(day: date) -> str:
+    return f"{day:%B} {day.day}, {day.year}"
+
+
 def test_the_table_shows_only_jobs_updated_in_the_picked_dates(
     browser: Browser, home: Paths
 ) -> None:
@@ -635,11 +669,69 @@ def test_the_table_shows_only_jobs_updated_in_the_picked_dates(
         expect(rows).to_have_count(1)
         expect(rows.first).to_contain_text("Fresh role")
         page.get_by_role("button", name="Updated: Today").click()
-        start = (now - timedelta(days=60)).astimezone().date().isoformat()
-        end = (now - timedelta(days=20)).astimezone().date().isoformat()
-        page.get_by_label("From", exact=True).fill(start)
-        page.get_by_label("To", exact=True).fill(end)
+        today = now.astimezone().date()
+        start, end = today - timedelta(days=45), today - timedelta(days=30)
+        dates = page.get_by_role("group", name="Dates")
+        for _ in range(months_between(start, today)):
+            page.get_by_role("button", name="Previous month").click()
+        dates.get_by_role("button", name=day_name(start), exact=True).click()
+        for _ in range(months_between(start, end)):
+            page.get_by_role("button", name="Next month").click()
+        dates.get_by_role("button", name=day_name(end), exact=True).click()
         page.get_by_role("button", name="Show these dates").click()
         expect(rows).to_have_count(1)
         expect(rows.first).to_contain_text("Old role")
         assert errors == []
+
+
+def _keep_resume(paths: Paths, _resume: object) -> tuple[ResumeRef, int]:
+    master = paths.resume_dir / "master.json"
+    master.write_text("{}", encoding="utf-8")
+    return ResumeRef(ResumeFormat.STRUCTURED, master), 1
+
+
+def _setup_without_claude(monkeypatch: pytest.MonkeyPatch, agents: Path) -> None:
+    monkeypatch.setattr(tasks, "draft_profile", lambda _document: SETUP_DRAFT)
+    monkeypatch.setattr(resume_upload, "as_resume", lambda _document: None)
+    monkeypatch.setattr(resume_upload, "kept", _keep_resume)
+    monkeypatch.setattr(automatic, "agents", lambda: agents)
+    monkeypatch.setattr(automatic, "runner", lambda _arguments: 0)
+    monkeypatch.setattr(automatic, "supported", lambda: True)
+
+
+def test_a_new_user_sets_up_from_the_page_and_nothing_else_opens_before(
+    browser: Browser, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fresh = Paths(tmp_path / "fresh")
+    resume = tmp_path / "resume.pdf"
+    resume.write_bytes(b"%PDF-1.4 resume")
+    _setup_without_claude(monkeypatch, tmp_path / "agents")
+    with running(fresh) as server, opened(browser) as (page, errors):
+        page.goto(server.url + "/runs")
+        expect(page).to_have_url(server.url + "/setup")
+        nav = page.get_by_role("navigation", name="Main")
+        expect(nav.get_by_role("link")).to_have_count(0)
+        page.get_by_label("Resume file").set_input_files(resume)
+        expect(page.get_by_label("Full name")).to_have_value("Asha Rao")
+        page.get_by_role("button", name="Next").click()
+        page.get_by_label("Citizenship").fill("India")
+        visa_free = page.get_by_label("Countries you can work in without a visa")
+        visa_free.fill("India")
+        visa_free.press("Enter")
+        page.get_by_role("radio", name="Yes", exact=True).click()
+        page.get_by_role("radio", name="30 days").click()
+        page.get_by_label("Lowest salary you'd accept").fill("1200000")
+        page.get_by_label("Highest you'd ask for").fill("1800000")
+        page.get_by_role("button", name="Next").click()
+        finish = page.get_by_role("button", name="Finish setup")
+        expect(finish).to_be_disabled()
+        page.get_by_role("radio", name="Send it as it is").click()
+        page.get_by_role("radio", name="Only when I press Run").click()
+        finish.click()
+        expect(page).to_have_url(server.url + "/")
+        expect(nav.get_by_role("link", name="Companies")).to_be_visible()
+        assert errors == []
+    profile = load(fresh)
+    assert (profile.citizenship, profile.notice_period) == ("India", "30 days")
+    assert profile.needs_sponsorship_elsewhere
+    assert not profile.settings.tailor_resume

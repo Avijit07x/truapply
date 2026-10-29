@@ -32,7 +32,7 @@ def test_the_windows_task_runs_every_few_hours_from_midnight_and_catches_up(
     assert "<StartWhenAvailable>true</StartWhenAvailable>" in task
     assert f'--home "{paths.root}" run --scheduled' in task
     assert schtasks.calls == [["/Create", "/TN", TASK_NAME, "/XML", str(target), "/F"]]
-    assert installed(tmp_path / "tasks") == Installed(180, program())
+    assert installed(tmp_path / "tasks") == Installed(180, program(), paths.root)
 
 
 def test_a_once_a_day_task_has_no_repeat(tmp_path: Path) -> None:

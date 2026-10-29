@@ -1,0 +1,75 @@
+.calendar {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.head strong {
+  flex: 1;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.weekday {
+  display: grid;
+  place-items: center;
+  height: 24px;
+  color: var(--faint);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.day {
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.day:hover:not(:disabled) {
+  background: var(--subtle);
+}
+
+.day:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.day[aria-current="date"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.day:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+.between,
+.between:hover:not(:disabled) {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.day[aria-pressed="true"],
+.day[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--accent-solid);
+  color: var(--on-accent);
+  font-weight: 600;
+}

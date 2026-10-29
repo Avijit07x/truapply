@@ -1,5 +1,6 @@
 import csv
 from importlib import resources
+from urllib.parse import unquote
 
 from truapply.core.models import Ats, Board
 
@@ -15,7 +16,10 @@ def shared_boards() -> list[Board]:
 
 
 def as_csv_rows(boards: list[Board]) -> list[str]:
+    unique: dict[str, Board] = {}
+    for board in sorted(boards, key=lambda board: (board.ats, board.slug)):
+        unique.setdefault(board.key.casefold(), board)
     return [
-        f"{board.ats},{board.slug},{board.company or board.slug},"
-        for board in sorted(boards, key=lambda board: (board.ats, board.slug))
+        f"{board.ats},{board.slug},{unquote(board.company or board.slug)},"
+        for board in unique.values()
     ]

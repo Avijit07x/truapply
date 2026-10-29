@@ -102,6 +102,9 @@ const ROUTES: readonly Route[] = [
     layout: "fit",
     warm: () => [queryClient.query(queries.learned())],
   }),
+  page(/^\/setup$/, () => import("../features/setup/SetupPage"), {
+    warm: () => [queryClient.query(queries.setup())],
+  }),
   page(/^\/settings$/, () => import("../features/settings/SettingsPage"), {
     layout: "fit",
     warm: () => [queryClient.query(queries.settings())],

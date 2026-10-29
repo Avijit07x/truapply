@@ -101,6 +101,22 @@ export function ChevronDown(props: IconProps) {
   );
 }
 
+export function ChevronLeft(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9.75 4L5.75 8L9.75 12" />
+    </Svg>
+  );
+}
+
+export function ChevronRight(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.25 4L10.25 8L6.25 12" />
+    </Svg>
+  );
+}
+
 export function ArrowRight(props: IconProps) {
   return (
     <Svg {...props}>

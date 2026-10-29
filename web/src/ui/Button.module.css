@@ -90,7 +90,12 @@
   cursor: pointer;
 }
 
-.iconButton:hover {
+.iconButton:hover:not(:disabled) {
   background: var(--subtle);
   color: var(--text);
+}
+
+.iconButton:disabled {
+  color: var(--faint);
+  cursor: default;
 }

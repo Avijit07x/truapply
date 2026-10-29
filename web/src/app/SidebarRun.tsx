@@ -2,7 +2,7 @@ import { useRunStart } from "../api/mutations";
 import type { RunStage, RunState } from "../api/types";
 import { cx } from "../lib/cx";
 import { Link } from "../lib/router";
-import { Ago } from "../ui/Ago";
+import { Ago, Elapsed } from "../ui/Ago";
 import { Button } from "../ui/Button";
 import { Alert, ArrowRight, Play } from "../ui/icons";
 import { toast } from "../ui/toasts";
@@ -11,23 +11,50 @@ import styles from "./Layout.module.css";
 const STAGES: readonly RunStage[] = ["find", "score", "tailor"];
 
 const STAGE_LABEL: Record<RunStage, string> = {
-  find: "Finding jobs",
+  find: "Finding",
   score: "Scoring",
   tailor: "Tailoring",
 };
 
-function Running({ stage }: { stage: RunStage | null }) {
-  const done = stage ? STAGES.indexOf(stage) + 1 : 0;
+function lastLine(log: readonly string[]): string {
   return (
-    <Link to="/runs" className={cx(styles.runCard, styles.runLive)}>
+    [...log]
+      .reverse()
+      .find((line) => line.trim() !== "")
+      ?.trim() ?? ""
+  );
+}
+
+function Running({ run }: { run: RunState }) {
+  const current = STAGES.indexOf(run.stage ?? "find");
+  return (
+    <Link
+      to="/runs"
+      className={cx(styles.runCard, styles.runLive)}
+      title="Nothing is sent. Watch it on Activity."
+    >
       <span className={styles.runTop}>
         <span className={styles.pip} aria-hidden="true" />
-        Running{stage ? ` · ${STAGE_LABEL[stage]}` : ""}
+        Running
+        {run.startedAt && (
+          <span className={styles.runTime}>
+            <Elapsed iso={run.startedAt} />
+          </span>
+        )}
       </span>
-      <span className={styles.runBar} aria-hidden="true">
-        <span style={{ width: `${String(Math.max(8, (done / STAGES.length) * 100))}%` }} />
+      <span className={styles.runSteps}>
+        {STAGES.map((stage, index) => (
+          <span
+            key={stage}
+            className={cx(index < current && styles.stepDone, index === current && styles.stepNow)}
+            aria-current={index === current ? "step" : undefined}
+          >
+            <b aria-hidden="true" />
+            {STAGE_LABEL[stage]}
+          </span>
+        ))}
       </span>
-      <span className={styles.runSub}>Nothing is sent. Watch it on Activity.</span>
+      <span className={styles.runLine}>{lastLine(run.log)}</span>
     </Link>
   );
 }
@@ -53,7 +80,7 @@ function When({ run }: { run: RunState }) {
 export function SidebarRun({ run, here }: { run: RunState; here: boolean }) {
   const start = useRunStart();
   if (run.running) {
-    return <Running stage={run.stage} />;
+    return <Running run={run} />;
   }
   const problem = run.logs[0]?.problem;
   return (

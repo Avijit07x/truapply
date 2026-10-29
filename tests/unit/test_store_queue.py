@@ -40,6 +40,13 @@ def test_boards_remember_where_they_came_from(db: sqlite3.Connection) -> None:
     assert boards.by_origin(db, BoardOrigin.SHARED) == []
 
 
+def test_dead_boards_are_never_offered_for_sharing(db: sqlite3.Connection) -> None:
+    alive, gone = Board(Ats.ASHBY, "fabrikam"), Board(Ats.LEVER, "gone")
+    boards.add_many(db, [alive, gone], BoardOrigin.SEARCH, NOW)
+    boards.mark_checked(db, [alive], [gone], NOW)
+    assert boards.by_origin(db, BoardOrigin.SEARCH) == [alive]
+
+
 @pytest.mark.parametrize(
     ("label", "key"),
     [

@@ -16,9 +16,9 @@ from truapply.run.discovery import CompanySearchNow, Discovery, discover
 from truapply.run.lock import run_lock
 from truapply.run.rescoring import with_descriptions
 from truapply.run.scoring import Scoring, score_pending, score_these
-from truapply.run.tailoring import Prepared, prepare, prepare_one, tailor_all
+from truapply.run.tailoring import Prepared, prepare, prepare_one
 from truapply.sources import wellfound
-from truapply.store import jobs, rules, usage
+from truapply.store import rules, usage
 from truapply.store.db import connect
 
 RULE = "rule"
@@ -51,16 +51,6 @@ class RunReport:
 def run(paths: Paths, options: RunOptions, clock: Clock = utc_now) -> RunReport:
     with run_lock(paths):
         return _locked_run(paths, options, clock)
-
-
-def _score_and_tailor(
-    db: sqlite3.Connection, context: RunContext, job_ids: tuple[int, ...]
-) -> RunReport:
-    chosen = with_descriptions(db, context, job_ids)
-    scored = score_these(db, context, [job for job in chosen if job.status in UNSCORED])
-    after = (jobs.find(db, job.id) for job in chosen if job.id is not None)
-    good = [job for job in after if job is not None and job.status is Status.SCORED]
-    return RunReport(NOTHING_FOUND, scored, tailor_all(db, context, good))
 
 
 def _company_search(options: RunOptions) -> CompanySearchNow:

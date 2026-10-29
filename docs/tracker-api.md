@@ -83,7 +83,7 @@ type SettingsValues = {
   noticePeriod: string; citizenship: string; workWithoutVisa: string[]; needsSponsorship: boolean;
   dateOfBirth: string; gender: string; disability: string; veteran: string; ethnicity: string;
   extraFacts: string; unknownQuestions: "skip" | "guess"; coverLetter: "required" | "always" | "never";
-  companySearch: "off" | "daily" | "weekly"; autoSubmit: boolean; autoSubmitScore: number;
+  companySearch: "off" | "daily" | "weekly"; tailorResume: boolean; autoSubmit: boolean; autoSubmitScore: number;
   jobsPerRun: number; scoresPerRun: number; dailyCap: number | null; linkedinCap: number;
   aiCallsPerDay: number; runEveryMinutes: number; summaryHour: number;
 };
@@ -91,7 +91,8 @@ type SettingsLimits = {
   maxItems: number; maxText: number; maxLongText: number;
   numbers: Record<string, { min: number; max: number }>;
 };
-type Automatic = { supported: boolean; on: boolean; everyMinutes: number | null };
+type Automatic = { supported: boolean; on: boolean; everyMinutes: number | null; elsewhere: boolean };
+// `on` only when the computer's one schedule runs for this TruApply folder; `elsewhere` when it runs for another one. Saving settings here never moves a schedule that belongs to another folder.
 type SettingsView = {
   values: SettingsValues; limits: SettingsLimits; automatic: Automatic;
   resume: { format: "latex" | "structured" }; extension: { folder: string; built: boolean };
@@ -145,6 +146,7 @@ Each one answers with the updated `JobDetail`, and is refused with `400` if the 
 | `POST /api/jobs/<id>/revert` | `{}` | This job uses your original resume. The app then asks for a tailoring note. |
 | `POST /api/jobs/<id>/handoff` | `{}` | For `finish` and `ready`. Opens the job as a tab in the filled-in browser (starting `truapply finish` in the background if it isn't open), filled in and stopped before Submit, and brings its tab to the front. Answers with `JobDetail`. When the site confirms, the job becomes `applied`. |
 | `POST /api/jobs/<id>/score` | `{}` | `JobDetail`. Starts a score-only run for a new or skipped job; a job saved without its description has it read from its job board first. If a run is going, it waits its turn. |
+| `POST /api/jobs/<id>/tailor` | `{}` | `JobDetail`. For a `scored` job: starts a run for just this job (`truapply run --job <id>`), which tailors your resume, or uses your original one when `tailorResume` is off, and makes it `ready`. `400` if a run is already going. |
 | `POST /api/jobs/score` | `{ ids }` | `{ scoring, skipped }`. The same for several jobs; `JobList.scoring` lists the ids being scored or waiting. |
 | `POST /api/jobs/dismiss` | `{ ids: number[], reason }`, 1 to 200 ids, `reason` one of `dismissReasons` | Dismisses many at once, the same way as one by one, and answers `{ dismissed, skipped }`. Jobs that moved on to a status you can't dismiss from are skipped. |
 

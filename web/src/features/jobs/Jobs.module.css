@@ -232,6 +232,22 @@
   font-weight: 500;
 }
 
+.groupChip {
+  flex: 1 0 100%;
+  justify-content: space-between;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.groupChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.groupChip svg {
+  flex: none;
+}
+
 .chipCount {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -1036,36 +1052,43 @@
   display: none;
 }
 
-.dateRange {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-
-.dateRange label {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.dateRange input {
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-small);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-md);
-}
-
-.dateRange input:focus-visible {
-  border-color: var(--accent);
-  outline: 0;
-  box-shadow: var(--focus-ring);
-}
-
 .datePopup {
-  width: 320px;
+  grid-template-columns: 148px 300px;
+  gap: 0;
+  width: auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+.dateSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  border-right: 1px solid var(--line);
+  background: var(--subtle);
+}
+
+.dateSide > .popupTitle {
+  padding: 0 var(--space-2);
+}
+
+.dateSide .statusChoices {
+  gap: 2px;
+  margin: 0;
+}
+
+.dateSide .choice:hover {
+  background: var(--hover);
+}
+
+.dateSide .choice[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.dateMain {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
 }

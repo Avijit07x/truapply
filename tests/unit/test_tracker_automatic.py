@@ -41,13 +41,18 @@ def call(routes: tuple[Route, ...], paths: Paths, path: str, body: Body) -> tupl
 
 def test_off_until_turned_on(paths: Paths) -> None:
     _, view = call(settings.GET, paths, "/api/settings", {})
-    assert view["automatic"] == {"supported": True, "on": False, "everyMinutes": None}
+    assert view["automatic"] == {
+        "supported": True,
+        "on": False,
+        "everyMinutes": None,
+        "elsewhere": False,
+    }
 
 
 def test_turning_on_and_off(paths: Paths) -> None:
     status, shown = call(automatic.POST, paths, "/api/settings/automatic", {"on": True})
     assert status == HTTPStatus.OK
-    assert shown == {"supported": True, "on": True, "everyMinutes": 180}
+    assert shown == {"supported": True, "on": True, "everyMinutes": 180, "elsewhere": False}
     assert autorun.installed(automatic.agents()) is not None
     _, shown = call(automatic.POST, paths, "/api/settings/automatic", {"on": False})
     assert shown["on"] is False
@@ -68,3 +73,20 @@ def test_changing_the_hours_while_off_keeps_it_off(paths: Paths) -> None:
 def test_needs_a_yes_or_no(paths: Paths) -> None:
     status, _ = call(automatic.POST, paths, "/api/settings/automatic", {"on": "yes"})
     assert status == HTTPStatus.BAD_REQUEST
+
+
+def test_a_schedule_for_another_folder_is_never_shown_as_on_or_moved_from_here(
+    paths: Paths, tmp_path: Path
+) -> None:
+    other = Paths(tmp_path / "real")
+    automatic.turn_on(other, 20)
+    _, view = call(settings.POST, paths, "/api/settings", VALID | {"runEveryMinutes": 360})
+    assert view["automatic"] == {
+        "supported": True,
+        "on": False,
+        "everyMinutes": None,
+        "elsewhere": True,
+    }
+    found = autorun.installed(automatic.agents())
+    assert found is not None
+    assert (found.home, found.every_minutes) == (other.root, 20)

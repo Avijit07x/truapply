@@ -31,6 +31,7 @@ from truapply.tracker.routes import Handler, Route, route
 
 MAX_TEXT = 5000
 FINISHED_NOTE = "submitted by you"
+RUN_GOING = "A run is going. Try again when it finishes."
 CLOSED_NOTE = "closed: you said the job is closed"
 REVERTED = "resume: reverted to your original"
 MOVED_ON = "This job has moved on since you opened it. Reload to see where it is now."
@@ -95,9 +96,14 @@ def _revert(db: sqlite3.Connection, paths: Paths, record: JobRecord, _body: Body
     return None
 
 
-def _get_ready(_db: sqlite3.Connection, paths: Paths, record: JobRecord, _body: Body) -> str | None:
+def _score(_db: sqlite3.Connection, paths: Paths, record: JobRecord, _body: Body) -> str | None:
     runs.score(paths, [job_id(record)])
     return None
+
+
+def _get_ready(_db: sqlite3.Connection, paths: Paths, record: JobRecord, _body: Body) -> str | None:
+    started = runs.start(paths, runs.Choice(1, search=False, job=job_id(record)))
+    return None if started else RUN_GOING
 
 
 ACTS: dict[Action, Act] = {
@@ -105,7 +111,7 @@ ACTS: dict[Action, Act] = {
     Action.THUMBS: _thumbs,
     Action.FINISHED: _finished,
     Action.REVERT: _revert,
-    Action.SCORE: _get_ready,
+    Action.SCORE: _score,
     Action.TAILOR: _get_ready,
 }
 
