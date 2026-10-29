@@ -8,6 +8,7 @@ export const PAGE_NAMES = {
   "/runs": "Activity",
   "/learned": "Learned",
   "/settings": "Settings",
+  "/setup": "Set up",
 } as const;
 
 const SITE_PAGE = /^\/sites\/([a-z_]+)(\/table)?$/;

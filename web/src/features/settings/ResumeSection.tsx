@@ -2,31 +2,17 @@ import { useRef } from "react";
 import { RequestFailed } from "../../api/client";
 import { useReplaceResume } from "../../api/mutations";
 import type { ResumeInfo } from "../../api/types";
+import { RESUME_KINDS, base64 } from "../../lib/files";
 import { Note, Row, Stack } from "../../ui/Blocks";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Callout";
 import { toast } from "../../ui/toasts";
 import { Group } from "./SettingsGroups";
 
-const KINDS = ".tex,.pdf,.docx,.md,.txt";
 const FORMATS = {
   latex: "Your own LaTeX design",
   structured: "The built-in one-column design",
 } as const;
-
-function base64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error("The file couldn't be read."));
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 export function ResumeSection({ resume }: { resume: ResumeInfo }) {
   const picker = useRef<HTMLInputElement>(null);
@@ -53,7 +39,7 @@ export function ResumeSection({ resume }: { resume: ResumeInfo }) {
         <input
           ref={picker}
           type="file"
-          accept={KINDS}
+          accept={RESUME_KINDS}
           hidden
           aria-label="Resume file"
           onChange={(event) => {

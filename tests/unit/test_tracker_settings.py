@@ -56,6 +56,7 @@ VALID: dict[str, object] = {
     "unknownQuestions": "skip",
     "coverLetter": "required",
     "companySearch": "weekly",
+    "tailorResume": True,
     "autoSubmit": False,
     "autoSubmitScore": 80,
     "jobsPerRun": 5,

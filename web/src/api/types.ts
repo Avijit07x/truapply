@@ -145,6 +145,7 @@ export type Summary = {
   sites: SiteSummary[];
   run: RunState;
   suggestions: number;
+  setupNeeded: boolean;
 };
 
 export type Rule = { id: number; text: string };
@@ -218,6 +219,7 @@ export type SettingsValues = {
   unknownQuestions: "skip" | "guess";
   coverLetter: "required" | "always" | "never";
   companySearch: CompanySearch;
+  tailorResume: boolean;
   autoSubmit: boolean;
   autoSubmitScore: number;
   jobsPerRun: number;
@@ -235,7 +237,12 @@ export type SettingsLimits = {
   maxLongText: number;
   numbers: Record<string, NumberLimit>;
 };
-export type Automatic = { supported: boolean; on: boolean; everyMinutes: number | null };
+export type Automatic = {
+  supported: boolean;
+  on: boolean;
+  everyMinutes: number | null;
+  elsewhere: boolean;
+};
 export type Extension = { folder: string; built: boolean };
 export type ResumeFormat = "latex" | "structured";
 export type ResumeInfo = { format: ResumeFormat };
@@ -250,3 +257,44 @@ export type SettingsView = {
 };
 
 export type ApiError = { error: string; problems?: string[] };
+export type SetupDraft = {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  roles: string[];
+  titleKeywords: string[];
+  currency: string;
+  pages: number;
+};
+export type SetupView = {
+  needed: boolean;
+  draft: SetupDraft | null;
+  noticePeriods: string[];
+  automatic: Automatic;
+  warning?: string;
+};
+export type SetupAnswers = {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  roles: string[];
+  titleKeywords: string[];
+  onsiteCity: boolean;
+  remoteCountry: boolean;
+  relocate: boolean;
+  remoteAbroad: boolean;
+  citizenship: string;
+  workWithoutVisa: string[];
+  needsSponsorship: boolean | null;
+  noticePeriod: string;
+  currency: string;
+  expectedMin: number | null;
+  expectedMax: number | null;
+  tailorResume: boolean | null;
+  jobsPerRun: number | null;
+  runEveryMinutes: number | null;
+};

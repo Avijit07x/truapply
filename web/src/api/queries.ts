@@ -11,6 +11,7 @@ import type {
   RunLogLines,
   RunState,
   SettingsView,
+  SetupView,
   Summary,
   Workflow,
 } from "./types";
@@ -111,6 +112,11 @@ export const queries = {
       queryKey: ["companies"],
       queryFn: ({ signal }) => get<Companies>("/api/companies", signal),
       refetchInterval: (query) => (query.state.data?.archive.going ? LIVE_POLL_MS : false),
+    }),
+  setup: () =>
+    queryOptions({
+      queryKey: ["setup"],
+      queryFn: ({ signal }) => get<SetupView>("/api/setup", signal),
     }),
   settings: () =>
     queryOptions({

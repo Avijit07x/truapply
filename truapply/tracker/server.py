@@ -117,7 +117,7 @@ class TrackerHandler(BaseHTTPRequestHandler):
         return parsed if isinstance(parsed, dict) else None
 
     def _limit(self) -> int:
-        upload = urlsplit(self.path).path == f"/api{resume_upload.PATH}"
+        upload = urlsplit(self.path).path.removeprefix("/api") in resume_upload.UPLOAD_PATHS
         return resume_upload.MAX_UPLOAD_BYTES if upload else MAX_BODY_BYTES
 
     def _length(self) -> int:

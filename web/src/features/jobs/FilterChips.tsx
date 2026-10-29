@@ -2,6 +2,7 @@ import type { JobQuery, Status } from "../../api/types";
 import { jobsHref } from "../../domain/filters";
 import { GROUP_LABEL } from "../../domain/groups";
 import { STATUS, STATUSES, activeCount } from "../../domain/status";
+import { cx } from "../../lib/cx";
 import { Link } from "../../lib/router";
 import { Close } from "../../ui/icons";
 import type { MenuChoice } from "./ChipMenu";
@@ -77,8 +78,12 @@ export function FilterChips(props: FilterChipsProps) {
   return (
     <nav className={styles.chips} aria-label="Filter by status">
       {group && (
-        <Link to={jobsHref({ q, sort, order, table })} className={styles.chip} aria-current="true">
-          From Today: {GROUP_LABEL[group]}
+        <Link
+          to={jobsHref({ q, sort, order, table })}
+          className={cx(styles.chip, styles.groupChip)}
+          aria-current="true"
+        >
+          <span>From Today: {GROUP_LABEL[group]}</span>
           <Close size={10} />
         </Link>
       )}

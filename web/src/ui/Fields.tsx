@@ -1,8 +1,10 @@
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { Field } from "@base-ui/react/field";
+import { Radio } from "@base-ui/react/radio";
+import { RadioGroup } from "@base-ui/react/radio-group";
 import { Select } from "@base-ui/react/select";
 import { Switch as BaseSwitch } from "@base-ui/react/switch";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { cx } from "../lib/cx";
 import styles from "./Fields.module.css";
 import { Check, ChevronDown, Close } from "./icons";
@@ -15,6 +17,7 @@ type TextFieldProps = {
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
+  short?: boolean;
   rows?: number;
   type?: "text" | "number" | "date" | "email" | "tel";
   min?: number;
@@ -55,6 +58,7 @@ export function TextField({
   value,
   onChange,
   multiline = false,
+  short = false,
   rows = 3,
   ...input
 }: TextFieldProps) {
@@ -64,7 +68,7 @@ export function TextField({
         <Field.Label className={styles.label}>{label}</Field.Label>
       </Titled>
       <Field.Control
-        className={styles.input}
+        className={cx(styles.input, short && styles.short)}
         value={value}
         onValueChange={onChange}
         render={multiline ? <textarea rows={rows} /> : undefined}
@@ -179,7 +183,14 @@ export function SelectField({ label, info, value, options, onChange }: SelectFie
           <Select.Label className={styles.label}>{label}</Select.Label>
         </Titled>
         <Select.Trigger className={cx(styles.input, styles.trigger)}>
-          <Select.Value />
+          <span className={styles.fit}>
+            {options.map((option) => (
+              <span key={option} aria-hidden="true">
+                {option}
+              </span>
+            ))}
+            <Select.Value />
+          </span>
           <Select.Icon className={styles.chevron}>
             <ChevronDown size={12} />
           </Select.Icon>
@@ -241,5 +252,37 @@ export function Switch({ label, info, checked, onChange }: ToggleProps) {
         <span>{label}</span>
       </label>
     </Titled>
+  );
+}
+
+type ChoiceFieldProps = {
+  label: string;
+  options: readonly string[];
+  value: string;
+  onChange: (value: string) => void;
+};
+
+export function ChoiceField({ label, options, value, onChange }: ChoiceFieldProps) {
+  const id = useId();
+  return (
+    <div className={styles.field}>
+      <span id={id} className={styles.label}>
+        {label}
+      </span>
+      <RadioGroup
+        className={styles.choices}
+        aria-labelledby={id}
+        value={value}
+        onValueChange={(next) => {
+          onChange(next);
+        }}
+      >
+        {options.map((option) => (
+          <Radio.Root key={option} value={option} className={styles.choice}>
+            {option}
+          </Radio.Root>
+        ))}
+      </RadioGroup>
+    </div>
   );
 }

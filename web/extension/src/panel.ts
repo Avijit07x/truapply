@@ -28,8 +28,8 @@ li { margin: 0; padding: 3px 0; }
 li::marker { color: #d49b00; }
 .why { color: #71717a; }
 .action { margin-top: 10px; font: inherit; padding: 5px 12px; border-radius: 6px;
-  border: 1px solid #0f766e; background: #0f766e; color: #fff; cursor: pointer; }
-.action:hover { background: #115e59; border-color: #115e59; }
+  border: 1px solid #2e3a59; background: #2e3a59; color: #fff; cursor: pointer; }
+.action:hover { background: #232c44; border-color: #232c44; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 @media (prefers-color-scheme: dark) {

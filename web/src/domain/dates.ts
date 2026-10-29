@@ -18,6 +18,11 @@ export function dayStart(day: string): Date {
   return new Date(Number(year), Number(month) - 1, Number(date));
 }
 
+export function dayOf(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function nextDay(day: string): Date {
   const start = dayStart(day);
   start.setDate(start.getDate() + 1);

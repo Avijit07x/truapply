@@ -21,6 +21,11 @@ const COMPANY_SEARCH: Record<SettingsValues["companySearch"], string> = {
   daily: "Every day",
   off: "Never",
 };
+const RESUME = {
+  tailor: "Tailor it to each job",
+  original: "Always send my resume as it is",
+} as const;
+const SHORT_ANSWERS: ReadonlySet<string> = new Set(["citizenship", "currency", "noticePeriod"]);
 const COVER: Record<SettingsValues["coverLetter"], string> = {
   required: "Only when the form needs one",
   always: "Whenever there's a cover letter box",
@@ -56,6 +61,7 @@ export function fieldsFor({ draft, set, limits }: GroupProps) {
       info={INFO[name]}
       maxLength={limits.maxText}
       required={required}
+      short={SHORT_ANSWERS.has(name)}
       value={draft[name]}
       onChange={set(name)}
     />
@@ -342,13 +348,28 @@ export function FormAnswers(props: GroupProps) {
   );
 }
 
+export function ResumeChoice(props: GroupProps) {
+  const { choice } = fieldsFor(props);
+  const { draft, set } = props;
+  return (
+    <Group
+      title="Your resume"
+      note="Tailoring rewrites your resume for each good match with Claude, using only facts from your resume and notes. If you'd rather send the same resume everywhere, choose to send it as it is. That also uses fewer Claude calls."
+    >
+      {choice("For each job", RESUME, draft.tailorResume ? "tailor" : "original", (picked) => {
+        set("tailorResume")(picked === "tailor");
+      })}
+    </Group>
+  );
+}
+
 export function AutoSubmit(props: GroupProps) {
   const { number } = fieldsFor(props);
   const { draft, set } = props;
   return (
     <Group
       title="Auto-submit"
-      note="The extension sends a job in your Chrome by itself after a run, but only when no consent box, required question or human check is left for you. Optional questions it can't answer stay blank. Otherwise it stops before Submit and leaves the tab for you. Only jobs tailored after you turn it on are sent. Two 👎 on the last 10 it sent turn it off."
+      note="The extension sends a job in your Chrome by itself after a run, but only when no consent box, required question or human check is left for you. Optional questions it can't answer stay blank. Otherwise it stops before Submit and leaves the tab for you. Only jobs made ready after you turn it on are sent. Two 👎 on the last 10 it sent turn it off."
     >
       <Checkbox
         label="Send strong matches by itself"

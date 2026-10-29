@@ -7,9 +7,9 @@ from functools import partial
 from truapply.core.clock import Clock, start_of_local_day
 from truapply.core.errors import UsageLimitError
 from truapply.core.models import Job, Source, Status
-from truapply.core.notes import LOW_SCORE_PREFIX
+from truapply.core.notes import LOW_SCORE_PREFIX, UNTAILORED_START
 from truapply.core.profile import Profile
-from truapply.resume.tailor import Tailored, TailorRequest, file_name_for, tailor
+from truapply.resume.tailor import Tailored, TailorRequest, file_name_for, tailor, untailored
 from truapply.run.context import PARALLEL_AI_CALLS, RunContext
 from truapply.run.scoring import score_one
 from truapply.sources.ats import still_open
@@ -72,7 +72,8 @@ def _tailored(run: RunContext, job: Job) -> Prepared:
     request = TailorRequest(
         job, run.notes, run.paths.job_dir(job_id), file_name_for(run.profile.name), run.master
     )
-    return Prepared(job, tailor(run.resume, request))
+    shape = tailor if run.profile.settings.tailor_resume else untailored
+    return Prepared(job, shape(run.resume, request))
 
 
 def _record(db: sqlite3.Connection, run: RunContext, item: Prepared) -> None:
@@ -81,12 +82,17 @@ def _record(db: sqlite3.Connection, run: RunContext, item: Prepared) -> None:
     jobs.record_attempt(db, item.job.id or 0, record)
 
 
+def _starting(run: RunContext, count: int) -> str:
+    jobs_word = "job" if count == 1 else "jobs"
+    if run.profile.settings.tailor_resume:
+        return f"Tailoring your resume for {count} {jobs_word} …"
+    return f"{UNTAILORED_START} for {count} {jobs_word} …"
+
+
 def tailor_all(db: sqlite3.Connection, run: RunContext, picks: Sequence[Job]) -> list[Prepared]:
     ready = [job for job in picks if job.id is not None]
     if ready:
-        run.progress(
-            f"Tailoring your resume for {len(ready)} {'job' if len(ready) == 1 else 'jobs'} …"
-        )
+        run.progress(_starting(run, len(ready)))
     done: list[Prepared] = []
     with ThreadPoolExecutor(PARALLEL_AI_CALLS) as pool:
         try:

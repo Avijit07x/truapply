@@ -6,6 +6,7 @@ import { jobsHref } from "../../domain/filters";
 import { cx } from "../../lib/cx";
 import { navigate } from "../../lib/router";
 import { Button } from "../../ui/Button";
+import { Calendar } from "../../ui/Calendar";
 import { ChevronDown, Clock } from "../../ui/icons";
 import styles from "./Jobs.module.css";
 
@@ -45,7 +46,6 @@ export function DateFilter({ query }: { query: JobQuery }) {
     navigate(jobsHref(next));
     setOpen(false);
   };
-  const backwards = from !== "" && to !== "" && from > to;
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
@@ -60,56 +60,44 @@ export function DateFilter({ query }: { query: JobQuery }) {
       <Popover.Portal>
         <Popover.Positioner className={styles.positioner} sideOffset={6} align="start">
           <Popover.Popup className={cx(styles.popup, styles.datePopup)}>
-            <Popover.Title className={styles.popupTitle}>Updated</Popover.Title>
-            <div className={styles.statusChoices} role="group" aria-label="Updated">
-              {PRESETS.map((preset) => (
-                <button
-                  key={preset.label}
-                  type="button"
-                  className={styles.choice}
-                  aria-pressed={query.when === preset.when}
-                  onClick={() => {
-                    go({ ...base, when: preset.when });
-                  }}
-                >
-                  {preset.label}
-                </button>
-              ))}
+            <div className={styles.dateSide}>
+              <Popover.Title className={styles.popupTitle}>Updated</Popover.Title>
+              <div className={styles.statusChoices} role="group" aria-label="Updated">
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    className={styles.choice}
+                    aria-pressed={query.when === preset.when}
+                    onClick={() => {
+                      go({ ...base, when: preset.when });
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <span className={styles.popupTitle}>Custom range</span>
-            <div className={styles.dateRange}>
-              <label>
-                From
-                <input
-                  type="date"
-                  value={from}
-                  max={to || undefined}
-                  onChange={(event) => {
-                    setFrom(event.target.value);
-                  }}
-                />
-              </label>
-              <label>
-                To
-                <input
-                  type="date"
-                  value={to}
-                  min={from || undefined}
-                  onChange={(event) => {
-                    setTo(event.target.value);
-                  }}
-                />
-              </label>
+            <div className={styles.dateMain}>
+              <span className={styles.popupTitle}>Custom range</span>
+              <Calendar
+                from={from}
+                to={to}
+                onPick={(start, end) => {
+                  setFrom(start);
+                  setTo(end);
+                }}
+              />
+              <Button
+                variant="primary"
+                disabled={from === ""}
+                onClick={() => {
+                  go({ ...base, when: "custom", from: from || undefined, to: to || undefined });
+                }}
+              >
+                Show these dates
+              </Button>
             </div>
-            <Button
-              variant="primary"
-              disabled={(from === "" && to === "") || backwards}
-              onClick={() => {
-                go({ ...base, when: "custom", from: from || undefined, to: to || undefined });
-              }}
-            >
-              Show these dates
-            </Button>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

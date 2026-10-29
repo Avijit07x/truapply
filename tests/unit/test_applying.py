@@ -48,3 +48,33 @@ def test_resumes_are_tailored_at_the_same_time_and_kept_in_order(
         "  Northwind · Frontend Engineer: tailored",
         "  C · Frontend Engineer: kept your original resume",
     ]
+
+
+def test_with_tailoring_off_every_job_gets_your_original_resume_and_no_ai_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    said: list[str] = []
+    profile = samples.profile(tmp_path / "master.tex")
+    master = tmp_path / "m.pdf"
+    master.write_bytes(b"%PDF-1.4")
+    run = RunContext(
+        Paths(tmp_path),
+        replace(profile, settings=replace(profile.settings, tailor_resume=False)),
+        CountingResume(),
+        Rendered(master, 1),
+        lambda: NOW,
+        progress=said.append,
+    )
+
+    def tailor(_resume: Resume, _request: TailorRequest) -> Tailored:
+        raise AssertionError("tailoring is off")
+
+    monkeypatch.setattr(tailoring, "tailor", tailor)
+    with closing(connect(run.paths.database)) as db:
+        queued = tailor_all(db, run, [replace(samples.job(), id=1)])
+    assert queued[0].resume.used_original
+    assert queued[0].resume.pdf.read_bytes() == b"%PDF-1.4"
+    assert said == [
+        "Getting your original resume ready for 1 job …",
+        "  Northwind · Frontend Engineer: kept your original resume",
+    ]

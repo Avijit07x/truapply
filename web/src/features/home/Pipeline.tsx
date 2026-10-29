@@ -56,6 +56,11 @@ export function Pipeline({ groups }: { groups: Workflow["groups"] }) {
           />
         ))}
       </div>
+      {found === 0 && (
+        <p className={styles.barNote}>
+          No jobs yet. Press Run now, and this fills in as jobs are found, scored and applied to.
+        </p>
+      )}
     </section>
   );
 }

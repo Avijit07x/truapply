@@ -197,10 +197,10 @@ def _tracker(args: argparse.Namespace, paths: Paths) -> int:
 
 
 def _boards(_args: argparse.Namespace, paths: Paths) -> int:
-    shared = {board.key for board in shared_boards()}
+    shared = {board.key.casefold() for board in shared_boards()}
     with closing(connect(paths.database)) as db:
         found = [board for origin in FOUND_ORIGINS for board in boards.by_origin(db, origin)]
-    new = [board for board in found if board.key not in shared]
+    new = [board for board in found if board.key.casefold() not in shared]
     if not new:
         print("No new boards yet. They're found during `truapply run`.")
         return 0

@@ -56,7 +56,7 @@ SALARY_NOW = Number("currentSalary", "Current salary", 0, MAX_SALARY)
 YEARS = Number("yearsExperience", "Years of experience", 0, MAX_YEARS)
 DAILY_CAP = Number("dailyCap", "Applications per day", 1, MAX_DAILY_CAP)
 LINKEDIN_CAP = Number("linkedinCap", "LinkedIn applications per day", 0, MAX_DAILY_CAP)
-JOBS_PER_RUN = Number("jobsPerRun", "Jobs to tailor each run", 1, MAX_JOBS_PER_RUN)
+JOBS_PER_RUN = Number("jobsPerRun", "Jobs to get ready each run", 1, MAX_JOBS_PER_RUN)
 SCORES_PER_RUN = Number("scoresPerRun", "Jobs to score each run", 1, MAX_SCORES_PER_RUN)
 AI_CALLS = Number("aiCallsPerDay", "Claude calls per day", 1, MAX_AI_CALLS)
 EVERY_MINUTES = Number(
@@ -124,6 +124,7 @@ def _values(profile: Profile) -> dict[str, object]:
         "unknownQuestions": profile.unknown_questions.value,
         "coverLetter": profile.cover_letter.value,
         "companySearch": chosen.company_search.value,
+        "tailorResume": chosen.tailor_resume,
         "autoSubmit": chosen.auto_submit,
         "autoSubmitScore": chosen.auto_submit_score,
         "jobsPerRun": chosen.jobs_per_run,
@@ -153,6 +154,7 @@ def _settings(profile: Profile, read: Reader) -> Settings:
         company_search=read.choice(
             "companySearch", "Find new companies", CompanySearch, profile.settings.company_search
         ),
+        tailor_resume=read.flag("tailorResume", "Tailor my resume for each job"),
         auto_submit=read.flag("autoSubmit", "Auto-submit"),
         auto_submit_score=read.number(AUTO_SCORE),
         wellfound=read.flag("wellfound", "Check Wellfound"),
@@ -254,12 +256,12 @@ def _loaded(paths: Paths) -> Profile | Response:
         return problem(HTTPStatus.CONFLICT, error.hint or str(error), error.problems)
 
 
-def _shown(profile: Profile) -> Response:
+def _shown(paths: Paths, profile: Profile) -> Response:
     return ok(
         {
             "values": _values(profile),
             "limits": _limits(),
-            "automatic": automatic.current(),
+            "automatic": automatic.current(paths),
             "resume": {"format": profile.resume.format.value},
             "extension": install_info(),
         }
@@ -268,7 +270,7 @@ def _shown(profile: Profile) -> Response:
 
 def _show(_db: sqlite3.Connection, paths: Paths, _match: re.Match[str], _body: Body) -> Response:
     profile = _loaded(paths)
-    return profile if isinstance(profile, Response) else _shown(profile)
+    return profile if isinstance(profile, Response) else _shown(paths, profile)
 
 
 def _save(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Body) -> Response:
@@ -285,7 +287,7 @@ def _save(db: sqlite3.Connection, paths: Paths, _match: re.Match[str], body: Bod
         automatic.follow(paths, changed.settings.run_every_minutes)
     except TruApplyError as error:
         return bad_request(f"Saved, but automatic runs didn't update: {error}")
-    return _shown(changed)
+    return _shown(paths, changed)
 
 
 GET: tuple[Route, ...] = (route("/settings", _show),)

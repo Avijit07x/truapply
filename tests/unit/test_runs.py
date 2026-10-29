@@ -26,6 +26,7 @@ CHOICE = {"limit": 2, "search": True}
 
 @pytest.fixture
 def paths(tmp_path: Path) -> Iterator[Paths]:
+    (tmp_path / "profile.json").write_text("{}", encoding="utf-8")
     yield Paths(tmp_path)
     runs.stop()
     runs.REGISTRY.current = None
@@ -247,14 +248,15 @@ def test_the_next_automatic_run_is_the_next_time_of_day_it_is_set_for(
     paths: Paths, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     on = {"supported": True, "on": True, "everyMinutes": 30}
-    monkeypatch.setattr(automatic, "current", lambda: on)
+    monkeypatch.setattr(automatic, "current", lambda _paths: on)
     now = datetime(2026, 10, 27, 10, 40, tzinfo=UTC)
     monkeypatch.setattr(runs, "utc_now", lambda: now)
     upcoming = runs.state(paths)["nextAutomatic"]
     assert isinstance(upcoming, str)
     assert datetime.fromisoformat(upcoming) - now <= timedelta(minutes=30)
     assert datetime.fromisoformat(upcoming).astimezone().minute in {0, 30}
-    monkeypatch.setattr(automatic, "current", lambda: on | {"on": False, "everyMinutes": None})
+    off = on | {"on": False, "everyMinutes": None}
+    monkeypatch.setattr(automatic, "current", lambda _paths: off)
     assert runs.state(paths)["nextAutomatic"] is None
 
 

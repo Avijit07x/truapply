@@ -42,6 +42,28 @@ class CompanySearch(StrEnum):
     WEEKLY = "weekly"
 
 
+CURRENCIES = {
+    "india": "INR",
+    "united states": "USD",
+    "usa": "USD",
+    "united kingdom": "GBP",
+    "uk": "GBP",
+    "canada": "CAD",
+    "australia": "AUD",
+    "singapore": "SGD",
+    "germany": "EUR",
+    "france": "EUR",
+    "netherlands": "EUR",
+    "ireland": "EUR",
+    "united arab emirates": "AED",
+}
+NOTICE_PERIODS = ("Immediate", "15 days", "30 days", "60 days", "90 days")
+
+
+def currency_for(country: str) -> str:
+    return CURRENCIES.get(country.strip().lower(), "USD")
+
+
 class CoverLetter(StrEnum):
     REQUIRED = "required"
     ALWAYS = "always"
@@ -88,6 +110,7 @@ class Settings:
     ai_calls_per_day: int = 300
     max_job_age_days: int = 30
     company_search: CompanySearch = CompanySearch.WEEKLY
+    tailor_resume: bool = True
     auto_submit: bool = False
     auto_submit_score: int = 80
     wellfound: bool = True

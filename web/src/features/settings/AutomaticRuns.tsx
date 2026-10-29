@@ -45,6 +45,12 @@ export function AutomaticRuns({ automatic, ...props }: GroupProps & { automatic:
       ) : (
         <Callout>Automatic runs from this page work on macOS and Windows for now.</Callout>
       )}
+      {automatic.elsewhere && (
+        <Callout>
+          Automatic runs are set up for another TruApply folder on this computer. Turning them on
+          here moves them to this folder.
+        </Callout>
+      )}
       {failed && <Callout tone="bad">{failed}</Callout>}
       <div className={styles.pair}>
         {number("runEveryMinutes", "Minutes between runs", "15 to 1,440. 60 is every hour.")}

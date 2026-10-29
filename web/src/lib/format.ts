@@ -36,6 +36,14 @@ const UNITS: readonly (readonly [Intl.RelativeTimeFormatUnit, number])[] = [
   ["year", Infinity],
 ];
 
+export function elapsed(iso: string, now: number = Date.now()): string {
+  const seconds = Math.max(0, Math.floor((now - Date.parse(iso)) / 1000));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const [hours, minutes] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60];
+  if (hours > 0) return `${String(hours)}h ${pad(minutes)}m`;
+  return minutes > 0 ? `${String(minutes)}m ${pad(seconds % 60)}s` : `${String(seconds)}s`;
+}
+
 export function isPast(iso: string, now: number = Date.now()): boolean {
   return Date.parse(iso) <= now;
 }

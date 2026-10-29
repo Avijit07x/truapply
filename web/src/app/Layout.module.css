@@ -24,15 +24,23 @@
   flex-direction: column;
   gap: 18px;
   min-height: 0;
-  padding: 14px 10px 8px 12px;
+  margin: var(--space-2);
+  padding: 14px 10px 10px;
   overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
 }
 
 .brand {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 9px;
-  padding: var(--space-1) var(--space-2);
+  min-height: 60px;
+  margin: -14px -10px 0;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
   color: var(--text);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -84,6 +92,21 @@
 
 .navLink[aria-current="page"] svg {
   color: var(--accent);
+}
+
+.locked {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.locked:hover {
+  background: none;
+  color: var(--faint);
+}
+
+.runSetup {
+  color: var(--muted);
+  font-size: var(--text-sm);
 }
 
 .navLink:focus-visible {
@@ -142,11 +165,6 @@
   font-weight: 500;
 }
 
-.runSub {
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
 .pip {
   flex: none;
   width: 8px;
@@ -156,23 +174,80 @@
 }
 
 .runLive .pip {
+  position: relative;
   background: var(--good);
-  animation: blink 1.4s ease-in-out infinite;
 }
 
-.runBar {
+.runLive .pip::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  content: "";
+  animation: ping 1.4s ease-out infinite;
+}
+
+.runTime {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.runSteps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.runSteps > span {
+  display: grid;
+  gap: 5px;
+  color: var(--faint);
+  font-size: var(--text-xs);
+}
+
+.runSteps b {
+  position: relative;
   height: 4px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--subtle);
 }
 
-.runBar > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent-solid);
-  transition: width 500ms var(--ease-out);
+.runSteps .stepDone {
+  color: var(--muted);
+}
+
+.runSteps .stepDone b {
+  background: var(--accent);
+}
+
+.runSteps .stepNow {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.runSteps .stepNow b::after {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  content: "";
+  animation: breathe 1.2s ease-in-out infinite alternate;
+}
+
+.runLine {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.runLine:empty {
+  display: none;
 }
 
 .themes {
@@ -244,9 +319,16 @@
   }
 }
 
-@keyframes blink {
-  50% {
-    opacity: 0.3;
+@keyframes ping {
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes breathe {
+  from {
+    opacity: 0.25;
   }
 }
 
@@ -265,7 +347,18 @@
     grid-template-rows: auto minmax(0, 1fr);
   }
 
+  .brand {
+    min-height: 0;
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 0;
+  }
+
   .sidebar {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;

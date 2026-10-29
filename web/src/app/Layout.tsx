@@ -91,11 +91,21 @@ function NavLinks({
   items,
   active,
   fresh,
+  locked,
 }: {
   items: readonly NavItem[];
   active: string;
   fresh: number;
+  locked: boolean;
 }) {
+  if (locked) {
+    return items.map(({ to, label, Icon }) => (
+      <span key={to} className={cx(styles.navLink, styles.locked)} aria-disabled="true">
+        <Icon />
+        <span className={styles.navLabel}>{label}</span>
+      </span>
+    ));
+  }
   return items.map(({ to, label, Icon }) => (
     <Link
       key={to}
@@ -124,6 +134,7 @@ export function Layout({ path, layout, children }: LayoutProps) {
   useRunIcon(running);
   const { data: summary } = useQuery(queries.summary());
   const active = section(path);
+  const locked = summary?.setupNeeded ?? false;
   const fresh = useFresh(summary?.sites.map((site) => site.source) ?? [], path);
   return (
     <CSPProvider disableStyleElements>
@@ -137,12 +148,16 @@ export function Layout({ path, layout, children }: LayoutProps) {
             <span className={styles.brandName}>TruApply</span>
           </Link>
           <nav className={styles.nav} aria-label="Main">
-            <NavLinks items={MAIN} active={active} fresh={fresh} />
+            <NavLinks items={MAIN} active={active} fresh={fresh} locked={locked} />
             <span className={styles.navGroup}>You</span>
-            <NavLinks items={YOU} active={active} fresh={fresh} />
+            <NavLinks items={YOU} active={active} fresh={fresh} locked={locked} />
           </nav>
           <div className={styles.bottom}>
-            {summary && <SidebarRun run={summary.run} here={active === "/runs"} />}
+            {locked ? (
+              <span className={styles.runSetup}>Finish setup to start finding jobs.</span>
+            ) : (
+              summary && <SidebarRun run={summary.run} here={active === "/runs"} />
+            )}
             <div className={styles.themeRow}>
               <span>Theme</span>
               <ThemeSwitch />

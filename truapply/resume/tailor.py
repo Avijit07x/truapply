@@ -69,6 +69,10 @@ def _fallback(
     return Tailored(target, resume.source, True, tuple(problems), changes)
 
 
+def untailored(resume: Resume, request: TailorRequest) -> Tailored:
+    return _fallback(resume, request, [], ())
+
+
 def _render(resume: Resume, request: TailorRequest, draft: Draft) -> Tailored:
     target = request.out_dir / request.file_name
     try:
