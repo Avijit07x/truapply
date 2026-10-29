@@ -1,3 +1,4 @@
+import { apiOf } from "../domain/dates";
 import { queryOptions } from "@tanstack/react-query";
 import { get } from "./client";
 import type {
@@ -27,6 +28,12 @@ const QUERY_KEYS = [
   "location",
   "minScore",
   "source",
+  "sites",
+  "when",
+  "from",
+  "to",
+  "after",
+  "before",
   "sort",
   "order",
   "page",
@@ -64,7 +71,7 @@ export const queries = {
   jobs: (query: JobQuery) =>
     queryOptions({
       queryKey: ["jobs", query],
-      queryFn: ({ signal }) => get<JobList>(`/api/jobs${jobSearch(query)}`, signal),
+      queryFn: ({ signal }) => get<JobList>(`/api/jobs${jobSearch(apiOf(query))}`, signal),
     }),
   board: () =>
     queryOptions({

@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import styles from "./Runs.module.css";
 
-type LogViewProps = { lines: readonly string[]; empty?: string };
+type LogViewProps = { lines: readonly string[]; empty?: ReactNode };
 
 export function LogView({ lines, empty = "Nothing written yet." }: LogViewProps) {
   if (lines.length === 0) {
-    return <p className={styles.logEmpty}>{empty}</p>;
+    return <div className={styles.logEmpty}>{empty}</div>;
   }
   return (
     <div className={styles.log} tabIndex={0} aria-label="Run log">

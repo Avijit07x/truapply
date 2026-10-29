@@ -110,6 +110,24 @@ def test_log_names_cannot_escape_the_runs_folder(paths: Paths) -> None:
     assert (status, state["running"], state["logs"]) == (HTTPStatus.OK, False, [])
 
 
+def test_a_finished_log_comes_with_its_report(paths: Paths) -> None:
+    paths.runs.mkdir(parents=True)
+    lines = [
+        "Manual run",
+        "  1/1 Acme · Frontend Engineer: 84, good match",
+        "Summary",
+        "Boards: 3 checked · 0 new · 0 gone · 0 unreachable",
+        "Jobs: 120 open · 4 fit your titles and places · 1 new",
+        "Scored: 1 good match · 0 skipped · 0 to retry",
+        "Prepared: nothing this run",
+    ]
+    (paths.runs / "20260101-000000-000000.log").write_text("\n".join(lines), encoding="utf-8")
+    status, log = call(paths, "/runs/log/20260101-000000-000000.log")
+    assert status == HTTPStatus.OK
+    assert log["report"]["jobs"] == {"open": 120, "fit": 4, "new": 1}
+    assert log["report"]["results"][0]["score"] == 84
+
+
 def test_a_job_you_added_gets_a_run_of_its_own() -> None:
     flags = runs.command(runs.Choice(1, search=False, job=7))[len(runs.COMMAND_PREFIX) :]
     assert flags == ["--job", "7"]
@@ -217,6 +235,11 @@ def test_each_recent_run_says_how_it_ended(paths: Paths) -> None:
     assert isinstance(shown, list)
     assert {item["name"]: item["outcome"] for item in shown} == {
         name: outcome for name, (_, outcome) in endings.items()
+    }
+    assert {item["name"]: item["problem"] for item in shown} == {
+        "20261027-100000-000000.log": None,
+        "20261027-110000-000000.log": "No profile yet.",
+        "20261027-120000-000000.log": None,
     }
 
 

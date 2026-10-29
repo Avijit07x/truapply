@@ -5,7 +5,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--subtle);
-  font-size: 14px;
+  font-size: var(--text-base);
 }
 
 .bad {

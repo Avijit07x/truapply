@@ -1,16 +1,16 @@
 import { sourceLabel } from "../domain/sources";
 
 export const PAGE_NAMES = {
-  "/": "Home",
-  "/workflow": "Workflow",
-  "/jobs": "Career jobs",
+  "/": "Today",
+  "/jobs": "Jobs",
+  "/jobs/table": "All jobs",
   "/companies": "Companies",
-  "/runs": "Run",
+  "/runs": "Activity",
   "/learned": "Learned",
   "/settings": "Settings",
 } as const;
 
-const SITE_PAGE = /^\/sites\/([a-z_]+)$/;
+const SITE_PAGE = /^\/sites\/([a-z_]+)(\/table)?$/;
 
 export const sitePage = (source: string) => `/sites/${source}`;
 

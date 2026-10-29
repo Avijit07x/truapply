@@ -35,16 +35,6 @@ export function Home(props: IconProps) {
   );
 }
 
-export function Flow(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <circle cx="4" cy="4" r="1.75" />
-      <path d="M5.75 4H6.5A1.5 1.5 0 0 1 8 5.5V10.5A1.5 1.5 0 0 0 9.5 12H10.25" />
-      <circle cx="12" cy="12" r="1.75" />
-    </Svg>
-  );
-}
-
 export function Rows(props: IconProps) {
   return (
     <Svg {...props}>
@@ -338,6 +328,31 @@ export function Trash(props: IconProps) {
       <path d="M2.5 4.5H13.5" />
       <path d="M6 4.5V3.25A1.25 1.25 0 0 1 7.25 2H8.75A1.25 1.25 0 0 1 10 3.25V4.5" />
       <path d="M3.75 4.5L4.4 12.85A1.25 1.25 0 0 0 5.65 14H10.35A1.25 1.25 0 0 0 11.6 12.85L12.25 4.5" />
+    </Svg>
+  );
+}
+
+export function Briefcase(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2.5" y="4.5" width="11" height="8.5" rx="2" />
+      <path d="M6 4.5V3.5A1 1 0 0 1 7 2.5H9A1 1 0 0 1 10 3.5V4.5" />
+    </Svg>
+  );
+}
+
+export function Building(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 13.5V4A1 1 0 0 1 4 3H9A1 1 0 0 1 10 4V13.5M10 7H12A1 1 0 0 1 13 8V13.5M2 13.5H14M5.5 6H7.5M5.5 9H7.5" />
+    </Svg>
+  );
+}
+
+export function Pulse(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M2 8H4.5L6.5 3.5L9.5 12.5L11.5 8H14" />
     </Svg>
   );
 }

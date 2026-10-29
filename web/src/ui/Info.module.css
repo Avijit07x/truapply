@@ -12,7 +12,7 @@
   background: var(--surface);
   box-shadow: var(--shadow);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-md);
   line-height: 1.5;
   transform-origin: var(--transform-origin);
   transition:

@@ -76,8 +76,8 @@ class ArchiveCheckGoingError(TruApplyError):
 
 class DailyBudgetError(UsageLimitError):
     hint = (
-        "Today's Claude call budget is used up, so the run stopped. It picks up again "
-        "tomorrow. Change the budget with settings.ai_calls_per_day in profile.json."
+        "The run stopped and picks up again tomorrow. To allow more, change Settings → "
+        "Applying → Claude calls per day."
     )
 
 

@@ -18,9 +18,9 @@ export function PageHeader({ title, description, actions, back }: PageHeaderProp
       {back}
       <div className={styles.titleRow}>
         <h1 className={styles.title}>{title}</h1>
+        {description && <span className={styles.inlineNote}>{description}</span>}
         {actions && <Row>{actions}</Row>}
       </div>
-      {description && <Note>{description}</Note>}
     </header>
   );
 }

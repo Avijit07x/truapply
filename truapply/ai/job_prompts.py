@@ -69,7 +69,9 @@ def scoring(profile: Profile, resume_text: str, job: Job, preferences: Sequence[
         "are not accepted.\n"
         "- `score`: 80+ strong fit, 60-79 reasonable, below 60 weak; below 40 with a "
         "dealbreaker.\n"
-        "- `reason`: one plain sentence."
+        "- `reason`: 2 to 4 key points, each under 12 words, separated by `; `. Start a point "
+        "that raises the score with `+ ` and one that lowers it with `- `, for example "
+        "`+ React and TypeScript match; + remote works; - asks 4+ years, has 2.5`."
     )
 
 

@@ -21,6 +21,8 @@ from truapply.tracker.body import Body, flag, number
 from truapply.tracker.detail import iso
 from truapply.tracker.responses import Response, bad_request, not_found, ok
 from truapply.tracker.routes import Route, route
+from truapply.tracker.run_report import FAILED as FAILED_LINE
+from truapply.tracker.run_report import SUMMARY, report_of
 
 COMMAND_PREFIX: tuple[str, ...] = (sys.executable, "-m", "truapply", "run")
 MIN_LIMIT = 1
@@ -31,7 +33,6 @@ STOP_WAIT_SECONDS = 10
 LOG_NAME = re.compile(r"^\d{8}-\d{6}-\d{6}\.log$")
 ALREADY_RUNNING = "A run is already going."
 RUN_KINDS = {AUTOMATIC_RUN: "automatic", MANUAL_RUN: "manual"}
-SUMMARY = "Summary"
 FAILED = "✘"
 STAGE_LINES = (
     ("Checking company career pages", RunStage.FIND),
@@ -264,14 +265,21 @@ def next_automatic() -> datetime | None:
     return schedule.next_run(schedule.Plan(every), utc_now().astimezone())
 
 
+def problem_of(log: Path) -> str | None:
+    lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    return next((found["message"] for found in map(FAILED_LINE.match, lines) if found), None)
+
+
 def _shown_log(log: Path, going: str | None) -> dict[str, object]:
     running = log.name == going
+    outcome = None if running else outcome_of(log)
     return {
         "name": log.name,
         "finishedAt": iso(_finished_at(log)),
         "kind": kind_of(log),
         "running": running,
-        "outcome": None if running else outcome_of(log),
+        "outcome": outcome,
+        "problem": problem_of(log) if outcome == "failed" else None,
     }
 
 
@@ -311,7 +319,16 @@ def _log(_db: sqlite3.Connection, paths: Paths, match: re.Match[str], _body: Bod
     if not LOG_NAME.match(name) or not log.is_file():
         return not_found("No such run log.")
     finished = iso(_finished_at(log))
-    return ok({"name": name, "finishedAt": finished, "kind": kind_of(log), "lines": tail(log)})
+    lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    return ok(
+        {
+            "name": name,
+            "finishedAt": finished,
+            "kind": kind_of(log),
+            "lines": lines[-TAIL_LINES:],
+            "report": report_of(lines),
+        }
+    )
 
 
 def _stage(body: Body) -> RunStage | None:

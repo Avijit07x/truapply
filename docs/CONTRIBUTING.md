@@ -112,8 +112,8 @@ How a senior engineer works on this codebase.
 - Every API call goes through TanStack Query (`src/api/queries.ts`, `src/api/mutations.ts`). Components never call `fetch` themselves.
 - Shared client state lives in small zustand stores (drag state, theme). Everything else is component state.
 - Data grids use TanStack Table (headless) with our own markup and styles. Anything the server sorts, filters or pages lives in the URL, not in table state.
-- Scrollbars: inner scroll areas get the thin pill from `base.css`, shown on hover. The page itself keeps the system scrollbar.
-- Interactive parts (dialogs, selects, switches, toasts) are built on Base UI, wrapped once in `src/ui/`. Styles are CSS Modules using the color tokens in `src/styles/base.css`, which have light and dark values.
+- Scrollbars: hidden everywhere by `base.css`; areas still scroll with the wheel, trackpad and keys.
+- Interactive parts (dialogs, selects, switches, toasts) are built on Base UI, wrapped once in `src/ui/`. Styles are CSS Modules using the color tokens in `src/styles/base.css`, which have light and dark values. Teal `--accent` marks only what you can click or have selected; meaning comes from the status colors (`--info`, `--good`, `--warn`, `--bad`, `--auto`). Corners use two sizes only: `--radius` (8px) for layout like the page, cards, tables and menus, and `--radius-small` (6px) for controls like buttons, inputs, search, chips and badges. Font sizes come from the `--text-*` scale and long forms stay within `--form-width`. The font is Inter, bundled from `@fontsource-variable/inter` so it works offline.
 - Icons are drawn in `src/ui/icons.tsx` on a 16 px grid with round ends and soft corners. No icon library.
 - Motion stays small: things rise in once when a page opens, numbers count up, cards lift on hover. Everything stops when the system asks for less motion.
 - One folder per page in `src/features/`. A part used by two pages moves to `src/components/` or `src/ui/`.
@@ -305,7 +305,7 @@ files = ["truapply", "tools", "tests"]
 | Site fixtures | `tests/fixtures/<site>/` | Saved search, job, blocked and logged-out pages, **with personal data removed**. Tests link matching, parsing, and block/logout detection. |
 | Form end to end | `tests/e2e/form.html` | The real form filler on a local 3-step form with every field type, through to "submitted" |
 | Tracker API | `tests/unit/test_tracker*.py` | Every endpoint, the request checks (Host, Origin, JSON only, size) and the headers |
-| Tracker app | `tests/e2e/test_tracker_app.py` | Every page in a real headless browser, light and dark, desktop and phone width: no errors, no sideways scrolling. The workflow map's counts and links, and the job page buttons. Needs the built app. |
+| Tracker app | `tests/e2e/test_tracker_app.py` | Every page in a real headless browser, light and dark, desktop and phone width: no errors, no sideways scrolling. Today's pipeline counts and links, and the job page buttons. Needs the built app. |
 | AI | — | Recorded replies in unit tests. Live AI only in tests marked `@pytest.mark.ai`. |
 | Live sites | `tests/live/` | Real public job-board APIs, only in tests marked `@pytest.mark.network`. |
 | Real employers | — | **Never submitted to in tests.** Dry run only, and only by maintainers. |

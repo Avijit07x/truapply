@@ -6,6 +6,7 @@ import { queryClient } from "./app/queryClient";
 import { preload } from "./app/routes";
 import { syncTheme } from "./app/theme";
 import { RouterProvider } from "./lib/router";
+import "@fontsource-variable/inter/wght.css";
 import "./styles/base.css";
 
 const FIRST_PAINT_WAIT_MS = 300;

@@ -17,8 +17,5 @@ export function NextStep({ job }: { job: JobDetail }) {
       </Callout>
     );
   }
-  if (job.status === "scored") {
-    return <Callout>A good match, not tailored yet. You can open it in your Chrome now.</Callout>;
-  }
   return null;
 }

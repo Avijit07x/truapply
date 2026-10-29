@@ -3,6 +3,7 @@ from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 
@@ -88,6 +89,9 @@ def test_show_all_lists_every_job_found_skipped_ones_too(tracker: TrackerServer)
         "minScore=-1",
         "minScore=high",
         "source=myspace",
+        "sites=some",
+        "after=yesterday",
+        "before=2026-10-25T00:00:00",
     ],
 )
 def test_unknown_filters_sorts_and_pages_are_refused(tracker: TrackerServer, query: str) -> None:
@@ -182,6 +186,22 @@ def test_the_list_says_which_jobs_can_be_dismissed_and_why(many: TrackerServer) 
     assert "too senior" in listed["dismissReasons"]
 
 
+def test_jobs_can_be_narrowed_to_when_they_last_changed(tmp_path: Path) -> None:
+    paths = Paths(tmp_path)
+    paths.ensure()
+    old = replace(samples.job(external_id="1"), title="Old role")
+    fresh = replace(samples.job(external_id="2"), title="Fresh role")
+    with closing(connect(paths.database)) as db:
+        jobs.add_many(db, [old], NOW - timedelta(days=10))
+        jobs.add_many(db, [fresh], NOW)
+    day_before = quote((NOW - timedelta(days=1)).astimezone().isoformat())
+    with running(paths) as server:
+        since = get(server, f"/api/jobs?after={day_before}")[1]
+        until = get(server, f"/api/jobs?before={day_before}")[1]
+    assert [job["title"] for job in since["jobs"]] == ["Fresh role"]
+    assert [job["title"] for job in until["jobs"]] == ["Old role"]
+
+
 def test_wellfound_jobs_stay_out_of_career_jobs_and_have_their_own_list_and_counts(
     tmp_path: Path,
 ) -> None:
@@ -196,10 +216,13 @@ def test_wellfound_jobs_stay_out_of_career_jobs_and_have_their_own_list_and_coun
     with running(paths) as server:
         career = get(server, "/api/jobs?show=all")[1]
         found = get(server, "/api/jobs?source=wellfound")[1]
+        everywhere = get(server, "/api/jobs?sites=all")[1]
         summary = get(server, "/api/summary")[1]
         board = get(server, "/api/board")[1]
     assert {job["source"] for job in career["jobs"]} == {"career_pages"}
     assert [job["title"] for job in found["jobs"]] == ["UI Engineer"]
+    assert {job["source"] for job in everywhere["jobs"]} == {"career_pages", "wellfound"}
+    assert everywhere["total"] == 3
     assert summary["counts"] == {"new": 2}
     assert summary["sites"] == [{"source": "wellfound", "total": 1, "counts": {"ready": 1}}]
     ready = next(column for column in board["columns"] if column["status"] == "ready")

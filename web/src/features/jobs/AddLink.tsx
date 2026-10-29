@@ -26,7 +26,7 @@ export function AddLink() {
   const add = useAddLink();
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger render={<Button icon={<Plus size={14} />} />}>
+      <Popover.Trigger render={<Button variant="primary" icon={<Plus size={14} />} />}>
         Add a job link
       </Popover.Trigger>
       <Popover.Portal>

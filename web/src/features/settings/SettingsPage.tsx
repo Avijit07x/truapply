@@ -140,9 +140,10 @@ function SettingsForm({ view }: { view: SettingsView }) {
       onValueChange={(value: string) => {
         navigate(`/settings?tab=${value}`, true);
       }}
+      orientation="vertical"
       className={styles.tabs}
     >
-      <TabList label="Settings" items={TABS} />
+      <TabList label="Settings" items={TABS} vertical />
       <form
         className={styles.form}
         onSubmit={(event) => {
@@ -151,37 +152,39 @@ function SettingsForm({ view }: { view: SettingsView }) {
         }}
       >
         <div className={styles.body}>
-          {tab.show({ ...group, view })}
-          {problems.length > 0 && (
-            <div className={styles.notice}>
-              <Callout tone="bad">
-                <p>Nothing was saved. Fix these first:</p>
-                <ul className={styles.problems}>
-                  {problems.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </Callout>
-            </div>
-          )}
-          {(tab.form || dirty) && (
-            <div className={styles.bar}>
-              <span className={styles.state} role="status">
-                {dirty ? "You have unsaved changes." : "Everything is saved."}
-              </span>
-              <Row>
-                {dirty && (
-                  <Button variant="ghost" onClick={undo}>
-                    Undo changes
-                  </Button>
-                )}
-                <Button type="submit" variant="primary" busy={saving} disabled={!dirty}>
-                  Save settings
-                </Button>
-              </Row>
-            </div>
-          )}
+          <div className={styles.inner}>
+            {tab.show({ ...group, view })}
+            {problems.length > 0 && (
+              <div className={styles.notice}>
+                <Callout tone="bad">
+                  <p>Nothing was saved. Fix these first:</p>
+                  <ul className={styles.problems}>
+                    {problems.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </Callout>
+              </div>
+            )}
+          </div>
         </div>
+        {(tab.form || dirty) && (
+          <div className={styles.bar}>
+            <span className={styles.state} role="status">
+              {dirty ? "You have unsaved changes." : "Everything is saved."}
+            </span>
+            <Row>
+              {dirty && (
+                <Button variant="ghost" onClick={undo}>
+                  Undo changes
+                </Button>
+              )}
+              <Button type="submit" variant="primary" busy={saving} disabled={!dirty}>
+                Save settings
+              </Button>
+            </Row>
+          </div>
+        )}
       </form>
     </Tabs.Root>
   );

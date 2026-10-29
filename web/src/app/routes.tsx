@@ -1,6 +1,6 @@
 import { type ComponentType, use } from "react";
 import { queries } from "../api/queries";
-import { jobQuery } from "../domain/filters";
+import { jobQuery, listQuery } from "../domain/filters";
 import type { PageProps } from "../lib/router";
 import type { PageLayout } from "./Layout";
 import { queryClient } from "./queryClient";
@@ -49,32 +49,42 @@ function page(
 
 const ROUTES: readonly Route[] = [
   page(/^\/$/, () => import("../features/home/HomePage"), {
-    layout: "fit",
     warm: () => [
       queryClient.query(queries.summary()),
       queryClient.query(queries.board()),
       queryClient.query(queries.workflow()),
     ],
   }),
-  page(/^\/workflow$/, () => import("../features/workflow/WorkflowPage"), {
-    layout: "bleed",
-    warm: () => [queryClient.query(queries.workflow())],
-  }),
   page(/^\/jobs$/, () => import("../features/jobs/JobsPage"), {
-    layout: "fit",
+    layout: "flush",
+    warm: (_params, url) => [
+      queryClient.query(queries.summary()),
+      queryClient.query(queries.jobs(listQuery(jobQuery(url.searchParams)))),
+    ],
+  }),
+  page(/^\/jobs\/table$/, () => import("../features/jobs/JobsTablePage"), {
+    layout: "flush",
     warm: (_params, url) => [
       queryClient.query(queries.summary()),
       queryClient.query(queries.jobs(jobQuery(url.searchParams))),
     ],
   }),
+  page(/^\/sites\/([a-z_]+)\/table$/, () => import("../features/jobs/JobsTablePage"), {
+    layout: "flush",
+    warm: (params, url) => [
+      queryClient.query(queries.summary()),
+      queryClient.query(queries.jobs({ ...jobQuery(url.searchParams), source: params[0] })),
+    ],
+  }),
   page(/^\/sites\/([a-z_]+)$/, () => import("../features/jobs/JobsPage"), {
-    layout: "fit",
+    layout: "flush",
     warm: (params, url) => [
       queryClient.query(queries.summary()),
       queryClient.query(queries.jobs({ ...jobQuery(url.searchParams), source: params[0] })),
     ],
   }),
   page(/^\/jobs\/(\d+)$/, () => import("../features/job/JobPage"), {
+    layout: "flush",
     warm: (params) => [queryClient.query(queries.job(Number(params[0])))],
   }),
   page(/^\/companies$/, () => import("../features/companies/CompaniesPage"), {
@@ -82,7 +92,6 @@ const ROUTES: readonly Route[] = [
     warm: () => [queryClient.query(queries.companies())],
   }),
   page(/^\/runs$/, () => import("../features/runs/RunsPage"), {
-    layout: "fit",
     warm: () => [queryClient.query(queries.runs())],
   }),
   page(/^\/runs\/(\d{8}-\d{6}-\d{6}\.log)$/, () => import("../features/runs/RunLogPage"), {

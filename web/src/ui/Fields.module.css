@@ -6,13 +6,13 @@
 }
 
 .label {
-  font-size: 13px;
+  font-size: var(--text-md);
   font-weight: 500;
 }
 
 .hint {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 .input {
@@ -22,8 +22,12 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-small);
   background: var(--surface);
-  font-size: 14px;
+  font-size: var(--text-base);
   line-height: 1.4;
+}
+
+input.input[type="number"] {
+  max-width: 160px;
 }
 
 .input:focus-visible {
@@ -58,9 +62,9 @@ textarea.input {
   align-items: center;
   gap: 2px;
   padding: 2px 2px 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-small);
   background: var(--subtle);
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 .untag {
@@ -70,7 +74,7 @@ textarea.input {
   height: 18px;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-small);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -87,7 +91,7 @@ textarea.input {
   padding: 2px 4px;
   border: 0;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--text-base);
   outline: 0;
 }
 
@@ -142,8 +146,8 @@ textarea.input {
   align-items: center;
   gap: var(--space-2);
   padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: var(--radius-small);
+  font-size: var(--text-base);
   cursor: default;
   outline: 0;
 }
@@ -166,7 +170,7 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 14px;
+  font-size: var(--text-base);
   cursor: pointer;
 }
 
@@ -178,14 +182,14 @@ textarea.input {
   height: 18px;
   padding: 0;
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-small);
   background: var(--surface);
   cursor: pointer;
 }
 
 .checkbox[data-checked] {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--accent-solid);
+  background: var(--accent-solid);
   color: var(--on-accent);
 }
 
@@ -211,7 +215,7 @@ textarea.input {
 }
 
 .switch[data-checked] {
-  background: var(--accent);
+  background: var(--accent-solid);
 }
 
 .thumb {

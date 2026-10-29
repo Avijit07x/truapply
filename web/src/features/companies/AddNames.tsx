@@ -28,7 +28,9 @@ export function AddNames() {
   const add = useAddNames();
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger render={<Button icon={<Plus size={14} />} />}>Add companies</Popover.Trigger>
+      <Popover.Trigger render={<Button variant="primary" icon={<Plus size={14} />} />}>
+        Add companies
+      </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner className={styles.positioner} sideOffset={6} align="end">
           <Popover.Popup className={styles.linkPopup}>
