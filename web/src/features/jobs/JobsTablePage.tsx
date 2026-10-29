@@ -6,7 +6,7 @@ import { ActiveFilters } from "./ActiveFilters";
 import { AddLink } from "./AddLink";
 import { JobGrid } from "./JobGrid";
 import styles from "./Jobs.module.css";
-import { Pager } from "./Pager";
+import { Pager, jobPages } from "./Pager";
 import { DateFilter } from "./DateFilter";
 import { JobsFilter } from "./JobsFilter";
 import { JobsSearch, describe, titleOf, useJobs } from "./useJobs";
@@ -38,7 +38,7 @@ export default function JobsTablePage({ params }: PageProps) {
             <kbd>↑</kbd>
             <kbd>↓</kbd> move <kbd>Enter</kbd> open <kbd>X</kbd> select
           </p>
-          <Pager query={query} list={list} />
+          <Pager {...jobPages(query, list)} />
         </footer>
       </div>
     </div>

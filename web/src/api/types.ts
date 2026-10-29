@@ -273,6 +273,7 @@ export type SetupView = {
   draft: SetupDraft | null;
   noticePeriods: string[];
   automatic: Automatic;
+  extension: Extension;
   warning?: string;
 };
 export type SetupAnswers = {

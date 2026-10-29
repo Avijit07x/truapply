@@ -12,7 +12,7 @@ import { ArrowOut } from "../../ui/icons";
 import { Spinner } from "../../ui/Spinner";
 import { JobView } from "../job/JobView";
 import styles from "./Jobs.module.css";
-import { Pager } from "./Pager";
+import { Pager, jobPages } from "./Pager";
 
 const NEXT_KEYS = new Set(["ArrowDown", "j"]);
 const PREVIOUS_KEYS = new Set(["ArrowUp", "k"]);
@@ -118,7 +118,7 @@ export function JobSplit({ query, list, tools }: JobSplitProps) {
             <kbd>J</kbd>
             <kbd>K</kbd> move
           </span>
-          <Pager query={query} list={list} compact />
+          <Pager {...jobPages(query, list)} compact />
         </footer>
       </div>
       <div className={styles.dock} aria-label="Selected job" role="region">

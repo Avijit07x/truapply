@@ -30,6 +30,7 @@ from truapply.store import boards
 from truapply.store.boards import BoardOrigin
 from truapply.tracker import automatic, resume_upload
 from truapply.tracker.body import Body
+from truapply.tracker.extension import install_info
 from truapply.tracker.responses import Response, bad_request, ok, problem
 from truapply.tracker.routes import Route, route
 from truapply.tracker.settings import EVERY_MINUTES, JOBS_PER_RUN, SALARY_MAX, SALARY_MIN
@@ -84,6 +85,7 @@ def _view(paths: Paths) -> dict[str, object]:
         "draft": _draft_view(saved[0], saved[2]) if saved else None,
         "noticePeriods": list(NOTICE_PERIODS),
         "automatic": automatic.current(paths),
+        "extension": install_info(),
     }
 
 

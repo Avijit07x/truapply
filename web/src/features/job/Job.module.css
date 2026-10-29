@@ -32,7 +32,6 @@
 
 .titleRow {
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3) var(--space-4);
@@ -40,8 +39,20 @@
 
 .heading {
   display: grid;
+  flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
+}
+
+.titleRow > :last-child:not(.heading) {
+  flex: none;
+}
+
+.title,
+.place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .title {

@@ -3,7 +3,9 @@ import { useRef, useState } from "react";
 import { RequestFailed } from "../../api/client";
 import { useFinishSetup, useSetupResume } from "../../api/mutations";
 import { queries } from "../../api/queries";
-import type { Automatic, SetupAnswers, SetupDraft } from "../../api/types";
+import type { Automatic, Extension, SetupAnswers, SetupDraft } from "../../api/types";
+import { ExtensionStatus, ExtensionSteps } from "../../components/ExtensionSteps";
+import { useExtensionHere } from "../../lib/extension";
 import { cx } from "../../lib/cx";
 import { RESUME_KINDS, base64 } from "../../lib/files";
 import { navigate } from "../../lib/router";
@@ -16,11 +18,17 @@ import { toast } from "../../ui/toasts";
 import { Group } from "../settings/SettingsGroups";
 import styles from "./Setup.module.css";
 
-const STEPS = ["Your resume", "Your details", "Work rights and pay", "How it runs"] as const;
+const STEPS = [
+  "Your resume",
+  "Your details",
+  "Rights and pay",
+  "How it runs",
+  "Extension",
+] as const;
 const LIST = { maxItems: 50, maxLength: 200 };
 const YES_NO = ["Yes", "No"] as const;
 
-type Step = 0 | 1 | 2 | 3;
+type Step = 0 | 1 | 2 | 3 | 4;
 type Asking = Exclude<Step, 0>;
 
 const RUNS: Record<string, number | null> = {
@@ -117,7 +125,12 @@ function startFrom(draft: SetupDraft): SetupAnswers {
   };
 }
 
-type QuestionsProps = { draft: SetupDraft; noticePeriods: string[]; automatic: Automatic };
+type QuestionsProps = {
+  draft: SetupDraft;
+  noticePeriods: string[];
+  automatic: Automatic;
+  extension: Extension;
+};
 
 type FormProps = {
   answers: SetupAnswers;
@@ -373,15 +386,29 @@ function runsDone(answers: SetupAnswers, runs: string, automatic: Automatic): bo
 
 const LEFT: Record<Asking, string> = {
   1: "Add your name, email, city, country, a title word and where you'll work.",
-  2: "Answer every question here to finish.",
-  3: "Answer every question here to finish.",
+  2: "Answer every question here to go on.",
+  3: "Answer every question here to go on.",
+  4: "Finish without it if you'll add it later, from Settings.",
 };
 
-function Questions({ draft, noticePeriods, automatic }: QuestionsProps) {
+function ExtensionStep({ extension }: { extension: Extension }) {
+  return (
+    <Group
+      title="Add the Chrome extension"
+      note="It fills in applications in your own Chrome, with your own logins. You check each one and press Submit yourself."
+    >
+      <ExtensionSteps extension={extension} />
+      <ExtensionStatus />
+    </Group>
+  );
+}
+
+function Questions({ draft, noticePeriods, automatic, extension }: QuestionsProps) {
   const [step, setStep] = useState<Asking>(1);
   const [runs, setRuns] = useState("");
   const [answers, setAnswers] = useState(() => startFrom(draft));
   const finish = useFinishSetup();
+  const here = useExtensionHere();
   const failed = failure(finish.error);
   const change = (next: Partial<SetupAnswers>) => {
     setAnswers((current) => ({ ...current, ...next }));
@@ -390,7 +417,16 @@ function Questions({ draft, noticePeriods, automatic }: QuestionsProps) {
     1: detailsDone(answers),
     2: rightsDone(answers),
     3: runsDone(answers, runs, automatic),
+    4: here,
   }[step];
+  const finishSetup = () => {
+    finish.mutate(answers, {
+      onSuccess: ({ warning }) => {
+        toast(warning ?? "You're set up. Press Run now to find your first jobs.");
+        navigate("/", true);
+      },
+    });
+  };
   return (
     <>
       <Steps at={step} />
@@ -405,6 +441,7 @@ function Questions({ draft, noticePeriods, automatic }: QuestionsProps) {
           automatic={automatic}
         />
       )}
+      {step === 4 && <ExtensionStep extension={extension} />}
       {failed && (
         <Callout tone="bad">
           {failed.text}
@@ -421,31 +458,31 @@ function Questions({ draft, noticePeriods, automatic }: QuestionsProps) {
         {step > 1 && (
           <Button
             onClick={() => {
-              setStep(step === 3 ? 2 : 1);
+              setStep((step - 1) as Asking);
             }}
           >
             Back
           </Button>
         )}
         <Note>{done ? "" : LEFT[step]}</Note>
+        {step === 4 && !here && (
+          <Button busy={finish.isPending} onClick={finishSetup}>
+            Finish without it
+          </Button>
+        )}
         <Button
           variant="primary"
           disabled={!done}
           busy={finish.isPending}
           onClick={() => {
-            if (step !== 3) {
-              setStep(step === 1 ? 2 : 3);
+            if (step === 4) {
+              finishSetup();
               return;
             }
-            finish.mutate(answers, {
-              onSuccess: ({ warning }) => {
-                toast(warning ?? "You're set up. Press Run now to find your first jobs.");
-                navigate("/", true);
-              },
-            });
+            setStep((step + 1) as Asking);
           }}
         >
-          {step === 3 ? "Finish setup" : "Next"}
+          {step === 4 ? "Finish setup" : "Next"}
         </Button>
       </div>
     </>
@@ -458,7 +495,7 @@ export default function SetupPage() {
     <>
       <PageHeader
         title="Set up TruApply"
-        description="Four short steps. You can change anything later in Settings."
+        description="Five short steps. You can change anything later in Settings."
       />
       <div className={styles.page}>
         {data.draft ? (
@@ -466,6 +503,7 @@ export default function SetupPage() {
             draft={data.draft}
             noticePeriods={data.noticePeriods}
             automatic={data.automatic}
+            extension={data.extension}
           />
         ) : (
           <>
