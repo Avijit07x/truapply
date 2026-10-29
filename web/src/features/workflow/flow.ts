@@ -145,7 +145,7 @@ export const EXPLAIN: Record<Group, string> = {
   no_ai: "The employer doesn't accept AI-assisted applications, so it's left alone.",
   not_a_fit: "Scored below your minimum, or it has a deal-breaker.",
   scored: "Good matches. The next run tailors your resume for each one.",
-  closed: "The job was removed from the company's board.",
+  closed: "The job was removed from the company's board, or its deadline to apply passed.",
   ready:
     "Tailored and ready. Open one in your Chrome; the extension fills it in and you press Submit.",
   dismissed: "Jobs you said no to. Your reasons help it suggest what to skip.",
@@ -189,7 +189,7 @@ export const STEP_EXPLAIN: Readonly<Record<string, string>> = {
   seen: "A job already in your list, or the same job on another board, is set aside.",
   fit: "The AI score is checked against your minimum match score, deal-breakers and employers that ban AI help.",
   tailor: "Your resume is rewritten for each good match, using only facts you gave it.",
-  open: "Before tailoring, it checks the job is still on the company's board.",
+  open: "Before tailoring, it checks the job is still on the company's board and its deadline to apply hasn't passed.",
   apply:
     "You open each ready job in your Chrome, check it and press Submit, or auto-submit sends it.",
 };

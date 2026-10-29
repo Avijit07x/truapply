@@ -126,7 +126,7 @@ These docs.
 - [x] A job post with hidden instructions ("ignore your rules…") changes nothing: no tools used, answers still from the profile
 - [x] A job post saying "no AI-generated applications" is skipped. A form box "I did not use AI" is never ticked.
 - [x] The same job from two sources is applied to once
-- [x] A removed job (API 404) is marked `closed`, not `failed`
+- [x] A removed job (API 404), or an Ashby job past its deadline to apply, is marked `closed`, not `failed`
 
 ### Phase 3 · Tracker page and learning from you
 

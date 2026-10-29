@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -41,6 +42,7 @@ LEVER_DATA = [
         "additionalPlain": "Equal opportunity employer.",
     }
 ]
+CHECKED_AT = datetime(2026, 10, 29, tzinfo=UTC)
 ASHBY_DATA = {
     "jobs": [
         {
@@ -167,9 +169,24 @@ def test_polling_sorts_boards_into_alive_dead_and_unreachable(
 def test_a_removed_posting_is_reported_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     open_job = GREENHOUSE.parse(Board(Ats.GREENHOUSE, "northwind"), GREENHOUSE_DATA)[0]
     ashby_job = ASHBY.parse(Board(Ats.ASHBY, "fabrikam"), ASHBY_DATA)[0]
-    replies = {
-        GREENHOUSE.posting_url("northwind", "101"): Response("a", 404, None),
-        ASHBY.list_url("fabrikam"): Response("b", 200, ASHBY_DATA),
-    }
+    replies = {GREENHOUSE.posting_url("northwind", "101"): Response("a", 404, None)}
     monkeypatch.setattr(ats, "fetch_json", lambda urls: [replies[url] for url in urls])
-    assert still_open([open_job, ashby_job]) == [False, True]
+    monkeypatch.setattr(ats, "fetch_pages", lambda _urls, _at_once: [Response("b", 200, "")])
+    assert still_open([open_job, ashby_job], CHECKED_AT) == [False, True]
+
+
+def test_an_ashby_job_closes_when_removed_or_past_its_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    job = ASHBY.parse(Board(Ats.ASHBY, "fabrikam"), ASHBY_DATA)[0]
+    pages = {
+        "past": Response("a", 200, '"applicationDeadline":"2026-07-03T18:30:00.000Z"'),
+        "later": Response("b", 200, '"applicationDeadline":"2026-12-01T00:00:00.000Z"'),
+        "none": Response("c", 200, '"applicationDeadline":null'),
+        "gone": Response("d", 404, None),
+    }
+    found = [replace(job, external_id=f"ashby/fabrikam/{name}") for name in pages]
+    monkeypatch.setattr(
+        ats, "fetch_pages", lambda urls, _at_once: [pages[url.rsplit("/", 1)[-1]] for url in urls]
+    )
+    assert still_open(found, CHECKED_AT) == [False, True, True, False]

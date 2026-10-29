@@ -16,7 +16,7 @@ from truapply.sources.ats import still_open
 from truapply.store import jobs, records
 from truapply.store.jobs import AttemptRecord, StatusChange
 
-CLOSED_NOTE = "the job was removed from the company's board"
+CLOSED_NOTE = "the job was removed from the company's board or its deadline passed"
 READY_NOTE = "ready for you to apply in your Chrome"
 KEPT_NOTE = "ready for you to apply in your Chrome, with your original resume"
 
@@ -59,7 +59,7 @@ def within_site_caps(
 
 def _drop_closed(db: sqlite3.Connection, picks: Sequence[Job], clock: Clock) -> list[Job]:
     still = []
-    for job, state in zip(picks, still_open(picks), strict=True):
+    for job, state in zip(picks, still_open(picks, clock()), strict=True):
         if state is False and job.id is not None:
             jobs.set_status(db, job.id, StatusChange(Status.CLOSED, clock(), CLOSED_NOTE))
         else:

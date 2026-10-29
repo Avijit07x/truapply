@@ -1,12 +1,15 @@
 import re
 from collections.abc import Mapping
+from datetime import datetime
 
+from truapply.browser.fetch import Response
 from truapply.core.models import Ats, Board, Job, Source
 from truapply.sources.ats.base import AtsReader, company_name, external_id
 from truapply.sources.text import identifier, iso_time, items, mapping, text
 
 REMOTE = "Remote"
 BOARD_URL = re.compile(r"https?://jobs\.ashbyhq\.com/([\w.%-]+)", re.IGNORECASE)
+DEADLINE = re.compile(r'"applicationDeadline":"([^"]+)"')
 
 
 def list_url(slug: str) -> str:
@@ -15,6 +18,20 @@ def list_url(slug: str) -> str:
 
 def posting_url(_slug: str, _posting_id: str) -> str | None:
     return None
+
+
+def page_url(slug: str, posting_id: str) -> str:
+    return f"https://jobs.ashbyhq.com/{slug}/{posting_id}"
+
+
+def is_open(page: Response, now: datetime) -> bool | None:
+    if page.missing:
+        return False
+    if not isinstance(page.data, str):
+        return None
+    match = DEADLINE.search(page.data)
+    deadline = iso_time(match.group(1)) if match else None
+    return deadline is None or deadline > now
 
 
 def _is_remote(source: Mapping[str, object]) -> bool:

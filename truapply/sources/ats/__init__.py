@@ -1,7 +1,8 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 
-from truapply.browser.fetch import fetch_json
+from truapply.browser.fetch import MAX_CONCURRENT, fetch_json, fetch_pages
 from truapply.core.models import Ats, Board, Job
 from truapply.sources.ats import ashby, greenhouse, lever
 from truapply.sources.ats.base import AtsReader
@@ -67,7 +68,7 @@ def _is_open(job: Job, data: object | None, missing: bool) -> bool | None:
     return any(found.posting_id == job.posting_id for found in reader.parse(board, data))
 
 
-def still_open(jobs: Sequence[Job]) -> list[bool | None]:
+def _listed(jobs: Sequence[Job]) -> list[bool | None]:
     urls = [_check_url(job) for job in jobs]
     responses = iter(fetch_json([url for url in urls if url]))
     states: list[bool | None] = []
@@ -75,3 +76,15 @@ def still_open(jobs: Sequence[Job]) -> list[bool | None]:
         response = next(responses) if url else None
         states.append(_is_open(job, response.data, response.missing) if response else None)
     return states
+
+
+def _ashby_page(job: Job) -> str | None:
+    board = job.board
+    return ashby.page_url(board.slug, job.posting_id) if board and board.ats is Ats.ASHBY else None
+
+
+def still_open(jobs: Sequence[Job], now: datetime) -> list[bool | None]:
+    pages = [_ashby_page(job) for job in jobs]
+    read = iter(fetch_pages([url for url in pages if url], MAX_CONCURRENT))
+    listed = iter(_listed([job for job, url in zip(jobs, pages, strict=True) if not url]))
+    return [ashby.is_open(next(read), now) if url else next(listed) for url in pages]
