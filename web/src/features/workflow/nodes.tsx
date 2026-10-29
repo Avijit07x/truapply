@@ -129,6 +129,7 @@ export function StepCard({ data, selected }: NodeProps<StepNode>) {
       )}
     >
       <Pins sides={["top", "left", "bottom", "right"]} />
+      <Added count={added} />
       <div className={styles.cardHead}>
         <Tile kind={step.kind} />
         <span className={cx(styles.tag, active && styles.liveTag)}>
@@ -136,7 +137,6 @@ export function StepCard({ data, selected }: NodeProps<StepNode>) {
         </span>
         {count !== null && (
           <span className={styles.cardCount}>
-            <Added count={added} />
             <CountUp value={count} />
             {step.countLabel && <small>{step.countLabel}</small>}
           </span>
@@ -163,11 +163,11 @@ export function OutcomeCard({ data, selected }: NodeProps<OutcomeNode>) {
       )}
     >
       <Pins sides={["left"]} />
+      <Added count={data.added} />
       <span className={styles.outcomeHead}>
         <span className={styles.branch}>{data.branch}</span>
         <Share part={data.count} total={data.total} fill={tone} />
         <span className={styles.outcomeCount}>
-          <Added count={data.added} />
           <CountUp value={data.count} />
         </span>
       </span>
