@@ -13,3 +13,7 @@
 .whenColumn {
   width: 132px;
 }
+
+.schedule {
+  display: block;
+}

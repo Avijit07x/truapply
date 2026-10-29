@@ -50,22 +50,17 @@ export default function JobsPage({ params }: PageProps) {
       <PageHeader
         title={titleOf(query)}
         description={describe(query, list)}
-        actions={
-          <>
-            {!query.source && <AddLink />}
-            <SearchBox
-              value={query.q ?? ""}
-              onSearch={(q) => {
-                navigate(
-                  jobsHref({ ...query, q: q === "" ? undefined : q, page: undefined }),
-                  true,
-                );
-              }}
-            />
-          </>
-        }
+        actions={!query.source && <AddLink />}
       />
-      <FilterChips query={query} counts={counts} total={total} />
+      <div className={styles.toolbar}>
+        <FilterChips query={query} counts={counts} total={total} />
+        <SearchBox
+          value={query.q ?? ""}
+          onSearch={(q) => {
+            navigate(jobsHref({ ...query, q: q === "" ? undefined : q, page: undefined }), true);
+          }}
+        />
+      </div>
       <ActiveFilters query={query} />
       <JobGrid query={query} list={list} counts={counts} total={total} pending={pending} />
       <footer className={styles.footer}>

@@ -217,36 +217,43 @@ export default function CompaniesPage() {
     <div className={styles.page}>
       <PageHeader
         title="Companies"
-        description={`${plural(count(all, "all") - count(all, "closed"), "company", "companies")} checked on every run. ${searchNote(data)}.`}
+        description={
+          <>
+            {`${plural(count(all, "all") - count(all, "closed"), "company", "companies")} checked on every run.`}
+            <span className={own.schedule}>{searchNote(data)}.</span>
+          </>
+        }
         actions={
           <>
-            <SearchBox
-              label="Search companies"
-              placeholder="Search companies"
-              value={q}
-              onSearch={(next) => {
-                navigate(href(show, next), true);
-              }}
-            />
             <AddNames />
-            <CheckArchive going={data.archive.going} />
             <FindMore running={summary.run.running} />
+            <CheckArchive going={data.archive.going} />
           </>
         }
       />
-      <nav className={styles.chips} aria-label="Filter by how it was found">
-        {SHOWS.map((item) => (
-          <Link
-            key={item}
-            to={href(item, q)}
-            className={styles.chip}
-            aria-current={item === show ? "true" : undefined}
-          >
-            {SHOW_LABEL[item]}
-            <span className={styles.chipCount}>{count(all, item).toLocaleString()}</span>
-          </Link>
-        ))}
-      </nav>
+      <div className={styles.toolbar}>
+        <nav className={styles.chips} aria-label="Filter by how it was found">
+          {SHOWS.map((item) => (
+            <Link
+              key={item}
+              to={href(item, q)}
+              className={styles.chip}
+              aria-current={item === show ? "true" : undefined}
+            >
+              {SHOW_LABEL[item]}
+              <span className={styles.chipCount}>{count(all, item).toLocaleString()}</span>
+            </Link>
+          ))}
+        </nav>
+        <SearchBox
+          label="Search companies"
+          placeholder="Search companies"
+          value={q}
+          onSearch={(next) => {
+            navigate(href(show, next), true);
+          }}
+        />
+      </div>
       <div className={styles.tableWrap}>
         <table className={cx(styles.table, rows.length === 0 && styles.stretch)}>
           <thead>
